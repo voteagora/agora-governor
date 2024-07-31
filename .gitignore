@@ -1,0 +1,20 @@
+# Compiler files
+cache/
+out/
+
+# Ignores development broadcast logs
+!/broadcast
+/broadcast/*/31337/
+/broadcast/**/dry-run/
+/broadcast
+
+# Dotenv file
+.env
+
+# General
+.DS_Store
+.AppleDouble
+.LSOverride
+lcov.info
+
+.vscode

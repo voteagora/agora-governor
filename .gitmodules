@@ -1,0 +1,21 @@
+[submodule "lib/forge-std"]
+	path = lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
+[submodule "lib/solady"]
+	path = lib/solady
+	url = https://github.com/vectorized/solady
+[submodule "lib/ERC20VotesPartialDelegationUpgradeable"]
+	path = lib/ERC20VotesPartialDelegationUpgradeable
+	url = https://github.com/voteagora/ERC20VotesPartialDelegationUpgradeable
+[submodule "lib/murky"]
+	path = lib/murky
+	url = https://github.com/dmfxyz/murky
+[submodule "lib/openzeppelin-contracts-v5"]
+	path = lib/openzeppelin-contracts-v5
+	url = https://github.com/openzeppelin/openzeppelin-contracts
+[submodule "lib/openzeppelin-contracts-upgradeable-v4"]
+	path = lib/openzeppelin-contracts-upgradeable-v4
+	url = https://github.com/openzeppelin/openzeppelin-contracts-upgradeable
+[submodule "lib/openzeppelin-contracts-v4"]
+	path = lib/openzeppelin-contracts-v4
+	url = https://github.com/openzeppelin/openzeppelin-contracts

@@ -1,0 +1,10 @@
+@openzeppelin/contracts-v4/=lib/openzeppelin-contracts-v4/contracts/
+@openzeppelin/contracts-v5/=lib/openzeppelin-contracts-v5/contracts/
+@openzeppelin/contracts-upgradeable-v4/=lib/openzeppelin-contracts-upgradeable-v4/contracts/
+@murky/=lib/murky/src/
+ds-test/=lib/forge-std/lib/ds-test/src/
+forge-std/=lib/forge-std/src/
+@solady/=lib/solady/src
+upgrade-scripts/=lib/upgrade-scripts/src/
+UDS/=lib/upgrade-scripts/lib/UDS/src/
+ERC20VotesPartialDelegationUpgradeable/=lib/ERC20VotesPartialDelegationUpgradeable/src/
