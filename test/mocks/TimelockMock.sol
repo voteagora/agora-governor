@@ -4,7 +4,7 @@ pragma solidity ^0.8.19;
 import {TimelockControllerUpgradeable} from
     "@openzeppelin/contracts-upgradeable-v4/governance/TimelockControllerUpgradeable.sol";
 
-contract AgoraTimelock is TimelockControllerUpgradeable {
+contract Timelock is TimelockControllerUpgradeable {
     function initialize(uint256 minDelay, address governor, address admin) public initializer {
         address[] memory proposers = new address[](1);
         proposers[0] = governor;

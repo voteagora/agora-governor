@@ -5,7 +5,7 @@ import {IProposalTypesConfigurator} from "src/interfaces/IProposalTypesConfigura
 import {IAgoraGovernor} from "src/interfaces/IAgoraGovernor.sol";
 
 /**
- * Contract that stores proposalTypes for Agora Governor.
+ * Contract that stores proposalTypes for the Agora Governor.
  */
 contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     /*//////////////////////////////////////////////////////////////

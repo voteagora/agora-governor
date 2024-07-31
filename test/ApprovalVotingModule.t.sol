@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
-import {L2GovToken} from "ERC20VotesPartialDelegationUpgradeable/L2GovToken.sol";
+import {TokenMock} from "test/mocks/TokenMock.sol";
 import {ApprovalVotingModule} from "src/modules/ApprovalVotingModule.sol";
 import {VotingModule} from "src/modules/VotingModule.sol";
 import {ProposalOption, ProposalSettings, PassingCriteria, Proposal} from "src/modules/ApprovalVotingModule.sol";
@@ -31,7 +31,7 @@ contract ApprovalVotingModuleTest is Test {
                                 STORAGE
     //////////////////////////////////////////////////////////////*/
 
-    address internal token = address(new L2GovToken());
+    address internal token = address(new TokenMock(address(this)));
     string internal description = "a nice description";
     bytes32 internal descriptionHash = keccak256(bytes("a nice description"));
     address internal governor;
@@ -348,10 +348,7 @@ contract ApprovalVotingModuleTest is Test {
         assertEq(values[1], 0);
         assertEq(
             calldatas[1],
-            abi.encodeCall(
-                ApprovalVotingModule._afterExecute,
-                (proposalId, proposalData, options[1].budgetTokensSpent + options[2].budgetTokensSpent)
-            )
+            abi.encodeCall(ApprovalVotingModule._afterExecute, (proposalId, proposalData, options[1].budgetTokensSpent))
         );
     }
 
@@ -391,10 +388,7 @@ contract ApprovalVotingModuleTest is Test {
         assertEq(values[2], 0);
         assertEq(
             calldatas[2],
-            abi.encodeCall(
-                ApprovalVotingModule._afterExecute,
-                (proposalId, proposalData, options[1].budgetTokensSpent + options[2].budgetTokensSpent)
-            )
+            abi.encodeCall(ApprovalVotingModule._afterExecute, (proposalId, proposalData, options[1].budgetTokensSpent))
         );
     }
 
@@ -615,83 +609,6 @@ contract ApprovalVotingModuleTest is Test {
         vm.expectRevert(VotingModule.NotGovernor.selector);
         module._formatExecuteParams(proposalId, proposalData);
     }
-
-    // function testRevert_afterExecute_budgetExceeded() public {
-    //     OptimismGovernorV5ExecuteMock governor_ = new OptimismGovernorV5ExecuteMock();
-
-    //     vm.deal(address(governor_), 1e20);
-    //     L2GovToken(op).mint(address(governor_), 1e20);
-
-    //     (
-    //         bytes memory proposalData,
-    //         ProposalOption[] memory options,
-    //         ProposalSettings memory settings
-    //     ) = _formatProposalData(true, true);
-
-    //     address[] memory targets = new address[](2);
-    //     uint256[] memory values = new uint256[](2);
-    //     bytes[] memory calldatas = new bytes[](2);
-    //     // Transfer 100 OP tokens to receiver2
-    //     targets[0] = op;
-    //     calldatas[0] = abi.encodeCall(IERC20.transfer, (receiver1, 6e17));
-    //     // Send 0.01 ether to receiver2, and emit call to test calls to targets different than budgetTokens are ignored
-    //     targets[1] = receiver2;
-    //     values[1] = 0.6 ether;
-    //     calldatas[1] = calldatas[0];
-    //     // Fill Option budget incorrectly
-    //     options[2] = ProposalOption(
-    //         100,
-    //         targets,
-    //         values,
-    //         calldatas,
-    //         "option 2"
-    //     );
-    //     proposalData = abi.encode(options, settings);
-
-    //     uint256 weight = 100;
-
-    //     vm.startPrank(address(governor_));
-    //     uint256 proposalId = hashProposalWithModule(
-    //         address(governor_),
-    //         address(module),
-    //         proposalData,
-    //         descriptionHash
-    //     );
-    //     module.propose(proposalId, proposalData, descriptionHash);
-
-    //     uint256[] memory votes = new uint256[](2);
-    //     votes[0] = 1;
-    //     votes[1] = 2;
-    //     bytes memory params = abi.encode(votes);
-    //     uint256[] memory altVotes = new uint256[](1);
-    //     altVotes[0] = 1;
-    //     bytes memory altParams = abi.encode(altVotes);
-
-    //     module._countVote(
-    //         proposalId,
-    //         voter,
-    //         uint8(VoteType.For),
-    //         weight,
-    //         params
-    //     );
-    //     module._countVote(
-    //         proposalId,
-    //         altVoter,
-    //         uint8(VoteType.For),
-    //         weight,
-    //         altParams
-    //     );
-
-    //     (targets, values, calldatas) = module._formatExecuteParams(
-    //         proposalId,
-    //         proposalData
-    //     );
-
-    //     vm.expectRevert(ApprovalVotingModule.BudgetExceeded.selector);
-    //     governor_.execute(proposalId, targets, values, calldatas, "");
-
-    //     vm.stopPrank();
-    // }
 
     /*//////////////////////////////////////////////////////////////
                                 HELPERS

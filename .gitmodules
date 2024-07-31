@@ -7,9 +7,6 @@
 [submodule "lib/ERC20VotesPartialDelegationUpgradeable"]
 	path = lib/ERC20VotesPartialDelegationUpgradeable
 	url = https://github.com/voteagora/ERC20VotesPartialDelegationUpgradeable
-[submodule "lib/murky"]
-	path = lib/murky
-	url = https://github.com/dmfxyz/murky
 [submodule "lib/openzeppelin-contracts-v5"]
 	path = lib/openzeppelin-contracts-v5
 	url = https://github.com/openzeppelin/openzeppelin-contracts

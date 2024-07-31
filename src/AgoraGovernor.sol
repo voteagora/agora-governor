@@ -192,7 +192,9 @@ contract AgoraGovernor is
 
         address votingModule = proposal.votingModule;
         if (votingModule != address(0)) {
-            if (!VotingModule(votingModule)._voteSucceeded(proposalId)) return false;
+            if (!VotingModule(votingModule)._voteSucceeded(proposalId)) {
+                return false;
+            }
         }
 
         uint256 approvalThreshold = PROPOSAL_TYPES_CONFIGURATOR.proposalTypes(proposal.proposalType).approvalThreshold;
@@ -505,10 +507,7 @@ contract AgoraGovernor is
         // Revert if `proposalType` is unset or doesn't match module
         if (
             bytes(PROPOSAL_TYPES_CONFIGURATOR.proposalTypes(proposalType).name).length == 0
-                || (
-                    PROPOSAL_TYPES_CONFIGURATOR.proposalTypes(proposalType).module != address(0)
-                        && PROPOSAL_TYPES_CONFIGURATOR.proposalTypes(proposalType).module != address(module)
-                )
+                || PROPOSAL_TYPES_CONFIGURATOR.proposalTypes(proposalType).module != address(module)
         ) {
             revert InvalidProposalType(proposalType);
         }
