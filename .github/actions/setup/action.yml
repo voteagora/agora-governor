@@ -1,0 +1,10 @@
+name: Setup
+description: Configure the common enviroment
+
+runs:
+  using: composite
+  steps:
+    - name: Install Foundry
+      uses: foundry-rs/foundry-toolchain@v1
+      with:
+        version: nightly
