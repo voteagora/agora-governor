@@ -1,0 +1,46 @@
+name: checks
+on: push
+env:
+  FOUNDRY_PROFILE: ci
+
+jobs:
+  tests:
+    name: Foundry tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+      - name: Set up environment
+        uses: ./.github/actions/setup
+
+      - name: Install dependencies
+        run: forge install
+
+      - name: Check contract sizes
+        run: forge build --sizes --skip test
+        id: build
+
+      - name: Run tests
+        run: FOUNDRY_PROFILE="deep" forge test -v
+        id: test
+
+      - name: Check format
+        run: forge fmt --check
+        id: format
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up environment
+        uses: ./.github/actions/setup
+      
+      - name: Generate coverage
+        run: forge coverage --report lcov
+      
+      - uses: codecov/codecov-action@v4
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

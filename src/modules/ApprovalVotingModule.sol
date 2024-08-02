@@ -202,47 +202,52 @@ contract ApprovalVotingModule is VotingModule {
         uint256 totalValue;
         ProposalOption memory option;
 
-        // Flatten `options` by filling `executeParams` until budgetAmount is exceeded
-        for (uint256 i; i < succeededOptionsLength;) {
-            option = sortedOptions[i];
+        {
+            bool budgetExceeded = false;
 
-            for (n = 0; n < option.targets.length;) {
-                if (settings.budgetAmount != 0) {
-                    // If `budgetToken` is ETH and value is not zero, add transaction value to `totalValue`
-                    if (settings.budgetToken == address(0)) {
-                        if (option.values[n] != 0) {
-                            totalValue += option.values[n];
+            // Flatten `options` by filling `executeParams` until budgetAmount is exceeded
+            for (uint256 i; i < succeededOptionsLength;) {
+                option = sortedOptions[i];
+
+                for (n = 0; n < option.targets.length;) {
+                    if (settings.budgetAmount != 0) {
+                        // If `budgetToken` is ETH and value is not zero, add transaction value to `totalValue`
+                        if (settings.budgetToken == address(0)) {
+                            if (option.values[n] != 0) {
+                                if (totalValue + option.values[n] > settings.budgetAmount) {
+                                    budgetExceeded = true;
+                                    break; // break inner loop
+                                }
+                                totalValue += option.values[n];
+                            }
                         }
                     }
 
-                    // If `budgetAmount` is exceeded, break inner loop
-                    if (totalValue > settings.budgetAmount) break;
-                }
+                    unchecked {
+                        executeParams[executeParamsLength + n] =
+                            ExecuteParams(option.targets[n], option.values[n], option.calldatas[n]);
 
-                unchecked {
-                    executeParams[executeParamsLength + n] =
-                        ExecuteParams(option.targets[n], option.values[n], option.calldatas[n]);
-
-                    ++n;
-                }
-            }
-
-            if (settings.budgetAmount != 0) {
-                // If `budgetToken` is not ETH and `option.budgetAmount` is not zero, add `option.budgetTokensSpent` to `totalValue`
-                if (settings.budgetToken != address(0)) {
-                    if (option.budgetTokensSpent != 0) {
-                        totalValue += option.budgetTokensSpent;
+                        ++n;
                     }
                 }
 
-                // If `budgetAmount` is exceeded, break outer loop. Executed for both ETH and non-ETH tokens
-                if (totalValue > settings.budgetAmount) break;
-            }
+                if (settings.budgetAmount != 0) {
+                    // If `budgetAmount` is exceeded, break outer loop. Executed for ETH
+                    if (budgetExceeded) break;
 
-            unchecked {
-                executeParamsLength += n;
+                    if (settings.budgetToken != address(0)) {
+                        if (option.budgetTokensSpent != 0) {
+                            if (totalValue + option.budgetTokensSpent > settings.budgetAmount) break; // break outer loop for non-ETH tokens
+                            totalValue += option.budgetTokensSpent;
+                        }
+                    }
+                }
 
-                ++i;
+                unchecked {
+                    executeParamsLength += n;
+
+                    ++i;
+                }
             }
         }
 
