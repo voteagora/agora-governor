@@ -5,7 +5,7 @@ import {IProposalTypesConfigurator} from "src/interfaces/IProposalTypesConfigura
 import {IAgoraGovernor} from "src/interfaces/IAgoraGovernor.sol";
 
 /**
- * Contract that stores proposalTypes for the Agora Governor.
+ * Contract that stores proposalTypes for  Governor.
  */
 contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     /*//////////////////////////////////////////////////////////////
@@ -20,15 +20,22 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     //////////////////////////////////////////////////////////////*/
 
     mapping(uint8 proposalTypeId => ProposalType) internal _proposalTypes;
+    mapping(uint8 proposalTypeId => bool) internal _proposalTypesExists;
+    mapping(uint8 proposalTypeId => Scope[]) public scopes;
+	mapping(uint8 proposalTypeId => mapping(bytes32 typeHash => bool)) public scopeExists;
+	mapping(bytes32 typeHash => bytes32 limits) public limits;
 
     /*//////////////////////////////////////////////////////////////
                                MODIFIERS
     //////////////////////////////////////////////////////////////*/
 
     modifier onlyAdminOrTimelock() {
-        if (msg.sender != governor.admin() && msg.sender != governor.timelock()) {
-            revert NotAdminOrTimelock();
-        }
+        if (msg.sender != governor.admin() && msg.sender != governor.timelock()) revert NotAdminOrTimelock();
+        _;
+    }
+
+    modifier onlyAdmin() {
+        if (msg.sender != governor.admin()) revert NotAdmin();
         _;
     }
 
@@ -50,7 +57,8 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
                 _proposalTypesInit[i].quorum,
                 _proposalTypesInit[i].approvalThreshold,
                 _proposalTypesInit[i].name,
-                _proposalTypesInit[i].module
+                _proposalTypesInit[i].module,
+                _proposalTypesInit[i].txTypeHashes
             );
         }
     }
@@ -62,6 +70,36 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      */
     function proposalTypes(uint8 proposalTypeId) external view override returns (ProposalType memory) {
         return _proposalTypes[proposalTypeId];
+    }
+
+    /**
+     * @notice Sets the scope for a given proposal type.
+     * @param proposalTypeId Id of the proposal type.
+     */
+    function setScopeForProposalType(
+        uint8 proposalTypeId,
+        bytes32 txTypeHash,
+        bytes32 encodedLimit,
+        bytes[] memory parameters,
+	    Comparators[] memory comparators
+    ) external override onlyAdmin {
+        _setScopeForProposalType(proposalTypeId, txTypeHash, encodedLimit, parameters, comparators);
+    }
+
+    function _setScopeForProposalType(
+        uint8 proposalTypeId,
+        bytes32 txTypeHash,
+        bytes32 encodedLimit,
+        bytes[] memory parameters,
+	    Comparators[] memory comparators
+    ) internal {
+        if(!_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
+        if(parameters.length != comparators.length) revert InvalidParameterConditions();
+
+        Scope memory scope = Scope(txTypeHash, encodedLimit, parameters, comparators);
+        scopes[proposalTypeId].push(scope);
+
+        scopeExists[proposalTypeId][txTypeHash] = true;
     }
 
     /**
@@ -77,9 +115,10 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         uint16 quorum,
         uint16 approvalThreshold,
         string calldata name,
-        address module
+        address module,
+        bytes32[] memory txTypeHashes
     ) external override onlyAdminOrTimelock {
-        _setProposalType(proposalTypeId, quorum, approvalThreshold, name, module);
+        _setProposalType(proposalTypeId, quorum, approvalThreshold, name, module, txTypeHashes);
     }
 
     function _setProposalType(
@@ -87,15 +126,15 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         uint16 quorum,
         uint16 approvalThreshold,
         string calldata name,
-        address module
+        address module,
+        bytes32[] memory txTypeHashes
     ) internal {
         if (quorum > PERCENT_DIVISOR) revert InvalidQuorum();
-        if (approvalThreshold > PERCENT_DIVISOR) {
-            revert InvalidApprovalThreshold();
-        }
+        if (approvalThreshold > PERCENT_DIVISOR) revert InvalidApprovalThreshold();
 
-        _proposalTypes[proposalTypeId] = ProposalType(quorum, approvalThreshold, name, module);
+        _proposalTypes[proposalTypeId] = ProposalType(quorum, approvalThreshold, name, module, txTypeHashes);
+        _proposalTypesExists[proposalTypeId] = true;
 
-        emit ProposalTypeSet(proposalTypeId, quorum, approvalThreshold, name);
+        emit ProposalTypeSet(proposalTypeId, quorum, approvalThreshold, name, txTypeHashes);
     }
 }

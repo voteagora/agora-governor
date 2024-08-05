@@ -10,7 +10,7 @@ contract ProposalTypesConfiguratorTest is Test {
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
 
-    event ProposalTypeSet(uint8 indexed proposalTypeId, uint16 quorum, uint16 approvalThreshold, string name);
+    event ProposalTypeSet(uint8 indexed proposalTypeId, uint16 quorum, uint16 approvalThreshold, string name, bytes32[] txTypeHashes);
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
@@ -35,8 +35,9 @@ contract ProposalTypesConfiguratorTest is Test {
         vm.stopPrank();
 
         vm.startPrank(admin);
-        proposalTypesConfigurator.setProposalType(0, 3_000, 5_000, "Default", address(0));
-        proposalTypesConfigurator.setProposalType(1, 5_000, 7_000, "Alt", address(0));
+        bytes32[] memory transactions = new bytes32[](1);
+        proposalTypesConfigurator.setProposalType(0, 3_000, 5_000, "Default", address(0), transactions);
+        proposalTypesConfigurator.setProposalType(1, 5_000, 7_000, "Alt", address(0), transactions);
         vm.stopPrank();
     }
 
@@ -88,39 +89,42 @@ contract SetProposalType is ProposalTypesConfiguratorTest {
     function testFuzz_SetProposalType(uint256 _actorSeed) public {
         vm.prank(_adminOrTimelock(_actorSeed));
         vm.expectEmit();
-        emit ProposalTypeSet(0, 4_000, 6_000, "New Default");
-        proposalTypesConfigurator.setProposalType(0, 4_000, 6_000, "New Default", address(0));
+        bytes32[] memory transactions = new bytes32[](1);
+        emit ProposalTypeSet(0, 4_000, 6_000, "New Default", transactions);
+        proposalTypesConfigurator.setProposalType(0, 4_000, 6_000, "New Default", address(0), transactions);
 
         IProposalTypesConfigurator.ProposalType memory propType = proposalTypesConfigurator.proposalTypes(0);
 
         assertEq(propType.quorum, 4_000);
         assertEq(propType.approvalThreshold, 6_000);
         assertEq(propType.name, "New Default");
+        assertEq(propType.txTypeHashes, transactions);
 
         vm.prank(_adminOrTimelock(_actorSeed));
-        proposalTypesConfigurator.setProposalType(1, 0, 0, "Optimistic", address(0));
+        proposalTypesConfigurator.setProposalType(1, 0, 0, "Optimistic", address(0), transactions);
         propType = proposalTypesConfigurator.proposalTypes(1);
         assertEq(propType.quorum, 0);
         assertEq(propType.approvalThreshold, 0);
         assertEq(propType.name, "Optimistic");
+        assertEq(propType.txTypeHashes, transactions);
     }
 
     function test_RevertIf_NotAdminOrTimelock(address _actor) public {
         vm.assume(_actor != admin && _actor != GovernorMock(governor).timelock());
         vm.expectRevert(IProposalTypesConfigurator.NotAdminOrTimelock.selector);
-        proposalTypesConfigurator.setProposalType(0, 0, 0, "", address(0));
+        proposalTypesConfigurator.setProposalType(0, 0, 0, "", address(0), new bytes32[](1));
     }
 
     function test_RevertIf_setProposalType_InvalidQuorum(uint256 _actorSeed) public {
         vm.prank(_adminOrTimelock(_actorSeed));
         vm.expectRevert(IProposalTypesConfigurator.InvalidQuorum.selector);
-        proposalTypesConfigurator.setProposalType(0, 10_001, 0, "", address(0));
+        proposalTypesConfigurator.setProposalType(0, 10_001, 0, "", address(0), new bytes32[](1));
     }
 
     function testRevert_setProposalType_InvalidApprovalThreshold(uint256 _actorSeed) public {
         vm.prank(_adminOrTimelock(_actorSeed));
         vm.expectRevert(IProposalTypesConfigurator.InvalidApprovalThreshold.selector);
-        proposalTypesConfigurator.setProposalType(0, 0, 10_001, "", address(0));
+        proposalTypesConfigurator.setProposalType(0, 0, 10_001, "", address(0), new bytes32[](1));
     }
 }
 

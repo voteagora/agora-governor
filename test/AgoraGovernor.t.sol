@@ -6,8 +6,9 @@ import {TransparentUpgradeableProxy} from "@openzeppelin/contracts-v4/proxy/tran
 import {IVotesUpgradeable} from "@openzeppelin/contracts-upgradeable-v4/governance/utils/IVotesUpgradeable.sol";
 import {IGovernorUpgradeable} from "@openzeppelin/contracts-upgradeable-v4/governance/IGovernorUpgradeable.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts-v4/proxy/ERC1967/ERC1967Proxy.sol";
-import {Timelock, TimelockControllerUpgradeable} from "test/mocks/TimelockMock.sol";
-import {TokenMock} from "test/mocks/TokenMock.sol";
+import {ProxyAdmin} from "src/ProxyAdmin.sol";
+import {Timelock, TimelockControllerUpgradeable} from "src/Timelock.sol";
+import {L2GovToken} from "ERC20VotesPartialDelegationUpgradeable/L2GovToken.sol";
 import {VotingModule} from "src/modules/VotingModule.sol";
 import {ProposalTypesConfigurator, IProposalTypesConfigurator} from "src/ProposalTypesConfigurator.sol";
 import {
@@ -99,8 +100,9 @@ contract AgoraGovernorTest is Test {
     ProposalTypesConfigurator public proposalTypesConfigurator;
     Timelock public timelock;
     ExecutionTargetFake public targetFake;
+    ProxyAdmin public proxyAdminContract;
+    address internal proxyAdmin;
     address internal admin = makeAddr("admin");
-    address internal proxyAdmin = makeAddr("proxyAdmin");
     address internal manager = makeAddr("manager");
     address internal minter = makeAddr("minter");
     string description = "a nice description";
@@ -108,7 +110,7 @@ contract AgoraGovernorTest is Test {
     uint256 proposalTypesIndex = 1;
     uint256 timelockDelay;
 
-    TokenMock internal govToken;
+    L2GovToken internal l2GovToken;
     address public implementation;
     address internal governorProxy;
     AgoraGovernorMock public governor;
@@ -123,13 +125,26 @@ contract AgoraGovernorTest is Test {
         vm.startPrank(deployer);
 
         // Deploy token
-        govToken = new TokenMock(minter);
+        l2GovToken = L2GovToken(
+            address(
+                new ERC1967Proxy(
+                    address(new L2GovToken()), abi.encodeCall(l2GovToken.initialize, (admin, "L2 Gov Token", "gL2"))
+                )
+            )
+        );
 
         // Deploy Proposal Types Configurator
         proposalTypesConfigurator = new ProposalTypesConfigurator();
 
+        // Deploy ProxyAdmin
+        address[] memory owners = new address[](1);
+        owners[0] = admin;
+        proxyAdminContract = new ProxyAdmin(owners);
+        proxyAdmin = address(proxyAdminContract);
+
         // Deploy timelock
-        timelock = Timelock(payable(new TransparentUpgradeableProxy(address(new Timelock()), proxyAdmin, "")));
+        timelock =
+            Timelock(payable(new TransparentUpgradeableProxy(address(new Timelock()), proxyAdmin, "")));
 
         // Deploy governor impl
         implementation = address(new AgoraGovernorMock());
@@ -142,7 +157,7 @@ contract AgoraGovernorTest is Test {
                 abi.encodeCall(
                     AgoraGovernor.initialize,
                     (
-                        IVotesUpgradeable(address(govToken)),
+                        IVotesUpgradeable(address(l2GovToken)),
                         admin,
                         manager,
                         timelock,
@@ -165,11 +180,15 @@ contract AgoraGovernorTest is Test {
 
         // do admin stuff
         vm.startPrank(admin);
+        l2GovToken.grantRole(l2GovToken.MINTER_ROLE(), minter);
+        proxyAdminContract.updateOwner(address(timelock), true);
         governor.setModuleApproval(address(module), true);
         governor.setModuleApproval(address(optimisticModule), true);
-        proposalTypesConfigurator.setProposalType(0, 3_000, 5_000, "Default", address(0));
-        proposalTypesConfigurator.setProposalType(1, 5_000, 7_000, "Alt", address(module));
-        proposalTypesConfigurator.setProposalType(2, 0, 0, "Optimistic", address(optimisticModule));
+
+        bytes32[] memory transactions = new bytes32[](1);
+        proposalTypesConfigurator.setProposalType(0, 3_000, 5_000, "Default", address(0), transactions);
+        proposalTypesConfigurator.setProposalType(1, 5_000, 7_000, "Alt", address(0), transactions);
+        proposalTypesConfigurator.setProposalType(2, 0, 0, "Optimistic", address(optimisticModule), transactions);
         vm.stopPrank();
         targetFake = new ExecutionTargetFake();
     }
@@ -221,9 +240,9 @@ contract AgoraGovernorTest is Test {
         vm.assume(_actor != address(0));
         vm.assume(_actor != proxyAdmin);
         vm.prank(minter);
-        govToken.mint(_actor, _amount);
+        l2GovToken.mint(_actor, _amount);
         vm.prank(_actor);
-        govToken.delegate(_actor);
+        l2GovToken.delegate(_actor);
     }
 
     function _adminOrTimelock(uint256 _actorSeed) internal returns (address) {
@@ -255,10 +274,11 @@ contract Initialize is AgoraGovernorTest {
         ProposalTypesConfigurator _proposalTypesConfigurator = new ProposalTypesConfigurator();
         IProposalTypesConfigurator.ProposalType[] memory _proposalTypes =
             new IProposalTypesConfigurator.ProposalType[](4);
-        _proposalTypes[0] = IProposalTypesConfigurator.ProposalType(1_500, 9_000, "Default", address(0));
-        _proposalTypes[1] = IProposalTypesConfigurator.ProposalType(3_500, 7_000, "Alt", address(0));
-        _proposalTypes[2] = IProposalTypesConfigurator.ProposalType(7_500, 3_100, "Whatever", address(0));
-        _proposalTypes[3] = IProposalTypesConfigurator.ProposalType(0, 0, "Optimistic", address(optimisticModule));
+        bytes32[] memory transactions = new bytes32[](1);
+        _proposalTypes[0] = IProposalTypesConfigurator.ProposalType(1_500, 9_000, "Default", address(0), transactions);
+        _proposalTypes[1] = IProposalTypesConfigurator.ProposalType(3_500, 7_000, "Alt", address(0), transactions);
+        _proposalTypes[2] = IProposalTypesConfigurator.ProposalType(7_500, 3_100, "Whatever", address(0), transactions);
+        _proposalTypes[3] = IProposalTypesConfigurator.ProposalType(0, 0, "Optimistic", address(optimisticModule), transactions);
         AgoraGovernor _governor = AgoraGovernor(
             payable(
                 new TransparentUpgradeableProxy(
@@ -302,11 +322,13 @@ contract Propose is AgoraGovernorTest {
     function testFuzz_CreatesProposalWhenThresholdIsMet(
         address _actor,
         uint256 _proposalThreshold,
-        uint256 _actorBalance
+        uint256 _actorBalance,
+        uint8 _proposalType
     ) public virtual {
         vm.assume(_actor != manager && _actor != address(0) && _actor != proxyAdmin);
         _proposalThreshold = bound(_proposalThreshold, 0, type(uint208).max);
         _actorBalance = bound(_actorBalance, _proposalThreshold, type(uint208).max);
+        _proposalType = uint8(bound(_proposalType, 0, proposalTypesIndex));
         address[] memory targets = new address[](1);
         targets[0] = address(this);
         uint256[] memory values = new uint256[](1);
@@ -318,19 +340,24 @@ contract Propose is AgoraGovernorTest {
 
         // Give actor enough tokens to meet proposal threshold.
         vm.prank(minter);
-        govToken.mint(_actor, _actorBalance);
+        l2GovToken.mint(_actor, _actorBalance);
         vm.startPrank(_actor);
-        govToken.delegate(_actor);
+        l2GovToken.delegate(_actor);
         vm.roll(vm.getBlockNumber() + 1);
 
         uint256 proposalId;
-        proposalId = governor.propose(targets, values, calldatas, "Test", 0);
+        if (_proposalType > 0) {
+            proposalId = governor.propose(targets, values, calldatas, "Test", _proposalType);
+        } else {
+            proposalId = governor.propose(targets, values, calldatas, "Test");
+        }
         vm.stopPrank();
         assertGt(governor.proposalSnapshot(proposalId), 0);
     }
 
-    function testFuzz_CreatesProposalAsManager(uint256 _proposalThreshold) public virtual {
+    function testFuzz_CreatesProposalAsManager(uint256 _proposalThreshold, uint8 _proposalType) public virtual {
         _proposalThreshold = bound(_proposalThreshold, 0, type(uint208).max);
+        _proposalType = uint8(bound(_proposalType, 0, proposalTypesIndex));
         address[] memory targets = new address[](1);
         targets[0] = address(this);
         uint256[] memory values = new uint256[](1);
@@ -342,7 +369,11 @@ contract Propose is AgoraGovernorTest {
 
         uint256 proposalId;
         vm.prank(manager);
-        proposalId = governor.propose(targets, values, calldatas, "Test", 0);
+        if (_proposalType > 0) {
+            proposalId = governor.propose(targets, values, calldatas, "Test", _proposalType);
+        } else {
+            proposalId = governor.propose(targets, values, calldatas, "Test");
+        }
         assertGt(governor.proposalSnapshot(proposalId), 0);
     }
 
@@ -381,9 +412,9 @@ contract Propose is AgoraGovernorTest {
 
         // Give actor some tokens, but not enough to meet proposal threshold
         vm.prank(minter);
-        govToken.mint(_actor, _actorBalance);
+        l2GovToken.mint(_actor, _actorBalance);
         vm.startPrank(_actor);
-        govToken.delegate(_actor);
+        l2GovToken.delegate(_actor);
         vm.roll(vm.getBlockNumber() + 1);
         vm.expectRevert("Governor: proposer votes below proposal threshold");
         if (_proposalType > 0) {
@@ -401,10 +432,10 @@ contract Propose is AgoraGovernorTest {
         calldatas[0] = abi.encodeWithSelector(this.executeCallback.selector);
 
         vm.startPrank(manager);
-        governor.propose(targets, values, calldatas, "Test", 0);
+        governor.propose(targets, values, calldatas, "Test", 1);
 
         vm.expectRevert("Governor: proposal already exists");
-        governor.propose(targets, values, calldatas, "Test", 0);
+        governor.propose(targets, values, calldatas, "Test", 1);
         vm.stopPrank();
     }
 }
@@ -413,21 +444,21 @@ contract ProposeWithModule is AgoraGovernorTest {
     function testFuzz_CreatesProposalWhenProposalThresholdMet(
         address _actor,
         uint256 _proposalThreshold,
-        uint256 _actorBalance
+        uint256 _actorBalance,
+        uint8 _proposalType
     ) public virtual {
         vm.assume(_actor != manager && _actor != address(0) && _actor != proxyAdmin);
         _proposalThreshold = bound(_proposalThreshold, 0, type(uint208).max);
         _actorBalance = bound(_actorBalance, _proposalThreshold, type(uint208).max);
-        uint8 _proposalType = 1;
-
+        _proposalType = uint8(bound(_proposalType, 0, proposalTypesIndex));
         vm.prank(admin);
         governor.setProposalThreshold(_proposalThreshold);
 
         // Give actor enough tokens to meet proposal threshold.
         vm.prank(minter);
-        govToken.mint(_actor, _actorBalance);
+        l2GovToken.mint(_actor, _actorBalance);
         vm.startPrank(_actor);
-        govToken.delegate(_actor);
+        l2GovToken.delegate(_actor);
         vm.roll(vm.getBlockNumber() + 1);
 
         uint256 snapshot = block.number + governor.votingDelay();
@@ -453,11 +484,11 @@ contract ProposeWithModule is AgoraGovernorTest {
         assertEq(uint8(governor.state(proposalId)), uint8(IGovernorUpgradeable.ProposalState.Pending));
     }
 
-    function testFuzz_CreatesProposalWhenManager(uint256 _proposalThreshold) public virtual {
+    function testFuzz_CreatesProposalWhenManager(uint256 _proposalThreshold, uint8 _proposalType) public virtual {
         _proposalThreshold = bound(_proposalThreshold, 0, type(uint208).max);
+        _proposalType = uint8(bound(_proposalType, 0, proposalTypesIndex));
         vm.prank(admin);
         governor.setProposalThreshold(_proposalThreshold);
-        uint8 _proposalType = 1;
         vm.startPrank(manager);
 
         uint256 snapshot = block.number + governor.votingDelay();
@@ -473,7 +504,7 @@ contract ProposeWithModule is AgoraGovernorTest {
         if (_proposalType > 0) {
             governor.proposeWithModule(VotingModule(module), proposalData, description, _proposalType);
         } else {
-            governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
+            governor.proposeWithModule(VotingModule(module), proposalData, description);
         }
         vm.stopPrank();
 
@@ -527,9 +558,9 @@ contract ProposeWithModule is AgoraGovernorTest {
 
         // Give actor some tokens, but not enough to meet proposal threshold
         vm.prank(minter);
-        govToken.mint(_actor, _actorBalance);
+        l2GovToken.mint(_actor, _actorBalance);
         vm.startPrank(_actor);
-        govToken.delegate(_actor);
+        l2GovToken.delegate(_actor);
         vm.roll(vm.getBlockNumber() + 1);
         vm.expectRevert("Governor: proposer votes below proposal threshold");
         if (_proposalType > 0) {
@@ -543,10 +574,10 @@ contract ProposeWithModule is AgoraGovernorTest {
         bytes memory proposalData = _formatProposalData(0);
 
         vm.startPrank(manager);
-        governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
+        governor.proposeWithModule(VotingModule(module), proposalData, description);
 
         vm.expectRevert("Governor: proposal already exists");
-        governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
+        governor.proposeWithModule(VotingModule(module), proposalData, description);
         vm.stopPrank();
     }
 
@@ -621,14 +652,14 @@ contract ProposeWithOptimisticModule is AgoraGovernorTest {
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, 1, type(uint16).max);
 
         vm.startPrank(minter);
-        govToken.mint(_actorFor, _forAmount);
-        govToken.mint(_actorAgainst, _againstAmount);
+        l2GovToken.mint(_actorFor, _forAmount);
+        l2GovToken.mint(_actorAgainst, _againstAmount);
         vm.stopPrank();
 
         vm.prank(_actorFor);
-        govToken.delegate(_actorFor);
+        l2GovToken.delegate(_actorFor);
         vm.prank(_actorAgainst);
-        govToken.delegate(_actorAgainst);
+        l2GovToken.delegate(_actorAgainst);
 
         bytes memory proposalData = abi.encode(OptimisticProposalSettings(uint248(_againstThreshold), false));
         uint256 snapshot = block.number + governor.votingDelay();
@@ -675,14 +706,14 @@ contract ProposeWithOptimisticModule is AgoraGovernorTest {
 
         // Mint
         vm.startPrank(minter);
-        govToken.mint(_actorFor, _forAmount);
-        govToken.mint(_actorAgainst, _againstAmount);
+        l2GovToken.mint(_actorFor, _forAmount);
+        l2GovToken.mint(_actorAgainst, _againstAmount);
         vm.stopPrank();
         // Delegate
         vm.prank(_actorFor);
-        govToken.delegate(_actorFor);
+        l2GovToken.delegate(_actorFor);
         vm.prank(_actorAgainst);
-        govToken.delegate(_actorAgainst);
+        l2GovToken.delegate(_actorAgainst);
 
         bytes memory proposalData = abi.encode(OptimisticProposalSettings(uint248(_againstThreshold), false));
         uint256 snapshot = block.number + governor.votingDelay();
@@ -717,7 +748,7 @@ contract ProposeWithOptimisticModule is AgoraGovernorTest {
             governor.hashProposalWithModule(address(optimisticModule), proposalData, keccak256(bytes(description)));
         vm.prank(minter);
         // In Optimistic Proposal Settings, if isRelativeToVotableSupply is set to true, the total supply of the token cannot be 0.
-        govToken.mint(address(_actor), 1e30);
+        l2GovToken.mint(address(_actor), 1e30);
 
         vm.expectEmit();
         emit ProposalCreated(
@@ -752,15 +783,15 @@ contract ProposeWithOptimisticModule is AgoraGovernorTest {
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, 1, type(uint16).max);
 
         vm.startPrank(minter);
-        govToken.mint(_actorFor, _forAmount);
-        govToken.mint(_actorAgainst, _againstAmount);
-        govToken.mint(_actor, _totalMintAmount - _forAmount - _againstAmount);
+        l2GovToken.mint(_actorFor, _forAmount);
+        l2GovToken.mint(_actorAgainst, _againstAmount);
+        l2GovToken.mint(_actor, _totalMintAmount - _forAmount - _againstAmount);
         vm.stopPrank();
 
         vm.prank(_actorFor);
-        govToken.delegate(_actorFor);
+        l2GovToken.delegate(_actorFor);
         vm.prank(_actorAgainst);
-        govToken.delegate(_actorAgainst);
+        l2GovToken.delegate(_actorAgainst);
 
         bytes memory proposalData = abi.encode(OptimisticProposalSettings(uint248(_againstThresholdPercentage), true));
         uint256 snapshot = block.number + governor.votingDelay();
@@ -801,15 +832,15 @@ contract ProposeWithOptimisticModule is AgoraGovernorTest {
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, 1, type(uint16).max);
 
         vm.startPrank(minter);
-        govToken.mint(_actorFor, _forAmount);
-        govToken.mint(_actorAgainst, _againstAmount);
-        govToken.mint(_actor, _totalMintAmount - _forAmount - _againstAmount);
+        l2GovToken.mint(_actorFor, _forAmount);
+        l2GovToken.mint(_actorAgainst, _againstAmount);
+        l2GovToken.mint(_actor, _totalMintAmount - _forAmount - _againstAmount);
         vm.stopPrank();
 
         vm.prank(_actorFor);
-        govToken.delegate(_actorFor);
+        l2GovToken.delegate(_actorFor);
         vm.prank(_actorAgainst);
-        govToken.delegate(_actorAgainst);
+        l2GovToken.delegate(_actorAgainst);
 
         bytes memory proposalData = abi.encode(OptimisticProposalSettings(uint248(_againstThresholdPercentage), true));
         uint256 snapshot = block.number + governor.votingDelay();
@@ -837,8 +868,8 @@ contract Queue is AgoraGovernorTest {
     ) public {
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
         vm.prank(minter);
-        govToken.mint(address(this), 1e30);
-        govToken.delegate(address(this));
+        l2GovToken.mint(address(this), 1e30);
+        l2GovToken.delegate(address(this));
         vm.deal(address(manager), 100 ether);
 
         address[] memory targets = new address[](1);
@@ -872,8 +903,8 @@ contract Queue is AgoraGovernorTest {
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
         vm.assume(_actor != proxyAdmin);
         vm.prank(minter);
-        govToken.mint(address(this), 1e30);
-        govToken.delegate(address(this));
+        l2GovToken.mint(address(this), 1e30);
+        l2GovToken.delegate(address(this));
         vm.deal(address(manager), 100 ether);
 
         address[] memory targets = new address[](1);
@@ -905,8 +936,8 @@ contract Queue is AgoraGovernorTest {
     ) public {
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
         vm.prank(minter);
-        govToken.mint(address(this), 1e30);
-        govToken.delegate(address(this));
+        l2GovToken.mint(address(this), 1e30);
+        l2GovToken.delegate(address(this));
         vm.deal(address(manager), 100 ether);
 
         address[] memory targets = new address[](1);
@@ -933,8 +964,8 @@ contract Queue is AgoraGovernorTest {
     {
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
         vm.prank(minter);
-        govToken.mint(address(this), 1e30);
-        govToken.delegate(address(this));
+        l2GovToken.mint(address(this), 1e30);
+        l2GovToken.delegate(address(this));
         vm.deal(address(manager), 100 ether);
 
         address[] memory targets = new address[](1);
@@ -982,7 +1013,7 @@ contract QueueWithModule is AgoraGovernorTest {
         vm.deal(address(manager), 100 ether);
 
         vm.prank(manager);
-        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
+        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description);
 
         vm.roll(snapshot + 1);
 
@@ -1019,7 +1050,7 @@ contract QueueWithModule is AgoraGovernorTest {
         vm.deal(address(manager), 100 ether);
 
         vm.prank(manager);
-        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
+        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description);
 
         vm.roll(snapshot + 1);
 
@@ -1049,7 +1080,7 @@ contract QueueWithModule is AgoraGovernorTest {
         vm.deal(address(manager), 100 ether);
 
         vm.prank(manager);
-        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
+        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description);
 
         assertEq(uint256(governor.state(proposalId)), uint256(IGovernorUpgradeable.ProposalState.Pending));
         vm.prank(manager);
@@ -1071,7 +1102,7 @@ contract QueueWithModule is AgoraGovernorTest {
         vm.deal(address(manager), 100 ether);
 
         vm.prank(manager);
-        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
+        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description);
 
         vm.roll(snapshot + 1);
 
@@ -1117,8 +1148,8 @@ contract Execute is AgoraGovernorTest {
     {
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
         vm.prank(minter);
-        govToken.mint(address(this), 1e30);
-        govToken.delegate(address(this));
+        l2GovToken.mint(address(this), 1e30);
+        l2GovToken.delegate(address(this));
         vm.deal(address(manager), 100 ether);
 
         address[] memory targets = new address[](1);
@@ -1159,8 +1190,8 @@ contract Execute is AgoraGovernorTest {
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
         vm.assume(_actor != proxyAdmin);
         vm.prank(minter);
-        govToken.mint(address(this), 1e30);
-        govToken.delegate(address(this));
+        l2GovToken.mint(address(this), 1e30);
+        l2GovToken.delegate(address(this));
         vm.deal(address(manager), 100 ether);
 
         address[] memory targets = new address[](1);
@@ -1195,8 +1226,8 @@ contract Execute is AgoraGovernorTest {
 
     function testFuzz_RevertIf_ProposalNotQueued(uint256 _proposalTargetCalldata) public {
         vm.prank(minter);
-        govToken.mint(address(this), 1e30);
-        govToken.delegate(address(this));
+        l2GovToken.mint(address(this), 1e30);
+        l2GovToken.delegate(address(this));
         vm.deal(address(manager), 100 ether);
 
         address[] memory targets = new address[](1);
@@ -1228,8 +1259,8 @@ contract Execute is AgoraGovernorTest {
     {
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, 0, timelock.getMinDelay() - 1);
         vm.prank(minter);
-        govToken.mint(address(this), 1e30);
-        govToken.delegate(address(this));
+        l2GovToken.mint(address(this), 1e30);
+        l2GovToken.delegate(address(this));
         vm.deal(address(manager), 100 ether);
 
         address[] memory targets = new address[](1);
@@ -1288,8 +1319,8 @@ contract Execute is AgoraGovernorTest {
     {
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
         vm.prank(minter);
-        govToken.mint(address(this), 1e30);
-        govToken.delegate(address(this));
+        l2GovToken.mint(address(this), 1e30);
+        l2GovToken.delegate(address(this));
         vm.deal(address(manager), 100 ether);
 
         address[] memory targets = new address[](1);
@@ -1339,7 +1370,7 @@ contract ExecuteWithModule is AgoraGovernorTest {
         vm.deal(address(manager), 100 ether);
 
         vm.prank(manager);
-        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
+        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description);
 
         vm.roll(snapshot + 1);
 
@@ -1381,7 +1412,7 @@ contract ExecuteWithModule is AgoraGovernorTest {
         vm.deal(address(manager), 100 ether);
 
         vm.prank(manager);
-        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
+        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description);
 
         vm.roll(snapshot + 1);
 
@@ -1416,7 +1447,7 @@ contract ExecuteWithModule is AgoraGovernorTest {
         vm.deal(address(manager), 100 ether);
 
         vm.prank(manager);
-        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
+        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description);
 
         vm.roll(snapshot + 1);
 
@@ -1449,7 +1480,7 @@ contract ExecuteWithModule is AgoraGovernorTest {
         vm.deal(address(manager), 100 ether);
 
         vm.prank(manager);
-        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
+        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description);
 
         vm.roll(snapshot + 1);
 
@@ -1478,7 +1509,7 @@ contract ExecuteWithModule is AgoraGovernorTest {
         uint256 deadline = snapshot + governor.votingPeriod();
 
         vm.prank(manager);
-        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
+        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description);
 
         vm.roll(deadline + 1);
 
@@ -1503,7 +1534,7 @@ contract ExecuteWithModule is AgoraGovernorTest {
         vm.deal(address(manager), 100 ether);
 
         vm.prank(manager);
-        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
+        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description);
 
         vm.roll(snapshot + 1);
 
@@ -1557,8 +1588,8 @@ contract Cancel is AgoraGovernorTest {
     ) public virtual {
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
         vm.prank(minter);
-        govToken.mint(address(this), 1e30);
-        govToken.delegate(address(this));
+        l2GovToken.mint(address(this), 1e30);
+        l2GovToken.delegate(address(this));
         vm.deal(address(manager), 100 ether);
 
         address[] memory targets = new address[](1);
@@ -1595,8 +1626,8 @@ contract Cancel is AgoraGovernorTest {
     ) public virtual {
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
         vm.prank(minter);
-        govToken.mint(address(this), 1e30);
-        govToken.delegate(address(this));
+        l2GovToken.mint(address(this), 1e30);
+        l2GovToken.delegate(address(this));
         vm.deal(address(manager), 100 ether);
 
         address[] memory targets = new address[](1);
@@ -1631,8 +1662,8 @@ contract Cancel is AgoraGovernorTest {
 
     function test_CancelsProposalBeforeVoteEnd(uint256 _actorSeed) public virtual {
         vm.prank(minter);
-        govToken.mint(address(this), 1000);
-        govToken.delegate(address(this));
+        l2GovToken.mint(address(this), 1000);
+        l2GovToken.delegate(address(this));
 
         address[] memory targets = new address[](1);
         targets[0] = address(this);
@@ -1661,8 +1692,8 @@ contract Cancel is AgoraGovernorTest {
     ) public virtual {
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
         vm.prank(minter);
-        govToken.mint(address(this), 1e30);
-        govToken.delegate(address(this));
+        l2GovToken.mint(address(this), 1e30);
+        l2GovToken.delegate(address(this));
         vm.deal(address(manager), 100 ether);
 
         address[] memory targets = new address[](1);
@@ -1710,8 +1741,8 @@ contract Cancel is AgoraGovernorTest {
     function testFuzz_RevertIf_NotAdminOrTimelock(address _actor) public virtual {
         vm.assume(_actor != admin && _actor != governor.timelock() && _actor != proxyAdmin);
         vm.prank(minter);
-        govToken.mint(address(this), 1000);
-        govToken.delegate(address(this));
+        l2GovToken.mint(address(this), 1000);
+        l2GovToken.delegate(address(this));
 
         address[] memory targets = new address[](1);
         targets[0] = address(this);
@@ -1748,7 +1779,7 @@ contract CancelWithModule is AgoraGovernorTest {
         vm.deal(address(manager), 100 ether);
 
         vm.prank(manager);
-        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
+        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description);
 
         vm.roll(snapshot + 1);
 
@@ -1784,7 +1815,7 @@ contract CancelWithModule is AgoraGovernorTest {
         vm.deal(address(manager), 100 ether);
 
         vm.prank(manager);
-        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
+        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description);
 
         vm.roll(snapshot + 1);
 
@@ -1814,7 +1845,7 @@ contract CancelWithModule is AgoraGovernorTest {
         bytes memory proposalData = _formatProposalData(0);
 
         vm.prank(manager);
-        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
+        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description);
 
         vm.expectEmit();
         emit ProposalCanceled(proposalId);
@@ -1839,7 +1870,7 @@ contract CancelWithModule is AgoraGovernorTest {
         vm.deal(address(manager), 100 ether);
 
         vm.prank(manager);
-        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
+        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description);
 
         vm.roll(snapshot + 1);
 
@@ -1881,7 +1912,7 @@ contract CancelWithModule is AgoraGovernorTest {
         bytes memory proposalData = _formatProposalData(0);
 
         vm.prank(manager);
-        governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
+        governor.proposeWithModule(VotingModule(module), proposalData, description);
 
         vm.expectRevert("Only the admin or the governor timelock can call this function");
         vm.prank(_actor);
@@ -1892,7 +1923,7 @@ contract CancelWithModule is AgoraGovernorTest {
         bytes memory proposalData = _formatProposalData(0);
 
         vm.prank(manager);
-        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
+        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description);
         vm.startPrank(admin);
         governor.cancelWithModule(VotingModule(module), proposalData, keccak256(bytes(description)));
 
@@ -1926,8 +1957,8 @@ contract UpdateTimelock is AgoraGovernorTest {
     function testFuzz_UpdateTimelock(uint256 _elapsedAfterQueuing, address _newTimelock) public {
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
         vm.prank(minter);
-        govToken.mint(address(this), 1e30);
-        govToken.delegate(address(this));
+        l2GovToken.mint(address(this), 1e30);
+        l2GovToken.delegate(address(this));
         vm.deal(address(manager), 100 ether);
 
         address[] memory targets = new address[](1);
@@ -1979,7 +2010,7 @@ contract Quorum is AgoraGovernorTest {
 
         vm.roll(block.number + governor.votingDelay() + 1);
 
-        uint256 supply = govToken.totalSupply();
+        uint256 supply = l2GovToken.totalSupply();
         uint256 quorum = governor.quorum(proposalId);
         assertEq(quorum, (supply * 3) / 10);
     }
@@ -2022,7 +2053,8 @@ contract CastVote is AgoraGovernorTest {
         _mintAndDelegate(_voter, 100e18);
         _mintAndDelegate(_voter2, 100e18);
         vm.prank(admin);
-        proposalTypesConfigurator.setProposalType(0, 3_000, 9_910, "Default", address(0));
+        bytes32[] memory transactions = new bytes32[](1);
+        proposalTypesConfigurator.setProposalType(0, 3_000, 9_910, "Default", address(0), transactions);
         address[] memory targets = new address[](1);
         targets[0] = address(this);
         uint256[] memory values = new uint256[](1);
@@ -2062,11 +2094,11 @@ contract CastVoteWithReasonAndParams is AgoraGovernorTest {
         _mintAndDelegate(_voter2, 1e20);
         bytes memory proposalData = _formatProposalData(0);
         uint256 snapshot = block.number + governor.votingDelay();
-        uint256 weight = govToken.getVotes(_voter);
+        uint256 weight = l2GovToken.getVotes(_voter);
         string memory reason = "a nice reason";
 
         vm.prank(manager);
-        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
+        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description);
 
         vm.roll(snapshot + 1);
 
@@ -2079,7 +2111,7 @@ contract CastVoteWithReasonAndParams is AgoraGovernorTest {
         emit VoteCastWithParams(_voter, proposalId, uint8(VoteType.For), weight, reason, params);
         governor.castVoteWithReasonAndParams(proposalId, uint8(VoteType.For), reason, params);
 
-        weight = govToken.getVotes(_voter2);
+        weight = l2GovToken.getVotes(_voter2);
         vm.prank(_voter2);
         vm.expectEmit(true, false, false, true);
         emit VoteCastWithParams(_voter2, proposalId, uint8(VoteType.Against), weight, reason, params);
@@ -2105,7 +2137,7 @@ contract CastVoteWithReasonAndParams is AgoraGovernorTest {
         string memory reason = "a nice reason";
 
         vm.prank(manager);
-        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
+        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description);
 
         // Vote for option 0
         uint256[] memory optionVotes = new uint256[](1);
@@ -2123,7 +2155,7 @@ contract CastVoteWithReasonAndParams is AgoraGovernorTest {
         string memory reason = "a nice reason";
 
         vm.prank(manager);
-        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
+        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description);
 
         vm.roll(snapshot + 1);
 
@@ -2141,7 +2173,8 @@ contract CastVoteWithReasonAndParams is AgoraGovernorTest {
 contract EditProposalType is AgoraGovernorTest {
     function testFuzz_EditProposalTypeByAdminOrTimelock(uint256 _actorSeed) public virtual {
         vm.startPrank(_adminOrTimelock(_actorSeed));
-        proposalTypesConfigurator.setProposalType(0, 3_000, 9_910, "Default", address(0));
+        bytes32[] memory transactions = new bytes32[](1);
+        proposalTypesConfigurator.setProposalType(0, 3_000, 9_910, "Default", address(0), transactions);
 
         address[] memory targets = new address[](1);
         targets[0] = address(this);
@@ -2213,7 +2246,7 @@ contract VoteSucceeded is AgoraGovernorTest {
         string memory reason = "a nice reason";
 
         vm.prank(manager);
-        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
+        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description);
 
         vm.roll(snapshot + 1);
 
@@ -2238,7 +2271,7 @@ contract VoteSucceeded is AgoraGovernorTest {
         string memory reason = "a nice reason";
 
         vm.prank(manager);
-        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
+        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description);
 
         vm.roll(snapshot + 1);
 
