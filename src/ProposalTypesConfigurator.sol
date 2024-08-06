@@ -23,7 +23,6 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     mapping(uint8 proposalTypeId => bool) internal _proposalTypesExists;
     mapping(uint8 proposalTypeId => Scope[]) public scopes;
 	mapping(uint8 proposalTypeId => mapping(bytes32 typeHash => bool)) public scopeExists;
-	mapping(bytes32 typeHash => bytes32 limits) public limits;
 
     /*//////////////////////////////////////////////////////////////
                                MODIFIERS
@@ -136,5 +135,40 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         _proposalTypesExists[proposalTypeId] = true;
 
         emit ProposalTypeSet(proposalTypeId, quorum, approvalThreshold, name, txTypeHashes);
+    }
+
+    /**
+     * @notice Adds an additional scope for a given proposal type.
+     * @param proposalTypeId Id of the proposal type
+     * @param scope An object that contains the scope for a transaction type hash
+     */
+	function updateScopeForProposalType(uint8 proposalTypeId, Scope calldata scope) external override onlyAdmin {
+        _updateScopeForProposalType(proposalTypeId, scope);
+    }
+
+	function _updateScopeForProposalType(uint8 proposalTypeId, Scope calldata scope) internal {
+        if (_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
+        scopes[proposalTypeId].push(scope);
+
+        require(scopeExists[proposalTypeId][scope.txTypeHash]); // Do not allow multiple scopes for a single transaction type
+        scopeExists[proposalTypeId][scope.txTypeHash] = true;
+    }
+
+    /**
+     * @notice Retrives the encoded limit of a transaction type signature for a given proposal type.
+     * @param proposalTypeId Id of the proposal type
+     * @param txTypeHash A type signature of a function that has a limit specified in a scope
+     */
+	function getLimit(uint8 proposalTypeId, bytes32 txTypeHash) public view returns (bytes32) {
+        if (_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
+
+        require(scopeExists[proposalTypeId][txTypeHash]);
+        Scope[] memory validScopes = scopes[proposalTypeId];
+
+        for (uint8 i = 0; i < validScopes.length; i++) {
+            if (validScopes[i].txTypeHash == txTypeHash) {
+                return validScopes[i].encodedLimits;
+            }
+        }
     }
 }

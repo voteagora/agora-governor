@@ -70,7 +70,7 @@ interface IProposalTypesConfigurator {
         bytes[] memory parameters,
 	    Comparators[] memory comparators
     ) external;
-	// function updateScopeForProposalType(uint proposalTypeId, Scope scope) external;
-	// function getLimit(uint8 proposalTypeId, bytes32 typeHash) public view;
-    // function setLimit(uint8 proposalTypeId, bytes32 typeHash, bytes32 scope) external;
+
+	function updateScopeForProposalType(uint8 proposalTypeId, Scope calldata scope) external;
+	function getLimit(uint8 proposalTypeId, bytes32 txTypeHash) external returns (bytes32);
 }
