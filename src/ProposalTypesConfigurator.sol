@@ -78,7 +78,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     function setScopeForProposalType(
         uint8 proposalTypeId,
         bytes32 txTypeHash,
-        bytes32 encodedLimit,
+        bytes calldata encodedLimit,
         bytes[] memory parameters,
 	    Comparators[] memory comparators
     ) external override onlyAdmin {
@@ -88,7 +88,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     function _setScopeForProposalType(
         uint8 proposalTypeId,
         bytes32 txTypeHash,
-        bytes32 encodedLimit,
+        bytes calldata encodedLimit,
         bytes[] memory parameters,
 	    Comparators[] memory comparators
     ) internal {
@@ -99,6 +99,14 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         scopes[proposalTypeId].push(scope);
 
         scopeExists[proposalTypeId][txTypeHash] = true;
+
+        for (uint8 i = 0; i < _proposalTypes[proposalTypeId].txTypeHashes.length; i++) {
+            if (_proposalTypes[proposalTypeId].txTypeHashes[i] == txTypeHash) {
+                revert NoDuplicateTxTypes();
+            }
+        }
+
+        _proposalTypes[proposalTypeId].txTypeHashes.push(txTypeHash);
     }
 
     /**
@@ -159,8 +167,8 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param proposalTypeId Id of the proposal type
      * @param txTypeHash A type signature of a function that has a limit specified in a scope
      */
-	function getLimit(uint8 proposalTypeId, bytes32 txTypeHash) public view returns (bytes32) {
-        if (_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
+	function getLimit(uint8 proposalTypeId, bytes32 txTypeHash) public view returns (bytes memory encodedLimits) {
+        if (!_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
 
         require(scopeExists[proposalTypeId][txTypeHash]);
         Scope[] memory validScopes = scopes[proposalTypeId];

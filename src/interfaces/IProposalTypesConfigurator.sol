@@ -10,6 +10,7 @@ interface IProposalTypesConfigurator {
     error InvalidApprovalThreshold();
     error InvalidProposalType();
     error InvalidParameterConditions();
+    error NoDuplicateTxTypes();
     error NotAdminOrTimelock();
     error NotAdmin();
     error AlreadyInit();
@@ -41,7 +42,7 @@ interface IProposalTypesConfigurator {
 
     struct Scope {
         bytes32 txTypeHash;
-        bytes32 encodedLimits;
+        bytes encodedLimits;
         bytes[] parameters;
 	    Comparators[] comparators;
     }
@@ -66,11 +67,11 @@ interface IProposalTypesConfigurator {
     function setScopeForProposalType(
         uint8 proposalTypeId,
         bytes32 txTypeHash,
-        bytes32 encodedLimit,
+        bytes calldata encodedLimit,
         bytes[] memory parameters,
 	    Comparators[] memory comparators
     ) external;
 
 	function updateScopeForProposalType(uint8 proposalTypeId, Scope calldata scope) external;
-	function getLimit(uint8 proposalTypeId, bytes32 txTypeHash) external returns (bytes32);
+	function getLimit(uint8 proposalTypeId, bytes32 txTypeHash) external returns (bytes memory);
 }

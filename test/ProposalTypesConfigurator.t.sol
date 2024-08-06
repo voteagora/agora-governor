@@ -109,6 +109,25 @@ contract SetProposalType is ProposalTypesConfiguratorTest {
         assertEq(propType.txTypeHashes, transactions);
     }
 
+    function testFuzz_SetScopeForProposalType(uint256 _actorSeed) public {
+        vm.prank(_adminOrTimelock(_actorSeed));
+        vm.expectEmit();
+        bytes32[] memory transactions = new bytes32[](1);
+        emit ProposalTypeSet(0, 4_000, 6_000, "New Default", transactions);
+        proposalTypesConfigurator.setProposalType(0, 4_000, 6_000, "New Default", address(0), transactions);
+
+        vm.prank(admin);
+        bytes32 txTypeHash = keccak256("transfer(address,address,uint)");
+        bytes memory txEncoded = abi.encode("transfer(address,address,uint)", 0xdeadbeef, 0xdeadbeef, 10);
+        bytes[] memory parameters = new bytes[](1);
+        IProposalTypesConfigurator.Comparators[] memory comparators = new IProposalTypesConfigurator.Comparators[](1);
+
+        proposalTypesConfigurator.setScopeForProposalType(0, txTypeHash, txEncoded, parameters, comparators);
+
+        bytes memory limit = proposalTypesConfigurator.getLimit(0, txTypeHash);
+        assertEq(limit, txEncoded);
+    }
+
     function test_RevertIf_NotAdminOrTimelock(address _actor) public {
         vm.assume(_actor != admin && _actor != GovernorMock(governor).timelock());
         vm.expectRevert(IProposalTypesConfigurator.NotAdminOrTimelock.selector);
@@ -125,6 +144,41 @@ contract SetProposalType is ProposalTypesConfiguratorTest {
         vm.prank(_adminOrTimelock(_actorSeed));
         vm.expectRevert(IProposalTypesConfigurator.InvalidApprovalThreshold.selector);
         proposalTypesConfigurator.setProposalType(0, 0, 10_001, "", address(0), new bytes32[](1));
+    }
+
+    function testRevert_setScopeForProposalType_NotAdmin(address _actor) public {
+        vm.assume(_actor != admin);
+        bytes32 txTypeHash = keccak256("transfer(address,address,uint)");
+        bytes memory txEncoded = abi.encode("transfer(address,address,uint)", 0xdeadbeef, 0xdeadbeef, 10);
+        vm.expectRevert(IProposalTypesConfigurator.NotAdmin.selector);
+        proposalTypesConfigurator.setScopeForProposalType(1, txTypeHash, txEncoded, new bytes[](1), new IProposalTypesConfigurator.Comparators[](1));
+    }
+
+    function testRevert_setScopeForProposalType_InvalidProposalType() public {
+        vm.prank(admin);
+        bytes32 txTypeHash = keccak256("transfer(address,address,uint)");
+        bytes memory txEncoded = abi.encode("transfer(address,address,uint)", 0xdeadbeef, 0xdeadbeef, 10);
+        vm.expectRevert(IProposalTypesConfigurator.InvalidProposalType.selector);
+        proposalTypesConfigurator.setScopeForProposalType(2, txTypeHash, txEncoded, new bytes[](1), new IProposalTypesConfigurator.Comparators[](1));
+    }
+
+    function testRevert_setScopeForProposalType_InvalidParameterConditions() public {
+        vm.prank(admin);
+        bytes32 txTypeHash = keccak256("transfer(address,address,uint)");
+        bytes memory txEncoded = abi.encode("transfer(address,address,uint)", 0xdeadbeef, 0xdeadbeef, 10);
+        vm.expectRevert(IProposalTypesConfigurator.InvalidParameterConditions.selector);
+        proposalTypesConfigurator.setScopeForProposalType(0, txTypeHash, txEncoded, new bytes[](2), new IProposalTypesConfigurator.Comparators[](1));
+    }
+
+    function testRevert_setScopeForProposalType_NoDuplicateTxTypes() public {
+        vm.startPrank(admin);
+        bytes32 txTypeHash = keccak256("transfer(address,address,uint)");
+        bytes memory txEncoded = abi.encode("transfer(address,address,uint)", 0xdeadbeef, 0xdeadbeef, 10);
+        proposalTypesConfigurator.setScopeForProposalType(0, txTypeHash, txEncoded, new bytes[](1), new IProposalTypesConfigurator.Comparators[](1));
+
+        vm.expectRevert(IProposalTypesConfigurator.NoDuplicateTxTypes.selector);
+        proposalTypesConfigurator.setScopeForProposalType(0, txTypeHash, txEncoded, new bytes[](1), new IProposalTypesConfigurator.Comparators[](1));
+        vm.stopPrank();
     }
 }
 
