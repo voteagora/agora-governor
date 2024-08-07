@@ -13,3 +13,6 @@
 [submodule "lib/openzeppelin-contracts-v4"]
 	path = lib/openzeppelin-contracts-v4
 	url = https://github.com/openzeppelin/openzeppelin-contracts
+[submodule "lib/ERC20VotesPartialDelegationUpgradeable"]
+	path = lib/ERC20VotesPartialDelegationUpgradeable
+	url = https://github.com/voteagora/ERC20VotesPartialDelegationUpgradeable

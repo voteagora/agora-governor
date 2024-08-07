@@ -3,3 +3,4 @@
 @openzeppelin/contracts-upgradeable-v4/=lib/openzeppelin-contracts-upgradeable-v4/contracts/
 forge-std/=lib/forge-std/src/
 @solady/=lib/solady/src
+ERC20VotesPartialDelegationUpgradeable/=lib/ERC20VotesPartialDelegationUpgradeable/src/
