@@ -7,7 +7,7 @@ import {IVotesUpgradeable} from "@openzeppelin/contracts-upgradeable-v4/governan
 import {IGovernorUpgradeable} from "@openzeppelin/contracts-upgradeable-v4/governance/IGovernorUpgradeable.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts-v4/proxy/ERC1967/ERC1967Proxy.sol";
 import {Timelock, TimelockControllerUpgradeable} from "test/mocks/TimelockMock.sol";
-import {TokenMock} from "test/mocks/TokenMock.sol";
+import {L2GovToken} from "ERC20VotesPartialDelegationUpgradeable/L2GovToken.sol";
 import {VotingModule} from "src/modules/VotingModule.sol";
 import {ProposalTypesConfigurator, IProposalTypesConfigurator} from "src/ProposalTypesConfigurator.sol";
 import {
@@ -108,7 +108,7 @@ contract AgoraGovernorTest is Test {
     uint256 proposalTypesIndex = 1;
     uint256 timelockDelay;
 
-    TokenMock internal govToken;
+    L2GovToken internal govToken;
     address public implementation;
     address internal governorProxy;
     AgoraGovernorMock public governor;
@@ -123,7 +123,13 @@ contract AgoraGovernorTest is Test {
         vm.startPrank(deployer);
 
         // Deploy token
-        govToken = new TokenMock(minter);
+        govToken = L2GovToken(
+            address(
+                new ERC1967Proxy(
+                    address(new L2GovToken()), abi.encodeCall(govToken.initialize, (admin, "L2 Gov Token", "gL2"))
+                )
+            )
+        );
 
         // Deploy Proposal Types Configurator
         proposalTypesConfigurator = new ProposalTypesConfigurator();
@@ -167,6 +173,7 @@ contract AgoraGovernorTest is Test {
 
         // do admin stuff
         vm.startPrank(admin);
+        govToken.grantRole(govToken.MINTER_ROLE(), minter);
         governor.setModuleApproval(address(module), true);
         governor.setModuleApproval(address(optimisticModule), true);
         proposalTypesConfigurator.setProposalType(0, 3_000, 5_000, "Default", address(0), transactions);
