@@ -5,7 +5,7 @@ import {IProposalTypesConfigurator} from "src/interfaces/IProposalTypesConfigura
 import {IAgoraGovernor} from "src/interfaces/IAgoraGovernor.sol";
 
 /**
- * Contract that stores proposalTypes for  Governor.
+ * Contract that stores proposalTypes for the Agora Governor.
  */
 contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     /*//////////////////////////////////////////////////////////////
@@ -85,6 +85,10 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         _setScopeForProposalType(proposalTypeId, txTypeHash, encodedLimit, parameters, comparators);
     }
 
+    /**
+     * @notice Sets the scope for a given proposal type.
+     * @param proposalTypeId Id of the proposal type.
+     */
     function _setScopeForProposalType(
         uint8 proposalTypeId,
         bytes32 txTypeHash,
@@ -154,11 +158,16 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         _updateScopeForProposalType(proposalTypeId, scope);
     }
 
+    /**
+     * @notice Adds an additional scope for a given proposal type.
+     * @param proposalTypeId Id of the proposal type
+     * @param scope An object that contains the scope for a transaction type hash
+     */
     function _updateScopeForProposalType(uint8 proposalTypeId, Scope calldata scope) internal {
-        if (_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
+        if (!_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
         scopes[proposalTypeId].push(scope);
 
-        require(scopeExists[proposalTypeId][scope.txTypeHash]); // Do not allow multiple scopes for a single transaction type
+        if (scopeExists[proposalTypeId][scope.txTypeHash]) revert NoDuplicateTxTypes(); // Do not allow multiple scopes for a single transaction type
         scopeExists[proposalTypeId][scope.txTypeHash] = true;
     }
 
@@ -170,7 +179,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     function getLimit(uint8 proposalTypeId, bytes32 txTypeHash) public view returns (bytes memory encodedLimits) {
         if (!_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
 
-        require(scopeExists[proposalTypeId][txTypeHash]);
+        if (!scopeExists[proposalTypeId][txTypeHash]) revert InvalidScope();
         Scope[] memory validScopes = scopes[proposalTypeId];
 
         for (uint8 i = 0; i < validScopes.length; i++) {

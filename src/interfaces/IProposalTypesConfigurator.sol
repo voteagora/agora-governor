@@ -11,6 +11,7 @@ interface IProposalTypesConfigurator {
     error InvalidProposalType();
     error InvalidParameterConditions();
     error NoDuplicateTxTypes();
+    error InvalidScope();
     error NotAdminOrTimelock();
     error NotAdmin();
     error AlreadyInit();
