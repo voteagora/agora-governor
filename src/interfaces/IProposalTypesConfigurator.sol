@@ -19,7 +19,9 @@ interface IProposalTypesConfigurator {
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
 
-    event ProposalTypeSet(uint8 indexed proposalTypeId, uint16 quorum, uint16 approvalThreshold, string name, bytes32[] txTypeHashes);
+    event ProposalTypeSet(
+        uint8 indexed proposalTypeId, uint16 quorum, uint16 approvalThreshold, string name, bytes32[] txTypeHashes
+    );
 
     /*//////////////////////////////////////////////////////////////
                                 STRUCTS
@@ -36,15 +38,15 @@ interface IProposalTypesConfigurator {
     enum Comparators {
         EMPTY,
         EQUAL,
-	    LESS_THAN,
-	    GREATER_THAN
+        LESS_THAN,
+        GREATER_THAN
     }
 
     struct Scope {
         bytes32 txTypeHash;
         bytes encodedLimits;
         bytes[] parameters;
-	    Comparators[] comparators;
+        Comparators[] comparators;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -69,9 +71,9 @@ interface IProposalTypesConfigurator {
         bytes32 txTypeHash,
         bytes calldata encodedLimit,
         bytes[] memory parameters,
-	    Comparators[] memory comparators
+        Comparators[] memory comparators
     ) external;
 
-	function updateScopeForProposalType(uint8 proposalTypeId, Scope calldata scope) external;
-	function getLimit(uint8 proposalTypeId, bytes32 txTypeHash) external returns (bytes memory);
+    function updateScopeForProposalType(uint8 proposalTypeId, Scope calldata scope) external;
+    function getLimit(uint8 proposalTypeId, bytes32 txTypeHash) external returns (bytes memory);
 }

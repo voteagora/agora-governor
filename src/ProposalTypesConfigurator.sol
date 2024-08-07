@@ -22,7 +22,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     mapping(uint8 proposalTypeId => ProposalType) internal _proposalTypes;
     mapping(uint8 proposalTypeId => bool) internal _proposalTypesExists;
     mapping(uint8 proposalTypeId => Scope[]) public scopes;
-	mapping(uint8 proposalTypeId => mapping(bytes32 typeHash => bool)) public scopeExists;
+    mapping(uint8 proposalTypeId => mapping(bytes32 typeHash => bool)) public scopeExists;
 
     /*//////////////////////////////////////////////////////////////
                                MODIFIERS
@@ -80,7 +80,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         bytes32 txTypeHash,
         bytes calldata encodedLimit,
         bytes[] memory parameters,
-	    Comparators[] memory comparators
+        Comparators[] memory comparators
     ) external override onlyAdmin {
         _setScopeForProposalType(proposalTypeId, txTypeHash, encodedLimit, parameters, comparators);
     }
@@ -90,10 +90,10 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         bytes32 txTypeHash,
         bytes calldata encodedLimit,
         bytes[] memory parameters,
-	    Comparators[] memory comparators
+        Comparators[] memory comparators
     ) internal {
-        if(!_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
-        if(parameters.length != comparators.length) revert InvalidParameterConditions();
+        if (!_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
+        if (parameters.length != comparators.length) revert InvalidParameterConditions();
 
         Scope memory scope = Scope(txTypeHash, encodedLimit, parameters, comparators);
         scopes[proposalTypeId].push(scope);
@@ -150,11 +150,11 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param proposalTypeId Id of the proposal type
      * @param scope An object that contains the scope for a transaction type hash
      */
-	function updateScopeForProposalType(uint8 proposalTypeId, Scope calldata scope) external override onlyAdmin {
+    function updateScopeForProposalType(uint8 proposalTypeId, Scope calldata scope) external override onlyAdmin {
         _updateScopeForProposalType(proposalTypeId, scope);
     }
 
-	function _updateScopeForProposalType(uint8 proposalTypeId, Scope calldata scope) internal {
+    function _updateScopeForProposalType(uint8 proposalTypeId, Scope calldata scope) internal {
         if (_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
         scopes[proposalTypeId].push(scope);
 
@@ -167,7 +167,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param proposalTypeId Id of the proposal type
      * @param txTypeHash A type signature of a function that has a limit specified in a scope
      */
-	function getLimit(uint8 proposalTypeId, bytes32 txTypeHash) public view returns (bytes memory encodedLimits) {
+    function getLimit(uint8 proposalTypeId, bytes32 txTypeHash) public view returns (bytes memory encodedLimits) {
         if (!_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
 
         require(scopeExists[proposalTypeId][txTypeHash]);

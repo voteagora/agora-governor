@@ -261,7 +261,8 @@ contract Initialize is AgoraGovernorTest {
         _proposalTypes[0] = IProposalTypesConfigurator.ProposalType(1_500, 9_000, "Default", address(0), transactions);
         _proposalTypes[1] = IProposalTypesConfigurator.ProposalType(3_500, 7_000, "Alt", address(0), transactions);
         _proposalTypes[2] = IProposalTypesConfigurator.ProposalType(7_500, 3_100, "Whatever", address(0), transactions);
-        _proposalTypes[3] = IProposalTypesConfigurator.ProposalType(0, 0, "Optimistic", address(optimisticModule), transactions);
+        _proposalTypes[3] =
+            IProposalTypesConfigurator.ProposalType(0, 0, "Optimistic", address(optimisticModule), transactions);
         AgoraGovernor _governor = AgoraGovernor(
             payable(
                 new TransparentUpgradeableProxy(
