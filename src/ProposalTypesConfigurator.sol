@@ -74,6 +74,10 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     /**
      * @notice Sets the scope for a given proposal type.
      * @param proposalTypeId Id of the proposal type.
+     * @param txTypeHash A function selector that represent the type hash, i.e. keccak256("foobar(uint,address)").
+     * @param encodedLimit An ABI encoded string containing the function selector and relevant parameter values.
+     * @param parameters The list of byte represented values to be compared against the encoded limits.
+     * @param comparators List of enumuerated values represent which comparison to use when enforcing limit checks on parameters.
      */
     function setScopeForProposalType(
         uint8 proposalTypeId,
@@ -88,6 +92,10 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     /**
      * @notice Sets the scope for a given proposal type.
      * @param proposalTypeId Id of the proposal type.
+     * @param txTypeHash A function selector that represent the type hash, i.e. keccak256("foobar(uint,address)").
+     * @param encodedLimit An ABI encoded string containing the function selector and relevant parameter values.
+     * @param parameters The list of byte represented values to be compared against the encoded limits.
+     * @param comparators List of enumuerated values represent which comparison to use when enforcing limit checks on parameters.
      */
     function _setScopeForProposalType(
         uint8 proposalTypeId,
@@ -120,6 +128,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param approvalThreshold Approval threshold percentage, scaled by `PERCENT_DIVISOR`
      * @param name Name of the proposal type
      * @param module Address of module that can only use this proposal type
+     * @param txTypeHashes A list of transaction function selectors that represent the type hash, i.e. keccak256("foobar(uint,address)")
      */
     function setProposalType(
         uint8 proposalTypeId,

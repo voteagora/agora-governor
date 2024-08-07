@@ -213,7 +213,9 @@ contract UpdateScopeForProposalType is ProposalTypesConfiguratorTest {
 
         proposalTypesConfigurator.setScopeForProposalType(0, txTypeHash1, txEncoded1, parameters, comparators);
 
-        IProposalTypesConfigurator.Scope memory scope = IProposalTypesConfigurator.Scope(txTypeHash2, txEncoded2, new bytes[](1), new IProposalTypesConfigurator.Comparators[](1));
+        IProposalTypesConfigurator.Scope memory scope = IProposalTypesConfigurator.Scope(
+            txTypeHash2, txEncoded2, new bytes[](1), new IProposalTypesConfigurator.Comparators[](1)
+        );
         proposalTypesConfigurator.updateScopeForProposalType(0, scope);
         vm.stopPrank();
 
@@ -229,7 +231,9 @@ contract UpdateScopeForProposalType is ProposalTypesConfiguratorTest {
         bytes memory txEncoded = abi.encode("transfer(address,address,uint)", 0xdeadbeef, 0xdeadbeef, 10);
 
         vm.expectRevert(IProposalTypesConfigurator.InvalidProposalType.selector);
-        IProposalTypesConfigurator.Scope memory scope = IProposalTypesConfigurator.Scope(txTypeHash, txEncoded, new bytes[](1), new IProposalTypesConfigurator.Comparators[](1));
+        IProposalTypesConfigurator.Scope memory scope = IProposalTypesConfigurator.Scope(
+            txTypeHash, txEncoded, new bytes[](1), new IProposalTypesConfigurator.Comparators[](1)
+        );
         proposalTypesConfigurator.updateScopeForProposalType(3, scope);
         vm.stopPrank();
     }
@@ -244,7 +248,9 @@ contract UpdateScopeForProposalType is ProposalTypesConfiguratorTest {
         );
 
         vm.expectRevert(IProposalTypesConfigurator.NoDuplicateTxTypes.selector);
-        IProposalTypesConfigurator.Scope memory scope = IProposalTypesConfigurator.Scope(txTypeHash, txEncoded, new bytes[](1), new IProposalTypesConfigurator.Comparators[](1));
+        IProposalTypesConfigurator.Scope memory scope = IProposalTypesConfigurator.Scope(
+            txTypeHash, txEncoded, new bytes[](1), new IProposalTypesConfigurator.Comparators[](1)
+        );
         proposalTypesConfigurator.updateScopeForProposalType(0, scope);
         vm.stopPrank();
     }
