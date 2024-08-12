@@ -254,12 +254,39 @@ contract UpdateScopeForProposalType is ProposalTypesConfiguratorTest {
         proposalTypesConfigurator.updateScopeForProposalType(0, scope);
         vm.stopPrank();
     }
+
+    function testRevert_updateScopeForProposalType_InvalidParametersCondition() public {
+        vm.startPrank(admin);
+        bytes32 txTypeHash = keccak256("transfer(address,address,uint)");
+        bytes memory txEncoded = abi.encode("transfer(address,address,uint)", 0xdeadbeef, 0xdeadbeef, 10);
+
+        IProposalTypesConfigurator.Scope memory scope = IProposalTypesConfigurator.Scope(
+            txTypeHash, txEncoded, new bytes[](1), new IProposalTypesConfigurator.Comparators[](2)
+        );
+        vm.expectRevert(IProposalTypesConfigurator.InvalidParameterConditions.selector);
+        proposalTypesConfigurator.updateScopeForProposalType(0, scope);
+        vm.stopPrank();
+    }
 }
 
 contract getLimit is ProposalTypesConfiguratorTest {
     function testRevert_getLimit_InvalidProposalType() public {
         vm.expectRevert(IProposalTypesConfigurator.InvalidProposalType.selector);
         proposalTypesConfigurator.getLimit(3, keccak256("foobar(address,address)"));
+    }
+
+    function testRevert_getLimit_InvalidScope() public {
+        vm.startPrank(admin);
+        bytes32 txTypeHash = keccak256("transfer(address,address,uint)");
+        bytes memory txEncoded = abi.encode("transfer(address,address,uint)", 0xdeadbeef, 0xdeadbeef, 10);
+
+        proposalTypesConfigurator.setScopeForProposalType(
+            0, txTypeHash, txEncoded, new bytes[](1), new IProposalTypesConfigurator.Comparators[](1)
+        );
+        vm.stopPrank();
+
+        vm.expectRevert(IProposalTypesConfigurator.InvalidScope.selector);
+        proposalTypesConfigurator.getLimit(0, keccak256("foobar(address,address)"));
     }
 }
 

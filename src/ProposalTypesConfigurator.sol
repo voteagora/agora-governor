@@ -101,7 +101,6 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
 
         scopeExists[proposalTypeId][txTypeHash] = true;
 
-
         _proposalTypes[proposalTypeId].txTypeHashes.push(txTypeHash);
     }
 
