@@ -7,7 +7,7 @@ import {IVotesUpgradeable} from "@openzeppelin/contracts-upgradeable-v4/governan
 import {IGovernorUpgradeable} from "@openzeppelin/contracts-upgradeable-v4/governance/IGovernorUpgradeable.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts-v4/proxy/ERC1967/ERC1967Proxy.sol";
 import {Timelock, TimelockControllerUpgradeable} from "test/mocks/TimelockMock.sol";
-import {TokenMock} from "test/mocks/TokenMock.sol";
+import {L2GovToken} from "ERC20VotesPartialDelegationUpgradeable/L2GovToken.sol";
 import {VotingModule} from "src/modules/VotingModule.sol";
 import {ProposalTypesConfigurator, IProposalTypesConfigurator} from "src/ProposalTypesConfigurator.sol";
 import {
@@ -108,7 +108,7 @@ contract AgoraGovernorTest is Test {
     uint256 proposalTypesIndex = 1;
     uint256 timelockDelay;
 
-    TokenMock internal govToken;
+    L2GovToken internal govToken;
     address public implementation;
     address internal governorProxy;
     AgoraGovernorMock public governor;
@@ -123,7 +123,13 @@ contract AgoraGovernorTest is Test {
         vm.startPrank(deployer);
 
         // Deploy token
-        govToken = new TokenMock(minter);
+        govToken = L2GovToken(
+            address(
+                new ERC1967Proxy(
+                    address(new L2GovToken()), abi.encodeCall(govToken.initialize, (admin, "L2 Gov Token", "gL2"))
+                )
+            )
+        );
 
         // Deploy Proposal Types Configurator
         proposalTypesConfigurator = new ProposalTypesConfigurator();
@@ -163,13 +169,16 @@ contract AgoraGovernorTest is Test {
         module = new ApprovalVotingModuleMock(address(governor));
         optimisticModule = new OptimisticModule(address(governor));
 
+        bytes32[] memory transactions = new bytes32[](1);
+
         // do admin stuff
         vm.startPrank(admin);
+        govToken.grantRole(govToken.MINTER_ROLE(), minter);
         governor.setModuleApproval(address(module), true);
         governor.setModuleApproval(address(optimisticModule), true);
-        proposalTypesConfigurator.setProposalType(0, 3_000, 5_000, "Default", address(0));
-        proposalTypesConfigurator.setProposalType(1, 5_000, 7_000, "Alt", address(module));
-        proposalTypesConfigurator.setProposalType(2, 0, 0, "Optimistic", address(optimisticModule));
+        proposalTypesConfigurator.setProposalType(0, 3_000, 5_000, "Default", address(0), transactions);
+        proposalTypesConfigurator.setProposalType(1, 5_000, 7_000, "Alt", address(module), transactions);
+        proposalTypesConfigurator.setProposalType(2, 0, 0, "Optimistic", address(optimisticModule), transactions);
         vm.stopPrank();
         targetFake = new ExecutionTargetFake();
     }
@@ -252,13 +261,15 @@ contract Initialize is AgoraGovernorTest {
         public
         virtual
     {
+        bytes32[] memory transactions = new bytes32[](1);
         ProposalTypesConfigurator _proposalTypesConfigurator = new ProposalTypesConfigurator();
         IProposalTypesConfigurator.ProposalType[] memory _proposalTypes =
             new IProposalTypesConfigurator.ProposalType[](4);
-        _proposalTypes[0] = IProposalTypesConfigurator.ProposalType(1_500, 9_000, "Default", address(0));
-        _proposalTypes[1] = IProposalTypesConfigurator.ProposalType(3_500, 7_000, "Alt", address(0));
-        _proposalTypes[2] = IProposalTypesConfigurator.ProposalType(7_500, 3_100, "Whatever", address(0));
-        _proposalTypes[3] = IProposalTypesConfigurator.ProposalType(0, 0, "Optimistic", address(optimisticModule));
+        _proposalTypes[0] = IProposalTypesConfigurator.ProposalType(1_500, 9_000, "Default", address(0), transactions);
+        _proposalTypes[1] = IProposalTypesConfigurator.ProposalType(3_500, 7_000, "Alt", address(0), transactions);
+        _proposalTypes[2] = IProposalTypesConfigurator.ProposalType(7_500, 3_100, "Whatever", address(0), transactions);
+        _proposalTypes[3] =
+            IProposalTypesConfigurator.ProposalType(0, 0, "Optimistic", address(optimisticModule), transactions);
         AgoraGovernor _governor = AgoraGovernor(
             payable(
                 new TransparentUpgradeableProxy(
@@ -2022,7 +2033,8 @@ contract CastVote is AgoraGovernorTest {
         _mintAndDelegate(_voter, 100e18);
         _mintAndDelegate(_voter2, 100e18);
         vm.prank(admin);
-        proposalTypesConfigurator.setProposalType(0, 3_000, 9_910, "Default", address(0));
+        bytes32[] memory transactions = new bytes32[](1);
+        proposalTypesConfigurator.setProposalType(0, 3_000, 9_910, "Default", address(0), transactions);
         address[] memory targets = new address[](1);
         targets[0] = address(this);
         uint256[] memory values = new uint256[](1);
@@ -2141,7 +2153,8 @@ contract CastVoteWithReasonAndParams is AgoraGovernorTest {
 contract EditProposalType is AgoraGovernorTest {
     function testFuzz_EditProposalTypeByAdminOrTimelock(uint256 _actorSeed) public virtual {
         vm.startPrank(_adminOrTimelock(_actorSeed));
-        proposalTypesConfigurator.setProposalType(0, 3_000, 9_910, "Default", address(0));
+        bytes32[] memory transactions = new bytes32[](1);
+        proposalTypesConfigurator.setProposalType(0, 3_000, 9_910, "Default", address(0), transactions);
 
         address[] memory targets = new address[](1);
         targets[0] = address(this);
