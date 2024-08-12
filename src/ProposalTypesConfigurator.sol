@@ -86,37 +86,21 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         bytes[] memory parameters,
         Comparators[] memory comparators
     ) external override onlyAdmin {
-        _setScopeForProposalType(proposalTypeId, txTypeHash, encodedLimit, parameters, comparators);
-    }
-
-    /**
-     * @notice Sets the scope for a given proposal type.
-     * @param proposalTypeId Id of the proposal type.
-     * @param txTypeHash A function selector that represent the type hash, i.e. keccak256("foobar(uint,address)").
-     * @param encodedLimit An ABI encoded string containing the function selector and relevant parameter values.
-     * @param parameters The list of byte represented values to be compared against the encoded limits.
-     * @param comparators List of enumuerated values represent which comparison to use when enforcing limit checks on parameters.
-     */
-    function _setScopeForProposalType(
-        uint8 proposalTypeId,
-        bytes32 txTypeHash,
-        bytes calldata encodedLimit,
-        bytes[] memory parameters,
-        Comparators[] memory comparators
-    ) internal {
         if (!_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
         if (parameters.length != comparators.length) revert InvalidParameterConditions();
-
-        Scope memory scope = Scope(txTypeHash, encodedLimit, parameters, comparators);
-        scopes[proposalTypeId].push(scope);
-
-        scopeExists[proposalTypeId][txTypeHash] = true;
+        if (scopeExists[proposalTypeId][txTypeHash]) revert NoDuplicateTxTypes(); // Do not allow multiple scopes for a single transaction type
 
         for (uint8 i = 0; i < _proposalTypes[proposalTypeId].txTypeHashes.length; i++) {
             if (_proposalTypes[proposalTypeId].txTypeHashes[i] == txTypeHash) {
                 revert NoDuplicateTxTypes();
             }
         }
+
+        Scope memory scope = Scope(txTypeHash, encodedLimit, parameters, comparators);
+        scopes[proposalTypeId].push(scope);
+
+        scopeExists[proposalTypeId][txTypeHash] = true;
+
 
         _proposalTypes[proposalTypeId].txTypeHashes.push(txTypeHash);
     }
@@ -164,19 +148,11 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param scope An object that contains the scope for a transaction type hash
      */
     function updateScopeForProposalType(uint8 proposalTypeId, Scope calldata scope) external override onlyAdmin {
-        _updateScopeForProposalType(proposalTypeId, scope);
-    }
-
-    /**
-     * @notice Adds an additional scope for a given proposal type.
-     * @param proposalTypeId Id of the proposal type
-     * @param scope An object that contains the scope for a transaction type hash
-     */
-    function _updateScopeForProposalType(uint8 proposalTypeId, Scope calldata scope) internal {
         if (!_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
-        scopes[proposalTypeId].push(scope);
-
+        if (scope.parameters.length != scope.comparators.length) revert InvalidParameterConditions();
         if (scopeExists[proposalTypeId][scope.txTypeHash]) revert NoDuplicateTxTypes(); // Do not allow multiple scopes for a single transaction type
+
+        scopes[proposalTypeId].push(scope);
         scopeExists[proposalTypeId][scope.txTypeHash] = true;
     }
 
