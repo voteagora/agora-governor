@@ -83,7 +83,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         uint8 proposalTypeId,
         bytes32 txTypeHash,
         bytes calldata encodedLimit,
-        bytes32[] memory parameters,
+        bytes[] memory parameters,
         Comparators[] memory comparators
     ) external override onlyAdmin {
         if (!_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
@@ -168,16 +168,53 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         return validScope.encodedLimits;
     }
 
+    function getParameter(bytes calldata limit, uint256 startIdx, uint256 endIdx) public returns (bytes memory parameter) {
+        return limit[startIdx: endIdx + 1];
+    }
+
     function validateProposedTx(
         bytes calldata proposedTx,
         uint8 proposalTypeId,
         bytes32 txTypeHash
-    ) public view returns (bool valid) {
+    ) public returns (bool valid) {
         Scope memory validScope = scopes[proposalTypeId][txTypeHash];
         bytes memory scopeLimit = validScope.encodedLimits;
-
         bytes4 selector = bytes4(scopeLimit);
+        require(selector == bytes4(proposedTx[:4]));
 
-        return selector == bytes4(proposedTx[:4]);
+        for (uint8 i = 0; i < validScope.parameters.length; i++) {
+            uint256 startIdx = 4;
+            uint256 endIdx;
+
+            if (i == 0) {
+                endIdx = validScope.parameters[i].length;
+            }
+
+            else {
+                endIdx = startIdx + validScope.parameters[i].length;
+            }
+
+            bytes32 param = bytes32(proposedTx[startIdx: endIdx + 1]);
+
+            if (validScope.comparators[i] == Comparators.EQUAL) {
+                bytes32 scopedParam = bytes32(this.getParameter(scopeLimit, startIdx, endIdx));
+                require(scopedParam == param);
+            }
+
+            if (validScope.comparators[i] == Comparators.LESS_THAN) {
+                require(param < bytes32(validScope.parameters[i]));
+            }
+
+            if (validScope.comparators[i] == Comparators.GREATER_THAN) {
+                require(param > bytes32(validScope.parameters[i]));
+            }
+
+            if (validScope.comparators[i] == Comparators.EMPTY) {
+            }
+
+            startIdx = startIdx + endIdx;
+        }
+
+        return true;
     }
 }
