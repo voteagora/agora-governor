@@ -21,7 +21,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
 
     mapping(uint8 proposalTypeId => ProposalType) internal _proposalTypes;
     mapping(uint8 proposalTypeId => bool) internal _proposalTypesExists;
-    mapping(uint8 proposalTypeId => Scope[]) public scopes;
+    mapping(uint8 proposalTypeId => mapping(bytes32 typeHash => Scope)) public scopes;
     mapping(uint8 proposalTypeId => mapping(bytes32 typeHash => bool)) public scopeExists;
 
     /*//////////////////////////////////////////////////////////////
@@ -83,7 +83,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         uint8 proposalTypeId,
         bytes32 txTypeHash,
         bytes calldata encodedLimit,
-        bytes[] memory parameters,
+        bytes32[] memory parameters,
         Comparators[] memory comparators
     ) external override onlyAdmin {
         if (!_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
@@ -97,7 +97,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         }
 
         Scope memory scope = Scope(txTypeHash, encodedLimit, parameters, comparators);
-        scopes[proposalTypeId].push(scope);
+        scopes[proposalTypeId][txTypeHash] = scope;
 
         scopeExists[proposalTypeId][txTypeHash] = true;
 
@@ -151,7 +151,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         if (scope.parameters.length != scope.comparators.length) revert InvalidParameterConditions();
         if (scopeExists[proposalTypeId][scope.txTypeHash]) revert NoDuplicateTxTypes(); // Do not allow multiple scopes for a single transaction type
 
-        scopes[proposalTypeId].push(scope);
+        scopes[proposalTypeId][scope.txTypeHash] = scope;
         scopeExists[proposalTypeId][scope.txTypeHash] = true;
     }
 
@@ -164,12 +164,20 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         if (!_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
 
         if (!scopeExists[proposalTypeId][txTypeHash]) revert InvalidScope();
-        Scope[] memory validScopes = scopes[proposalTypeId];
+        Scope memory validScope = scopes[proposalTypeId][txTypeHash];
+        return validScope.encodedLimits;
+    }
 
-        for (uint8 i = 0; i < validScopes.length; i++) {
-            if (validScopes[i].txTypeHash == txTypeHash) {
-                return validScopes[i].encodedLimits;
-            }
-        }
+    function validateProposedTx(
+        bytes calldata proposedTx,
+        uint8 proposalTypeId,
+        bytes32 txTypeHash
+    ) public view returns (bool valid) {
+        Scope memory validScope = scopes[proposalTypeId][txTypeHash];
+        bytes memory scopeLimit = validScope.encodedLimits;
+
+        bytes4 selector = bytes4(scopeLimit);
+
+        return selector == bytes4(proposedTx[:4]);
     }
 }

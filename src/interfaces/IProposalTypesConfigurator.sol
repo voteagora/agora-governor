@@ -46,7 +46,7 @@ interface IProposalTypesConfigurator {
     struct Scope {
         bytes32 txTypeHash;
         bytes encodedLimits;
-        bytes[] parameters;
+        bytes32[] parameters;
         Comparators[] comparators;
     }
 
@@ -71,7 +71,7 @@ interface IProposalTypesConfigurator {
         uint8 proposalTypeId,
         bytes32 txTypeHash,
         bytes calldata encodedLimit,
-        bytes[] memory parameters,
+        bytes32[] memory parameters,
         Comparators[] memory comparators
     ) external;
 
