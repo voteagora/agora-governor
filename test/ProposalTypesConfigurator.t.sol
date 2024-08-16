@@ -330,7 +330,6 @@ contract ValidateProposedTx is ProposalTypesConfiguratorTest {
     }
 }
 
-
 contract GovernorMock {
     address immutable adminAddress;
     address immutable timelockAddress;

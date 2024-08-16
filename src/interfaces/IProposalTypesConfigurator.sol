@@ -15,6 +15,9 @@ interface IProposalTypesConfigurator {
     error NotAdminOrTimelock();
     error NotAdmin();
     error AlreadyInit();
+    error Invalid4ByteSelector();
+    error InvalidParamNotEqual();
+    error InvalidParamRange();
 
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
@@ -76,5 +79,10 @@ interface IProposalTypesConfigurator {
     ) external;
 
     function updateScopeForProposalType(uint8 proposalTypeId, Scope calldata scope) external;
+
     function getLimit(uint8 proposalTypeId, bytes32 txTypeHash) external returns (bytes memory);
+
+    function validateProposedTx(bytes calldata proposedTx, uint8 proposalTypeId, bytes32 txTypeHash)
+        external
+        returns (bool valid);
 }

@@ -168,19 +168,23 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         return validScope.encodedLimits;
     }
 
-    function getParameter(bytes calldata limit, uint256 startIdx, uint256 endIdx) public returns (bytes memory parameter) {
-        return limit[startIdx: endIdx + 1];
+    function getParameter(bytes calldata limit, uint256 startIdx, uint256 endIdx)
+        public
+        pure
+        returns (bytes memory parameter)
+    {
+        return limit[startIdx:endIdx + 1];
     }
 
-    function validateProposedTx(
-        bytes calldata proposedTx,
-        uint8 proposalTypeId,
-        bytes32 txTypeHash
-    ) public returns (bool valid) {
+    function validateProposedTx(bytes calldata proposedTx, uint8 proposalTypeId, bytes32 txTypeHash)
+        public
+        view
+        returns (bool valid)
+    {
         Scope memory validScope = scopes[proposalTypeId][txTypeHash];
         bytes memory scopeLimit = validScope.encodedLimits;
         bytes4 selector = bytes4(scopeLimit);
-        require(selector == bytes4(proposedTx[:4]));
+        if (selector != bytes4(proposedTx[:4])) revert Invalid4ByteSelector();
 
         for (uint8 i = 0; i < validScope.parameters.length; i++) {
             uint256 startIdx = 4;
@@ -188,28 +192,27 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
 
             if (i == 0) {
                 endIdx = validScope.parameters[i].length;
-            }
-
-            else {
+            } else {
                 endIdx = startIdx + validScope.parameters[i].length;
             }
 
-            bytes32 param = bytes32(proposedTx[startIdx: endIdx + 1]);
+            bytes32 param = bytes32(proposedTx[startIdx:endIdx + 1]);
 
             if (validScope.comparators[i] == Comparators.EQUAL) {
                 bytes32 scopedParam = bytes32(this.getParameter(scopeLimit, startIdx, endIdx));
-                require(scopedParam == param);
+                if (scopedParam != param) revert InvalidParamNotEqual();
             }
 
             if (validScope.comparators[i] == Comparators.LESS_THAN) {
-                require(param < bytes32(validScope.parameters[i]));
+                if (param >= bytes32(validScope.parameters[i])) revert InvalidParamRange();
             }
 
             if (validScope.comparators[i] == Comparators.GREATER_THAN) {
-                require(param > bytes32(validScope.parameters[i]));
+                if (param <= bytes32(validScope.parameters[i])) revert InvalidParamRange();
             }
 
             if (validScope.comparators[i] == Comparators.EMPTY) {
+                // do nothing for now?
             }
 
             startIdx = startIdx + endIdx;
