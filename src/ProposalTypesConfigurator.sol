@@ -186,17 +186,17 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         bytes4 selector = bytes4(scopeLimit);
         if (selector != bytes4(proposedTx[:4])) revert Invalid4ByteSelector();
 
+        uint256 startIdx = 4;
+        uint256 endIdx = 0;
         for (uint8 i = 0; i < validScope.parameters.length; i++) {
-            uint256 startIdx = 4;
-            uint256 endIdx;
 
             if (i == 0) {
-                endIdx = validScope.parameters[i].length;
-            } else {
                 endIdx = startIdx + validScope.parameters[i].length;
+            } else {
+                endIdx = endIdx + validScope.parameters[i].length;
             }
 
-            bytes32 param = bytes32(proposedTx[startIdx:endIdx + 1]);
+            bytes32 param = bytes32(proposedTx[startIdx:endIdx]);
 
             if (validScope.comparators[i] == Comparators.EQUAL) {
                 bytes32 scopedParam = bytes32(this.getParameter(scopeLimit, startIdx, endIdx));
@@ -215,7 +215,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
                 // do nothing for now?
             }
 
-            startIdx = startIdx + endIdx;
+            startIdx = endIdx;
         }
 
         return true;

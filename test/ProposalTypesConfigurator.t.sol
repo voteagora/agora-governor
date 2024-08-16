@@ -40,6 +40,25 @@ contract ProposalTypesConfiguratorTest is Test {
         bytes32[] memory transactions = new bytes32[](1);
         proposalTypesConfigurator.setProposalType(0, 3_000, 5_000, "Default", address(0), transactions);
         proposalTypesConfigurator.setProposalType(1, 5_000, 7_000, "Alt", address(0), transactions);
+
+        // Setup Scope logic
+        bytes32 txTypeHash = keccak256("transfer(address,address,uint256)");
+        address _from = makeAddr("from");
+        address _to = makeAddr("to");
+        bytes memory txEncoded = abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(10));
+
+        bytes[] memory parameters = new bytes[](3);
+        parameters[0] = abi.encode(uint256(uint160(_from)));
+        parameters[1] = abi.encode(uint256(uint160(_to)));
+        parameters[2] = abi.encode(uint256(10));
+
+        IProposalTypesConfigurator.Comparators[] memory comparators = new IProposalTypesConfigurator.Comparators[](3);
+
+        comparators[0] = IProposalTypesConfigurator.Comparators(1); // EQ
+        comparators[1] = IProposalTypesConfigurator.Comparators(1); // EQ
+        comparators[2] = IProposalTypesConfigurator.Comparators(3); // GREATER THAN
+
+        proposalTypesConfigurator.setScopeForProposalType(0, txTypeHash, txEncoded, parameters, comparators);
         vm.stopPrank();
     }
 
@@ -291,42 +310,44 @@ contract getLimit is ProposalTypesConfiguratorTest {
 }
 
 contract ValidateProposedTx is ProposalTypesConfiguratorTest {
-    function testFuzz_UpdateScopeForProposalType(uint256 _actorSeed) public {
-        vm.prank(_adminOrTimelock(_actorSeed));
-        vm.expectEmit();
-
+    function testFuzz_ValidateProposedTx() public {
         bytes32 txTypeHash = keccak256("transfer(address,address,uint256)");
-        bytes32[] memory transactions = new bytes32[](1);
-
-        emit ProposalTypeSet(0, 4_000, 6_000, "New Default", transactions);
-        proposalTypesConfigurator.setProposalType(0, 4_000, 6_000, "New Default", address(0), transactions);
-
         address _from = makeAddr("from");
         address _to = makeAddr("to");
-        bytes memory txEncoded = abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(10));
 
-        bytes[] memory parameters = new bytes[](3);
-        parameters[0] = abi.encode(uint256(uint160(_from)));
-        parameters[1] = abi.encode(uint256(uint160(_to)));
-        parameters[2] = abi.encode(uint256(10));
-
-        IProposalTypesConfigurator.Comparators[] memory comparators = new IProposalTypesConfigurator.Comparators[](3);
-
-        comparators[0] = IProposalTypesConfigurator.Comparators(1); // EQ
-        comparators[1] = IProposalTypesConfigurator.Comparators(1); // EQ
-        comparators[2] = IProposalTypesConfigurator.Comparators(3); // GREATER THAN
-
-        vm.startPrank(admin);
-        proposalTypesConfigurator.setScopeForProposalType(0, txTypeHash, txEncoded, parameters, comparators);
-        vm.stopPrank();
-
-        bytes memory limit = proposalTypesConfigurator.getLimit(0, txTypeHash);
-        assertEq(limit, txEncoded);
-
-        //Generate calldata
         bytes memory proposedTx = abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(15));
         bool valid = proposalTypesConfigurator.validateProposedTx(proposedTx, 0, txTypeHash);
         assertTrue(valid);
+    }
+
+    function testRevert_ValidateProposedTx_Invalid4ByteSelector() public {
+        bytes32 txTypeHash = keccak256("transfer(address,address,uint256)");
+        address _from = makeAddr("from");
+        address _to = makeAddr("to");
+
+        bytes memory proposedTx = abi.encodeWithSignature("foobar(address,address,uint256)", _from, _to, uint256(15));
+        vm.expectRevert(IProposalTypesConfigurator.Invalid4ByteSelector.selector);
+        bool valid = proposalTypesConfigurator.validateProposedTx(proposedTx, 0, txTypeHash);
+    }
+
+    function testRevert_ValidateProposedTx_InvalidParamNotEqual() public {
+        bytes32 txTypeHash = keccak256("transfer(address,address,uint256)");
+        address _from = makeAddr("from");
+        address _to = makeAddr("to");
+
+        bytes memory proposedTx = abi.encodeWithSignature("transfer(address,address,uint256)", _to, _from, uint256(15));
+        vm.expectRevert(IProposalTypesConfigurator.InvalidParamNotEqual.selector);
+        bool valid = proposalTypesConfigurator.validateProposedTx(proposedTx, 0, txTypeHash);
+    }
+
+    function testRevert_ValidateProposedTx_InvalidParamRange() public {
+        bytes32 txTypeHash = keccak256("transfer(address,address,uint256)");
+        address _from = makeAddr("from");
+        address _to = makeAddr("to");
+
+        bytes memory proposedTx = abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(5));
+        vm.expectRevert(IProposalTypesConfigurator.InvalidParamRange.selector);
+        bool valid = proposalTypesConfigurator.validateProposedTx(proposedTx, 0, txTypeHash);
     }
 }
 
