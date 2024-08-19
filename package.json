@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "Core and peripheral contracts for the Agora Governor.",
   "files": [
-    "src/*.sol"
+    "src/*.sol",
+    "src/**/*.sol"
   ],
   "repository": {
     "type": "git",
