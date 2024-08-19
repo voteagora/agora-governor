@@ -1,66 +1,39 @@
-## Foundry
+# 🏛 Agora Governor
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+[![CI][ci-badge]][ci-url]
 
-Foundry consists of:
+Core and peripheral contracts for the Agora Governor.
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+## Contracts
 
-## Documentation
-
-https://book.getfoundry.sh/
-
-## Usage
-
-### Build
-
-```shell
-$ forge build
+```ml
+├─ AgoraGovernor — "Governor contract"
+├─ ProposalTypesConfigurator — "Proposal types configurator contract"
+├─ modules
+│  ├─ ApprovalVotingModule — "Approval voting module"
+│  ├─ OptimisticModule — "Optimistic voting module"
+│  ├─ VotingModule — "Base voting module"
 ```
 
-### Test
+## Installation
 
-```shell
-$ forge test
+To install with [**Foundry**](https://github.com/foundry-rs/foundry):
+
+```sh
+forge install voteagora/agora-governor
 ```
 
-### Format
+To install with [**Hardhat**](https://github.com/nomiclabs/hardhat):
 
-```shell
-$ forge fmt
+```sh
+npm install agora-governor
 ```
 
-### Gas Snapshots
+## Acknowledgements
 
-```shell
-$ forge snapshot
-```
+These contracts were inspired by or directly modified from many sources, primarily:
 
-### Anvil
+- [OpenZeppelin](https://github.com/OpenZeppelin/openzeppelin-contracts)
 
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+[ci-badge]: https://github.com/cairoeth/sandwich-resistant-hook/actions/workflows/test.yml/badge.svg
+[ci-url]: https://github.com/cairoeth/sandwich-resistant-hook/actions/workflows/test.yml
