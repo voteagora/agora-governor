@@ -189,7 +189,6 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         uint256 startIdx = 4;
         uint256 endIdx = 0;
         for (uint8 i = 0; i < validScope.parameters.length; i++) {
-
             if (i == 0) {
                 endIdx = startIdx + validScope.parameters[i].length;
             } else {
