@@ -1,0 +1,19 @@
+{
+  "name": "agora-governor",
+  "version": "1.0.0",
+  "description": "Core and peripheral contracts for the Agora Governor.",
+  "files": [
+    "src/*.sol",
+    "src/**/*.sol"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/voteagora/agora-governor.git"
+  },
+  "author": "Argonavis, inc.",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/voteagora/agora-governor/issues"
+  },
+  "homepage": "https://github.com/voteagora/agora-governor#readme"
+}
