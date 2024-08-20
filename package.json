@@ -1,6 +1,6 @@
 {
   "name": "agora-governor",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Core and peripheral contracts for the Agora Governor.",
   "files": [
     "src/*.sol",
