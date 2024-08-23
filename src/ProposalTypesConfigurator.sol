@@ -165,7 +165,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
 
         if (!scopeExists[proposalTypeId][txTypeHash]) revert InvalidScope();
         Scope memory validScope = scopes[proposalTypeId][txTypeHash];
-        return validScope.encodedLimits;
+        return scopes[proposalTypeId][txTypeHash].encodedLimits;
     }
 
     function getParameter(bytes calldata limit, uint256 startIdx, uint256 endIdx)
