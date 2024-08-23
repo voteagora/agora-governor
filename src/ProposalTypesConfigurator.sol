@@ -187,13 +187,9 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         if (selector != bytes4(proposedTx[:4])) revert Invalid4ByteSelector();
 
         uint256 startIdx = 4;
-        uint256 endIdx = 0;
+        uint256 endIdx = startIdx;
         for (uint8 i = 0; i < validScope.parameters.length; i++) {
-            if (i == 0) {
-                endIdx = startIdx + validScope.parameters[i].length;
-            } else {
-                endIdx = endIdx + validScope.parameters[i].length;
-            }
+            endIdx = endIdx + validScope.parameters[i].length;
 
             bytes32 param = bytes32(proposedTx[startIdx:endIdx]);
 
