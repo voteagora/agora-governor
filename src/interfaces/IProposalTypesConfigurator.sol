@@ -24,7 +24,7 @@ interface IProposalTypesConfigurator {
     //////////////////////////////////////////////////////////////*/
 
     event ProposalTypeSet(
-        uint8 indexed proposalTypeId, uint16 quorum, uint16 approvalThreshold, string name, bytes32[] txTypeHashes
+        uint8 indexed proposalTypeId, uint16 quorum, uint16 approvalThreshold, string name, string description, bytes32[] txTypeHashes
     );
 
     /*//////////////////////////////////////////////////////////////
@@ -35,6 +35,7 @@ interface IProposalTypesConfigurator {
         uint16 quorum;
         uint16 approvalThreshold;
         string name;
+        string description;
         address module;
         bytes32[] txTypeHashes;
     }
@@ -66,6 +67,7 @@ interface IProposalTypesConfigurator {
         uint16 quorum,
         uint16 approvalThreshold,
         string memory name,
+        string memory description,
         address module,
         bytes32[] memory txTypeHashes
     ) external;

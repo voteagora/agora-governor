@@ -56,6 +56,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
                 _proposalTypesInit[i].quorum,
                 _proposalTypesInit[i].approvalThreshold,
                 _proposalTypesInit[i].name,
+                _proposalTypesInit[i].description,
                 _proposalTypesInit[i].module,
                 _proposalTypesInit[i].txTypeHashes
             );
@@ -110,6 +111,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param quorum Quorum percentage, scaled by `PERCENT_DIVISOR`
      * @param approvalThreshold Approval threshold percentage, scaled by `PERCENT_DIVISOR`
      * @param name Name of the proposal type
+     * @param description Describes the proposal type
      * @param module Address of module that can only use this proposal type
      * @param txTypeHashes A list of transaction function selectors that represent the type hash, i.e. keccak256("foobar(uint,address)")
      */
@@ -118,10 +120,11 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         uint16 quorum,
         uint16 approvalThreshold,
         string calldata name,
+        string calldata description,
         address module,
         bytes32[] memory txTypeHashes
     ) external override onlyAdminOrTimelock {
-        _setProposalType(proposalTypeId, quorum, approvalThreshold, name, module, txTypeHashes);
+        _setProposalType(proposalTypeId, quorum, approvalThreshold, name, description, module, txTypeHashes);
     }
 
     function _setProposalType(
@@ -129,16 +132,17 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         uint16 quorum,
         uint16 approvalThreshold,
         string calldata name,
+        string calldata description,
         address module,
         bytes32[] memory txTypeHashes
     ) internal {
         if (quorum > PERCENT_DIVISOR) revert InvalidQuorum();
         if (approvalThreshold > PERCENT_DIVISOR) revert InvalidApprovalThreshold();
 
-        _proposalTypes[proposalTypeId] = ProposalType(quorum, approvalThreshold, name, module, txTypeHashes);
+        _proposalTypes[proposalTypeId] = ProposalType(quorum, approvalThreshold, name, description, module, txTypeHashes);
         _proposalTypesExists[proposalTypeId] = true;
 
-        emit ProposalTypeSet(proposalTypeId, quorum, approvalThreshold, name, txTypeHashes);
+        emit ProposalTypeSet(proposalTypeId, quorum, approvalThreshold, name, description, txTypeHashes);
     }
 
     /**
