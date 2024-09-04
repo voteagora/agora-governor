@@ -139,7 +139,8 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         if (quorum > PERCENT_DIVISOR) revert InvalidQuorum();
         if (approvalThreshold > PERCENT_DIVISOR) revert InvalidApprovalThreshold();
 
-        _proposalTypes[proposalTypeId] = ProposalType(quorum, approvalThreshold, name, description, module, txTypeHashes);
+        _proposalTypes[proposalTypeId] =
+            ProposalType(quorum, approvalThreshold, name, description, module, txTypeHashes);
         _proposalTypesExists[proposalTypeId] = true;
 
         emit ProposalTypeSet(proposalTypeId, quorum, approvalThreshold, name, description, txTypeHashes);
@@ -179,7 +180,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param limit The abi.encodedWithSignature that contains the limits with parameters i.e abi.encodedWithSignature('functionSelector(a,b)', _a, _b)
      * @param startIdx The start index in the byte array that contains the parameter, inclusive.
      * @param endIdx The end index in the byte array that contains parameter exclusive
-    */
+     */
     function getParameter(bytes calldata limit, uint256 startIdx, uint256 endIdx)
         public
         pure

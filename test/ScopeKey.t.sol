@@ -5,8 +5,10 @@ import {ScopeKey} from "src/ScopeKey.sol";
 
 contract ScopePackerTest is Test {
     using ScopeKey for bytes24;
+
     address contractAddress = makeAddr("contractAddress");
-    bytes proposedTx = abi.encodeWithSignature("transfer(address,address,uint256)", address(0), address(0), uint256(100));
+    bytes proposedTx =
+        abi.encodeWithSignature("transfer(address,address,uint256)", address(0), address(0), uint256(100));
     bytes4 selector;
 
     function setUp() public virtual {
@@ -20,4 +22,3 @@ contract ScopePackerTest is Test {
         assertEq(selector, _selector);
     }
 }
-

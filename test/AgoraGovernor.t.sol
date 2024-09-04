@@ -178,7 +178,9 @@ contract AgoraGovernorTest is Test {
         governor.setModuleApproval(address(optimisticModule), true);
         proposalTypesConfigurator.setProposalType(0, 3_000, 5_000, "Default", "Lorem Ipsum", address(0), transactions);
         proposalTypesConfigurator.setProposalType(1, 5_000, 7_000, "Alt", "Lorem Ipsum", address(module), transactions);
-        proposalTypesConfigurator.setProposalType(2, 0, 0, "Optimistic", "Lorem Ipsum", address(optimisticModule), transactions);
+        proposalTypesConfigurator.setProposalType(
+            2, 0, 0, "Optimistic", "Lorem Ipsum", address(optimisticModule), transactions
+        );
         vm.stopPrank();
         targetFake = new ExecutionTargetFake();
     }
@@ -265,11 +267,15 @@ contract Initialize is AgoraGovernorTest {
         ProposalTypesConfigurator _proposalTypesConfigurator = new ProposalTypesConfigurator();
         IProposalTypesConfigurator.ProposalType[] memory _proposalTypes =
             new IProposalTypesConfigurator.ProposalType[](4);
-        _proposalTypes[0] = IProposalTypesConfigurator.ProposalType(1_500, 9_000, "Default", "Lorem Ipsum", address(0), transactions);
-        _proposalTypes[1] = IProposalTypesConfigurator.ProposalType(3_500, 7_000, "Alt", "Lorem Ipsum", address(0), transactions);
-        _proposalTypes[2] = IProposalTypesConfigurator.ProposalType(7_500, 3_100, "Whatever", "Lorem Ipsum", address(0), transactions);
-        _proposalTypes[3] =
-            IProposalTypesConfigurator.ProposalType(0, 0, "Optimistic", "Lorem Ipsum", address(optimisticModule), transactions);
+        _proposalTypes[0] =
+            IProposalTypesConfigurator.ProposalType(1_500, 9_000, "Default", "Lorem Ipsum", address(0), transactions);
+        _proposalTypes[1] =
+            IProposalTypesConfigurator.ProposalType(3_500, 7_000, "Alt", "Lorem Ipsum", address(0), transactions);
+        _proposalTypes[2] =
+            IProposalTypesConfigurator.ProposalType(7_500, 3_100, "Whatever", "Lorem Ipsum", address(0), transactions);
+        _proposalTypes[3] = IProposalTypesConfigurator.ProposalType(
+            0, 0, "Optimistic", "Lorem Ipsum", address(optimisticModule), transactions
+        );
         AgoraGovernor _governor = AgoraGovernor(
             payable(
                 new TransparentUpgradeableProxy(

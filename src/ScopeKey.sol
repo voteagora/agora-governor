@@ -18,9 +18,6 @@ library ScopeKey {
      * @param self A byte24 key to be unpacked representing the key for a defined scope
      */
     function _unpack(bytes24 self) external pure returns (address, bytes4) {
-        return (
-            address(Packing.extract_24_20(self, 0)),
-            Packing.extract_24_4(self, 20)
-        );
+        return (address(Packing.extract_24_20(self, 0)), Packing.extract_24_4(self, 20));
     }
 }

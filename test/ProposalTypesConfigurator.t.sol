@@ -11,7 +11,12 @@ contract ProposalTypesConfiguratorTest is Test {
     //////////////////////////////////////////////////////////////*/
 
     event ProposalTypeSet(
-        uint8 indexed proposalTypeId, uint16 quorum, uint16 approvalThreshold, string name, string description, bytes32[] txTypeHashes
+        uint8 indexed proposalTypeId,
+        uint16 quorum,
+        uint16 approvalThreshold,
+        string name,
+        string description,
+        bytes32[] txTypeHashes
     );
 
     /*//////////////////////////////////////////////////////////////
@@ -112,7 +117,9 @@ contract SetProposalType is ProposalTypesConfiguratorTest {
         vm.expectEmit();
         bytes32[] memory transactions = new bytes32[](1);
         emit ProposalTypeSet(0, 4_000, 6_000, "New Default", "Lorem Ipsum", transactions);
-        proposalTypesConfigurator.setProposalType(0, 4_000, 6_000, "New Default", "Lorem Ipsum", address(0), transactions);
+        proposalTypesConfigurator.setProposalType(
+            0, 4_000, 6_000, "New Default", "Lorem Ipsum", address(0), transactions
+        );
 
         IProposalTypesConfigurator.ProposalType memory propType = proposalTypesConfigurator.proposalTypes(0);
 
@@ -137,7 +144,9 @@ contract SetProposalType is ProposalTypesConfiguratorTest {
         vm.expectEmit();
         bytes32[] memory transactions = new bytes32[](1);
         emit ProposalTypeSet(0, 4_000, 6_000, "New Default", "Lorem Ipsum", transactions);
-        proposalTypesConfigurator.setProposalType(0, 4_000, 6_000, "New Default", "Lorem Ipsum", address(0), transactions);
+        proposalTypesConfigurator.setProposalType(
+            0, 4_000, 6_000, "New Default", "Lorem Ipsum", address(0), transactions
+        );
 
         vm.prank(admin);
         bytes32 txTypeHash = keccak256("transfer(address,address,uint)");
@@ -221,7 +230,9 @@ contract UpdateScopeForProposalType is ProposalTypesConfiguratorTest {
         vm.expectEmit();
         bytes32[] memory transactions = new bytes32[](1);
         emit ProposalTypeSet(0, 4_000, 6_000, "New Default", "Lorem Ipsum", transactions);
-        proposalTypesConfigurator.setProposalType(0, 4_000, 6_000, "New Default", "Lorem Ipsum", address(0), transactions);
+        proposalTypesConfigurator.setProposalType(
+            0, 4_000, 6_000, "New Default", "Lorem Ipsum", address(0), transactions
+        );
 
         vm.startPrank(admin);
         bytes32 txTypeHash1 = keccak256("transfer(address,address,uint)");
