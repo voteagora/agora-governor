@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import {IProposalTypesConfigurator} from "src/interfaces/IProposalTypesConfigurator.sol";
 import {IAgoraGovernor} from "src/interfaces/IAgoraGovernor.sol";
+import {ScopeKey} from "src/ScopeKey.sol";
 
 /**
  * Contract that stores proposalTypes for the Agora Governor.
@@ -12,6 +13,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
                            IMMUTABLE STORAGE
     //////////////////////////////////////////////////////////////*/
 
+    using ScopeKey for bytes24;
     IAgoraGovernor public governor;
     uint16 public constant PERCENT_DIVISOR = 10_000;
 
@@ -21,8 +23,10 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
 
     mapping(uint8 proposalTypeId => ProposalType) internal _proposalTypes;
     mapping(uint8 proposalTypeId => bool) internal _proposalTypesExists;
-    mapping(uint8 proposalTypeId => mapping(bytes32 typeHash => Scope)) public scopes;
-    mapping(uint8 proposalTypeId => mapping(bytes32 typeHash => bool)) public scopeExists;
+    mapping(uint8 proposalTypeId => mapping(bytes24 key => Scope)) public assignedScopes;
+    // mapping(uint8 proposalTypeId => mapping(bytes32 typeHash => bool)) public scopeExists;
+    Scope[] public scopes;
+
 
     /*//////////////////////////////////////////////////////////////
                                MODIFIERS
@@ -58,7 +62,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
                 _proposalTypesInit[i].name,
                 _proposalTypesInit[i].description,
                 _proposalTypesInit[i].module,
-                _proposalTypesInit[i].txTypeHashes
+                _proposalTypesInit[i].validScopes
             );
         }
     }
@@ -75,34 +79,33 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     /**
      * @notice Sets the scope for a given proposal type.
      * @param proposalTypeId Id of the proposal type.
-     * @param txTypeHash A function selector that represent the type hash, i.e. keccak256("foobar(uint,address)").
+     * @param key A function selector and contract address that represent the type hash, i.e. 4byte(keccak256("foobar(uint,address)")) + bytes20(contractAddress).
      * @param encodedLimit An ABI encoded string containing the function selector and relevant parameter values.
      * @param parameters The list of byte represented values to be compared against the encoded limits.
      * @param comparators List of enumuerated values represent which comparison to use when enforcing limit checks on parameters.
      */
     function setScopeForProposalType(
         uint8 proposalTypeId,
-        bytes32 txTypeHash,
+        bytes24 key,
         bytes calldata encodedLimit,
         bytes[] memory parameters,
         Comparators[] memory comparators
     ) external override onlyAdmin {
         if (!_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
         if (parameters.length != comparators.length) revert InvalidParameterConditions();
-        if (scopeExists[proposalTypeId][txTypeHash]) revert NoDuplicateTxTypes(); // Do not allow multiple scopes for a single transaction type
+        if (assignedScopes[proposalTypeId][key].exists) revert NoDuplicateTxTypes(); // Do not allow multiple scopes for a single transaction type
 
-        for (uint8 i = 0; i < _proposalTypes[proposalTypeId].txTypeHashes.length; i++) {
-            if (_proposalTypes[proposalTypeId].txTypeHashes[i] == txTypeHash) {
+        for (uint8 i = 0; i < _proposalTypes[proposalTypeId].validScopes.length; i++) {
+            if (_proposalTypes[proposalTypeId].validScopes[i] == key) {
                 revert NoDuplicateTxTypes();
             }
         }
 
-        Scope memory scope = Scope(txTypeHash, encodedLimit, parameters, comparators);
-        scopes[proposalTypeId][txTypeHash] = scope;
+        Scope memory scope = Scope(key, encodedLimit, parameters, comparators, proposalTypeId, true);
+        scopes.push(scope);
 
-        scopeExists[proposalTypeId][txTypeHash] = true;
-
-        _proposalTypes[proposalTypeId].txTypeHashes.push(txTypeHash);
+        assignedScopes[proposalTypeId][key] = scope;
+        _proposalTypes[proposalTypeId].validScopes.push(key);
     }
 
     /**
@@ -113,7 +116,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param name Name of the proposal type
      * @param description Describes the proposal type
      * @param module Address of module that can only use this proposal type
-     * @param txTypeHashes A list of transaction function selectors that represent the type hash, i.e. keccak256("foobar(uint,address)")
+     * @param validScopes A list of function selector and contract address that represent the type hash, i.e. 4byte(keccak256("foobar(uint,address)")) + bytes20(contractAddress).
      */
     function setProposalType(
         uint8 proposalTypeId,
@@ -122,9 +125,9 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         string calldata name,
         string calldata description,
         address module,
-        bytes32[] memory txTypeHashes
+        bytes24[] memory validScopes
     ) external override onlyAdminOrTimelock {
-        _setProposalType(proposalTypeId, quorum, approvalThreshold, name, description, module, txTypeHashes);
+        _setProposalType(proposalTypeId, quorum, approvalThreshold, name, description, module, validScopes);
     }
 
     function _setProposalType(
@@ -134,16 +137,16 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         string calldata name,
         string calldata description,
         address module,
-        bytes32[] memory txTypeHashes
+        bytes24[] memory validScopes
     ) internal {
         if (quorum > PERCENT_DIVISOR) revert InvalidQuorum();
         if (approvalThreshold > PERCENT_DIVISOR) revert InvalidApprovalThreshold();
 
         _proposalTypes[proposalTypeId] =
-            ProposalType(quorum, approvalThreshold, name, description, module, txTypeHashes);
+            ProposalType(quorum, approvalThreshold, name, description, module, validScopes);
         _proposalTypesExists[proposalTypeId] = true;
 
-        emit ProposalTypeSet(proposalTypeId, quorum, approvalThreshold, name, description, txTypeHashes);
+        emit ProposalTypeSet(proposalTypeId, quorum, approvalThreshold, name, description, validScopes);
     }
 
     /**
@@ -154,23 +157,22 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     function updateScopeForProposalType(uint8 proposalTypeId, Scope calldata scope) external override onlyAdmin {
         if (!_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
         if (scope.parameters.length != scope.comparators.length) revert InvalidParameterConditions();
-        if (scopeExists[proposalTypeId][scope.txTypeHash]) revert NoDuplicateTxTypes(); // Do not allow multiple scopes for a single transaction type
+        if (assignedScopes[proposalTypeId][scope.key].exists) revert NoDuplicateTxTypes(); // Do not allow multiple scopes for a single transaction type
 
-        scopes[proposalTypeId][scope.txTypeHash] = scope;
-        scopeExists[proposalTypeId][scope.txTypeHash] = true;
+        scopes.push(scope);
+        assignedScopes[proposalTypeId][scope.key] = scope;
     }
 
     /**
      * @notice Retrives the encoded limit of a transaction type signature for a given proposal type.
      * @param proposalTypeId Id of the proposal type
-     * @param txTypeHash A type signature of a function that has a limit specified in a scope
+     * @param key A type signature of a function and contract address that has a limit specified in a scope
      */
-    function getLimit(uint8 proposalTypeId, bytes32 txTypeHash) public view returns (bytes memory encodedLimits) {
+    function getLimit(uint8 proposalTypeId, bytes24 key) public view returns (bytes memory encodedLimits) {
         if (!_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
-
-        if (!scopeExists[proposalTypeId][txTypeHash]) revert InvalidScope();
-        Scope memory validScope = scopes[proposalTypeId][txTypeHash];
-        return scopes[proposalTypeId][txTypeHash].encodedLimits;
+        if (!assignedScopes[proposalTypeId][key].exists) revert InvalidScope();
+        Scope memory validScope = assignedScopes[proposalTypeId][key];
+        return validScope.encodedLimits;
     }
 
     /**
@@ -189,12 +191,12 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         return limit[startIdx:endIdx + 1];
     }
 
-    function validateProposedTx(bytes calldata proposedTx, uint8 proposalTypeId, bytes32 txTypeHash)
+    function validateProposedTx(bytes calldata proposedTx, uint8 proposalTypeId, bytes24 key)
         public
         view
         returns (bool valid)
     {
-        Scope memory validScope = scopes[proposalTypeId][txTypeHash];
+        Scope memory validScope = assignedScopes[proposalTypeId][key];
         bytes memory scopeLimit = validScope.encodedLimits;
         bytes4 selector = bytes4(scopeLimit);
         if (selector != bytes4(proposedTx[:4])) revert Invalid4ByteSelector();

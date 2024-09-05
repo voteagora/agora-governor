@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
+import {ScopeKey} from "src/ScopeKey.sol";
 
 interface IProposalTypesConfigurator {
     /*//////////////////////////////////////////////////////////////
@@ -29,7 +30,7 @@ interface IProposalTypesConfigurator {
         uint16 approvalThreshold,
         string name,
         string description,
-        bytes32[] txTypeHashes
+        bytes24[] validScopes
     );
 
     /*//////////////////////////////////////////////////////////////
@@ -42,7 +43,7 @@ interface IProposalTypesConfigurator {
         string name;
         string description;
         address module;
-        bytes32[] txTypeHashes;
+        bytes24[] validScopes;
     }
 
     enum Comparators {
@@ -53,10 +54,12 @@ interface IProposalTypesConfigurator {
     }
 
     struct Scope {
-        bytes32 txTypeHash;
+        bytes24 key;
         bytes encodedLimits;
         bytes[] parameters;
         Comparators[] comparators;
+        uint8 proposalTypeId;
+        bool exists;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -74,12 +77,12 @@ interface IProposalTypesConfigurator {
         string memory name,
         string memory description,
         address module,
-        bytes32[] memory txTypeHashes
+        bytes24[] memory validScopes
     ) external;
 
     function setScopeForProposalType(
         uint8 proposalTypeId,
-        bytes32 txTypeHash,
+        bytes24 key,
         bytes calldata encodedLimit,
         bytes[] memory parameters,
         Comparators[] memory comparators
@@ -87,9 +90,9 @@ interface IProposalTypesConfigurator {
 
     function updateScopeForProposalType(uint8 proposalTypeId, Scope calldata scope) external;
 
-    function getLimit(uint8 proposalTypeId, bytes32 txTypeHash) external returns (bytes memory);
+    function getLimit(uint8 proposalTypeId, bytes24 key) external returns (bytes memory);
 
-    function validateProposedTx(bytes calldata proposedTx, uint8 proposalTypeId, bytes32 txTypeHash)
+    function validateProposedTx(bytes calldata proposedTx, uint8 proposalTypeId, bytes24 key)
         external
         returns (bool valid);
 }
