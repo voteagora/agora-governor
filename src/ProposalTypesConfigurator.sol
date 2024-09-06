@@ -14,6 +14,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     //////////////////////////////////////////////////////////////*/
 
     using ScopeKey for bytes24;
+
     IAgoraGovernor public governor;
     uint16 public constant PERCENT_DIVISOR = 10_000;
 
@@ -26,7 +27,6 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     mapping(uint8 proposalTypeId => mapping(bytes24 key => Scope)) public assignedScopes;
     // mapping(uint8 proposalTypeId => mapping(bytes32 typeHash => bool)) public scopeExists;
     Scope[] public scopes;
-
 
     /*//////////////////////////////////////////////////////////////
                                MODIFIERS
@@ -142,8 +142,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         if (quorum > PERCENT_DIVISOR) revert InvalidQuorum();
         if (approvalThreshold > PERCENT_DIVISOR) revert InvalidApprovalThreshold();
 
-        _proposalTypes[proposalTypeId] =
-            ProposalType(quorum, approvalThreshold, name, description, module, validScopes);
+        _proposalTypes[proposalTypeId] = ProposalType(quorum, approvalThreshold, name, description, module, validScopes);
         _proposalTypesExists[proposalTypeId] = true;
 
         emit ProposalTypeSet(proposalTypeId, quorum, approvalThreshold, name, description, validScopes);
