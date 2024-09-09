@@ -59,7 +59,7 @@ contract OptimisticModule_SocialSignalling is VotingModule {
      * @param proposalId The id of the proposal.
      * @param proposalData The proposal data encoded as `PROPOSAL_DATA_ENCODING`.
      */
-    function propose(uint256 proposalId, bytes memory proposalData, bytes32 descriptionHash) external override {
+    function propose(uint256 proposalId, bytes memory proposalData, bytes32 descriptionHash, uint8 proposalTypeId) external override {
         _onlyGovernor();
         if (proposalId != uint256(keccak256(abi.encode(msg.sender, address(this), proposalData, descriptionHash)))) {
             revert WrongProposalId();
@@ -71,7 +71,6 @@ contract OptimisticModule_SocialSignalling is VotingModule {
 
         ProposalSettings memory proposalSettings = abi.decode(proposalData, (ProposalSettings));
 
-        uint8 proposalTypeId = IAgoraGovernor(msg.sender).getProposalType(proposalId);
         IProposalTypesConfigurator proposalConfigurator =
             IProposalTypesConfigurator(IAgoraGovernor(msg.sender).PROPOSAL_TYPES_CONFIGURATOR());
         IProposalTypesConfigurator.ProposalType memory proposalType = proposalConfigurator.proposalTypes(proposalTypeId);

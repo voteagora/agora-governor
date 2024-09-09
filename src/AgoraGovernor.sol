@@ -425,14 +425,16 @@ contract AgoraGovernor is
         public
         virtual
     {
-        for (uint8 i = 0; i < calldatas.length; i++) {
-            bytes24 scopeKey = ScopeKey._pack(targets[i], bytes4(calldatas[i]));
+        unchecked {
+            for (uint8 i; i < calldatas.length; i++) {
+                bytes24 scopeKey = ScopeKey._pack(targets[i], bytes4(calldatas[i]));
 
-            if (PROPOSAL_TYPES_CONFIGURATOR.assignedScopes(proposalType, scopeKey).exists) {
-                PROPOSAL_TYPES_CONFIGURATOR.validateProposedTx(calldatas[i], proposalType, scopeKey);
-            } else {
-                if (PROPOSAL_TYPES_CONFIGURATOR.scopeExists(scopeKey)) {
-                    revert InvalidProposedTxForType();
+                if (PROPOSAL_TYPES_CONFIGURATOR.assignedScopes(proposalType, scopeKey).exists) {
+                    PROPOSAL_TYPES_CONFIGURATOR.validateProposedTx(calldatas[i], proposalType, scopeKey);
+                } else {
+                    if (PROPOSAL_TYPES_CONFIGURATOR.scopeExists(scopeKey)) {
+                        revert InvalidProposedTxForType();
+                    }
                 }
             }
         }
@@ -555,7 +557,7 @@ contract AgoraGovernor is
         proposal.votingModule = address(module);
         proposal.proposalType = proposalType;
 
-        module.propose(proposalId, proposalData, descriptionHash);
+        module.propose(proposalId, proposalData, descriptionHash, proposalType);
 
         emit ProposalCreated(
             proposalId, _msgSender(), address(module), proposalData, snapshot, deadline, description, proposalType
