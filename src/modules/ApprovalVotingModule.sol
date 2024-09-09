@@ -91,7 +91,7 @@ contract ApprovalVotingModule is VotingModule {
      * @param proposalId The id of the proposal.
      * @param proposalData The proposal data encoded as `PROPOSAL_DATA_ENCODING`.
      */
-    function propose(uint256 proposalId, bytes memory proposalData, bytes32 descriptionHash) external override {
+    function propose(uint256 proposalId, bytes memory proposalData, bytes32 descriptionHash, uint8 proposalTypeId) external override {
         _onlyGovernor();
         if (proposalId != uint256(keccak256(abi.encode(msg.sender, address(this), proposalData, descriptionHash)))) {
             revert WrongProposalId();
@@ -114,6 +114,7 @@ contract ApprovalVotingModule is VotingModule {
             }
         }
 
+        IAgoraGovernor governor = IAgoraGovernor(proposals[proposalId].governor);
         unchecked {
             // Ensure proposal params of each option have the same length between themselves
             ProposalOption memory option;
@@ -123,6 +124,7 @@ contract ApprovalVotingModule is VotingModule {
                     revert InvalidParams();
                 }
 
+                governor.validateProposalData(option.targets, option.calldatas, proposalTypeId);
                 proposals[proposalId].options.push(option);
             }
         }
