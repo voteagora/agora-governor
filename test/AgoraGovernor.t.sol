@@ -24,6 +24,7 @@ import {AgoraGovernorMock, AgoraGovernor} from "test/mocks/AgoraGovernorMock.sol
 import {ApprovalVotingModuleMock} from "test/mocks/ApprovalVotingModuleMock.sol";
 import {VoteType} from "test/ApprovalVotingModule.t.sol";
 import {ExecutionTargetFake} from "test/fakes/ExecutionTargetFake.sol";
+import {IVotingToken} from "src/interfaces/IVotingToken.sol";
 
 enum ProposalState {
     Pending,
@@ -148,7 +149,8 @@ contract AgoraGovernorTest is Test {
                 abi.encodeCall(
                     AgoraGovernor.initialize,
                     (
-                        IVotesUpgradeable(address(govToken)),
+                        IVotingToken(address(govToken)),
+                        AgoraGovernor.SupplyType.Total,
                         admin,
                         manager,
                         timelock,
@@ -278,7 +280,8 @@ contract Initialize is AgoraGovernorTest {
                     abi.encodeCall(
                         AgoraGovernor.initialize,
                         (
-                            IVotesUpgradeable(_token),
+                            IVotingToken(_token),
+                            AgoraGovernor.SupplyType.Total,
                             _admin,
                             _manager,
                             TimelockControllerUpgradeable(payable(_timelock)),
