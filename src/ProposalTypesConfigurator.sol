@@ -24,8 +24,8 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
 
     mapping(uint8 proposalTypeId => ProposalType) internal _proposalTypes;
     mapping(uint8 proposalTypeId => bool) internal _proposalTypesExists;
-    mapping(uint8 proposalTypeId => mapping(bytes24 key => Scope)) public _assignedScopes;
-    Scope[] public _scopes;
+    mapping(uint8 proposalTypeId => mapping(bytes24 key => Scope)) internal _assignedScopes;
+    Scope[] internal _scopes;
 
     /*//////////////////////////////////////////////////////////////
                                MODIFIERS
