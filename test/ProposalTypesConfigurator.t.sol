@@ -355,8 +355,7 @@ contract ValidateProposedTx is ProposalTypesConfiguratorTest {
         address _to = makeAddr("to");
 
         bytes memory proposedTx = abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(15));
-        bool valid = proposalTypesConfigurator.validateProposedTx(proposedTx, 0, scopeKey);
-        assertTrue(valid);
+        proposalTypesConfigurator.validateProposedTx(proposedTx, 0, scopeKey);
     }
 
     function testRevert_ValidateProposedTx_Invalid4ByteSelector() public {
@@ -368,7 +367,7 @@ contract ValidateProposedTx is ProposalTypesConfiguratorTest {
 
         bytes memory proposedTx = abi.encodeWithSignature("foobar(address,address,uint256)", _from, _to, uint256(15));
         vm.expectRevert(IProposalTypesConfigurator.Invalid4ByteSelector.selector);
-        bool valid = proposalTypesConfigurator.validateProposedTx(proposedTx, 0, scopeKey);
+        proposalTypesConfigurator.validateProposedTx(proposedTx, 0, scopeKey);
     }
 
     function testRevert_ValidateProposedTx_InvalidParamNotEqual() public {
@@ -380,7 +379,7 @@ contract ValidateProposedTx is ProposalTypesConfiguratorTest {
 
         bytes memory proposedTx = abi.encodeWithSignature("transfer(address,address,uint256)", _to, _from, uint256(15));
         vm.expectRevert(IProposalTypesConfigurator.InvalidParamNotEqual.selector);
-        bool valid = proposalTypesConfigurator.validateProposedTx(proposedTx, 0, scopeKey);
+        proposalTypesConfigurator.validateProposedTx(proposedTx, 0, scopeKey);
     }
 
     function testRevert_ValidateProposedTx_InvalidParamRange() public {
@@ -392,7 +391,7 @@ contract ValidateProposedTx is ProposalTypesConfiguratorTest {
 
         bytes memory proposedTx = abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(5));
         vm.expectRevert(IProposalTypesConfigurator.InvalidParamRange.selector);
-        bool valid = proposalTypesConfigurator.validateProposedTx(proposedTx, 0, scopeKey);
+        proposalTypesConfigurator.validateProposedTx(proposedTx, 0, scopeKey);
     }
 }
 

@@ -24,6 +24,7 @@ import {AgoraGovernorMock, AgoraGovernor} from "test/mocks/AgoraGovernorMock.sol
 import {ApprovalVotingModuleMock} from "test/mocks/ApprovalVotingModuleMock.sol";
 import {VoteType} from "test/ApprovalVotingModule.t.sol";
 import {ExecutionTargetFake} from "test/fakes/ExecutionTargetFake.sol";
+import {ScopeKey} from "src/ScopeKey.sol";
 
 enum ProposalState {
     Pending,
@@ -37,6 +38,8 @@ enum ProposalState {
 }
 
 contract AgoraGovernorTest is Test {
+    using ScopeKey for bytes24;
+
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
@@ -90,6 +93,7 @@ contract AgoraGovernorTest is Test {
 
     error InvalidProposalType(uint8 proposalType);
     error InvalidProposalId();
+    error InvalidProposedTxForType(uint8 requiredProposalType);
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
@@ -2410,5 +2414,99 @@ contract UpgradeTo is AgoraGovernorTest {
         vm.prank(_actor);
         vm.expectRevert(bytes(""));
         TransparentUpgradeableProxy(payable(governorProxy)).upgradeTo(_newImplementation);
+    }
+}
+
+contract AssignedScopes is AgoraGovernorTest {
+    function _createScopeForProposalType() internal {
+        bytes24[] memory scopes = new bytes24[](1);
+        // Setup Scope logic
+        bytes32 txTypeHash = keccak256("transfer(address,address,uint256)");
+        address contractAddress = makeAddr("contract");
+        bytes24 scopeKey = ScopeKey._pack(contractAddress, bytes4(txTypeHash));
+        address _from = makeAddr("from");
+        address _to = makeAddr("to");
+        bytes memory txEncoded = abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(10));
+
+        bytes[] memory parameters = new bytes[](3);
+        parameters[0] = abi.encode(uint256(uint160(_from)));
+        parameters[1] = abi.encode(uint256(uint160(_to)));
+        parameters[2] = abi.encode(uint256(10));
+
+        IProposalTypesConfigurator.Comparators[] memory comparators = new IProposalTypesConfigurator.Comparators[](3);
+
+        comparators[0] = IProposalTypesConfigurator.Comparators(1); // EQ
+        comparators[1] = IProposalTypesConfigurator.Comparators(1); // EQ
+        comparators[2] = IProposalTypesConfigurator.Comparators(3); // GREATER THAN
+
+        proposalTypesConfigurator.setProposalType(0, 3_000, 9_910, "Default", "Lorem Ipsum", address(0), scopes);
+        proposalTypesConfigurator.setScopeForProposalType(0, scopeKey, txEncoded, parameters, comparators);
+    }
+
+    function test_CreateScopedProposal() public virtual {
+        vm.startPrank(admin);
+        _createScopeForProposalType();
+        vm.stopPrank();
+
+        address _from = makeAddr("from");
+        address _to = makeAddr("to");
+        address contractAddress = makeAddr("contract");
+
+        // Setup proposal
+        address[] memory targets = new address[](2);
+        targets[0] = contractAddress;
+        targets[1] = contractAddress;
+        uint256[] memory values = new uint256[](2);
+        bytes[] memory calldatas = new bytes[](2);
+        calldatas[0] = abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(15));
+        calldatas[1] = abi.encodeWithSignature("foobar(address,address,uint256)", _from, _to, uint256(15));
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test Valid transaction", 0);
+    }
+
+    function testRevert_CreateProposalWithInvalidProposedTx() public virtual {
+        vm.startPrank(admin);
+        _createScopeForProposalType();
+        vm.stopPrank();
+
+        address _from = makeAddr("from");
+        address _to = makeAddr("to");
+        address contractAddress = makeAddr("contract");
+
+        // Setup proposal
+        address[] memory targets = new address[](2);
+        targets[0] = contractAddress;
+        targets[1] = contractAddress;
+        uint256[] memory values = new uint256[](2);
+        bytes[] memory calldatas = new bytes[](2);
+        calldatas[0] = abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(10));
+        calldatas[1] = abi.encodeWithSignature("foobar(address,address,uint256)", _from, _to, uint256(15));
+
+        vm.expectRevert(IProposalTypesConfigurator.InvalidParamRange.selector);
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test Invalid transaction", 0);
+    }
+
+    function testRevert_CreateProposalWithInvalidProposalType() public virtual {
+        vm.startPrank(admin);
+        _createScopeForProposalType();
+        bytes24[] memory scopes = new bytes24[](1);
+        proposalTypesConfigurator.setProposalType(1, 3_000, 9_910, "Default2", "Lorem Ipsum", address(0), scopes);
+        vm.stopPrank();
+
+        address _from = makeAddr("from");
+        address _to = makeAddr("to");
+        address contractAddress = makeAddr("contract");
+
+        // Setup proposal
+        address[] memory targets = new address[](2);
+        targets[0] = contractAddress;
+        targets[1] = contractAddress;
+        uint256[] memory values = new uint256[](2);
+        bytes[] memory calldatas = new bytes[](2);
+        calldatas[0] = abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(15));
+        calldatas[1] = abi.encodeWithSignature("foobar(address,address,uint256)", _from, _to, uint256(15));
+
+        uint8 requiredPropType = 0;
+        vm.expectRevert(abi.encodeWithSelector(InvalidProposedTxForType.selector, 0));
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test Invalid transaction wrong type.", 1);
     }
 }

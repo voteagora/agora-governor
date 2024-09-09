@@ -70,6 +70,8 @@ interface IProposalTypesConfigurator {
     function initialize(address _governor, ProposalType[] calldata _proposalTypes) external;
 
     function proposalTypes(uint8 proposalTypeId) external view returns (ProposalType memory);
+    function assignedScopes(uint8 proposalTypeId, bytes24 scopeKey) external view returns (Scope memory);
+    function scopes() external view returns (Scope[] memory);
 
     function setProposalType(
         uint8 proposalTypeId,
@@ -90,10 +92,6 @@ interface IProposalTypesConfigurator {
     ) external;
 
     function updateScopeForProposalType(uint8 proposalTypeId, Scope calldata scope) external;
-
     function getLimit(uint8 proposalTypeId, bytes24 key) external returns (bytes memory);
-
-    function validateProposedTx(bytes calldata proposedTx, uint8 proposalTypeId, bytes24 key)
-        external
-        returns (bool valid);
+    function validateProposedTx(bytes calldata proposedTx, uint8 proposalTypeId, bytes24 key) external;
 }

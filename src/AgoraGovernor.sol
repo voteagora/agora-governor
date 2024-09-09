@@ -15,6 +15,7 @@ import {GovernorSettingsUpgradeableV2} from "src/lib/openzeppelin/v2/GovernorSet
 import {GovernorTimelockControlUpgradeableV2} from "src/lib/openzeppelin/v2/GovernorTimelockControlUpgradeableV2.sol";
 import {IProposalTypesConfigurator} from "src/interfaces/IProposalTypesConfigurator.sol";
 import {VotingModule} from "src/modules/VotingModule.sol";
+import {ScopeKey} from "src/ScopeKey.sol";
 
 contract AgoraGovernor is
     Initializable,
@@ -24,6 +25,8 @@ contract AgoraGovernor is
     GovernorSettingsUpgradeableV2,
     GovernorTimelockControlUpgradeableV2
 {
+    using ScopeKey for bytes24;
+
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
@@ -71,6 +74,7 @@ contract AgoraGovernor is
 
     error InvalidProposalType(uint8 proposalType);
     error InvalidProposalId();
+    error InvalidProposedTxForType(uint8 requiredProposalType);
 
     /*//////////////////////////////////////////////////////////////
                                LIBRARIES
@@ -436,6 +440,20 @@ contract AgoraGovernor is
                 || PROPOSAL_TYPES_CONFIGURATOR.proposalTypes(proposalType).module != address(0)
         ) {
             revert InvalidProposalType(proposalType);
+        }
+
+        for (uint8 i = 0; i < calldatas.length; i++) {
+            bytes24 scopeKey = ScopeKey._pack(targets[i], bytes4(calldatas[i]));
+
+            if (PROPOSAL_TYPES_CONFIGURATOR.assignedScopes(proposalType, scopeKey).exists) {
+                PROPOSAL_TYPES_CONFIGURATOR.validateProposedTx(calldatas[i], proposalType, scopeKey);
+            } else {
+                for (uint8 j = 0; j < PROPOSAL_TYPES_CONFIGURATOR.scopes().length; j++) {
+                    if (PROPOSAL_TYPES_CONFIGURATOR.scopes()[j].key == scopeKey) {
+                        revert InvalidProposedTxForType(PROPOSAL_TYPES_CONFIGURATOR.scopes()[j].proposalTypeId);
+                    }
+                }
+            }
         }
 
         proposalId = hashProposal(targets, values, calldatas, keccak256(bytes(description)));
