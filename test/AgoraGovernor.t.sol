@@ -93,7 +93,12 @@ contract AgoraGovernorTest is Test {
 
     error InvalidProposalType(uint8 proposalType);
     error InvalidProposalId();
-    error InvalidProposedTxForType(uint8 requiredProposalType);
+    error InvalidProposedTxForType();
+    error InvalidProposalLength();
+    error InvalidEmptyProposal();
+    error InvalidVotesBelowThreshold();
+    error InvalidProposalExists();
+    error NotAdminOrTimelock();
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
@@ -406,7 +411,7 @@ contract Propose is AgoraGovernorTest {
         vm.startPrank(_actor);
         govToken.delegate(_actor);
         vm.roll(vm.getBlockNumber() + 1);
-        vm.expectRevert("Governor: proposer votes below proposal threshold");
+        vm.expectRevert(InvalidVotesBelowThreshold.selector);
         if (_proposalType > 0) {
             governor.propose(targets, values, calldatas, "Test");
         } else {
@@ -424,7 +429,7 @@ contract Propose is AgoraGovernorTest {
         vm.startPrank(manager);
         governor.propose(targets, values, calldatas, "Test", 0);
 
-        vm.expectRevert("Governor: proposal already exists");
+        vm.expectRevert(InvalidProposalExists.selector);
         governor.propose(targets, values, calldatas, "Test", 0);
         vm.stopPrank();
     }
@@ -552,7 +557,7 @@ contract ProposeWithModule is AgoraGovernorTest {
         vm.startPrank(_actor);
         govToken.delegate(_actor);
         vm.roll(vm.getBlockNumber() + 1);
-        vm.expectRevert("Governor: proposer votes below proposal threshold");
+        vm.expectRevert(InvalidVotesBelowThreshold.selector);
         if (_proposalType > 0) {
             governor.proposeWithModule(VotingModule(module), proposalData, "", _proposalType);
         } else {
@@ -566,7 +571,7 @@ contract ProposeWithModule is AgoraGovernorTest {
         vm.startPrank(manager);
         governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
 
-        vm.expectRevert("Governor: proposal already exists");
+        vm.expectRevert(InvalidProposalExists.selector);
         governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
         vm.stopPrank();
     }
@@ -1748,7 +1753,7 @@ contract Cancel is AgoraGovernorTest {
         vm.stopPrank();
 
         vm.prank(_actor);
-        vm.expectRevert("Only the admin or the governor timelock can call this function");
+        vm.expectRevert(NotAdminOrTimelock.selector);
         governor.cancel(targets, values, calldatas, keccak256("Test"));
     }
 }
@@ -1904,7 +1909,7 @@ contract CancelWithModule is AgoraGovernorTest {
         vm.prank(manager);
         governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
 
-        vm.expectRevert("Only the admin or the governor timelock can call this function");
+        vm.expectRevert(NotAdminOrTimelock.selector);
         vm.prank(_actor);
         governor.cancelWithModule(VotingModule(module), proposalData, keccak256(bytes(description)));
     }
@@ -2195,7 +2200,7 @@ contract EditProposalType is AgoraGovernorTest {
         vm.prank(manager);
         uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
 
-        vm.expectRevert("Only the admin or the governor timelock can call this function");
+        vm.expectRevert(NotAdminOrTimelock.selector);
         vm.prank(_actor);
         governor.editProposalType(proposalId, 1);
     }
@@ -2297,7 +2302,7 @@ contract SetModuleApproval is AgoraGovernorTest {
     function test_RevertIf_NotAdminOrTimelock(address _actor, address _module) public {
         vm.assume(_actor != admin && _actor != governor.timelock() && _actor != proxyAdmin);
         vm.prank(_actor);
-        vm.expectRevert("Only the admin or the governor timelock can call this function");
+        vm.expectRevert(NotAdminOrTimelock.selector);
         governor.setModuleApproval(_module, true);
     }
 }
@@ -2314,7 +2319,7 @@ contract SetProposalDeadline is AgoraGovernorTest {
         vm.assume(_actor != admin && _actor != governor.timelock() && _actor != proxyAdmin);
         uint256 proposalId = _createValidProposal();
         vm.prank(_actor);
-        vm.expectRevert("Only the admin or the governor timelock can call this function");
+        vm.expectRevert(NotAdminOrTimelock.selector);
         governor.setProposalDeadline(proposalId, _proposalDeadline);
     }
 }
@@ -2328,7 +2333,7 @@ contract SetVotingDelay is AgoraGovernorTest {
 
     function testFuzz_RevertIf_NotAdminOrTimelock(address _actor, uint256 _votingDelay) public {
         vm.assume(_actor != admin && _actor != governor.timelock() && _actor != proxyAdmin);
-        vm.expectRevert("Only the admin or the governor timelock can call this function");
+        vm.expectRevert(NotAdminOrTimelock.selector);
         vm.prank(_actor);
         governor.setVotingDelay(_votingDelay);
     }
@@ -2344,7 +2349,7 @@ contract SetVotingPeriod is AgoraGovernorTest {
 
     function testFuzz_RevertIf_NotAdminOrTimelock(address _actor, uint256 _votingPeriod) public {
         vm.assume(_actor != admin && _actor != governor.timelock() && _actor != proxyAdmin);
-        vm.expectRevert("Only the admin or the governor timelock can call this function");
+        vm.expectRevert(NotAdminOrTimelock.selector);
         vm.prank(_actor);
         governor.setVotingPeriod(_votingPeriod);
     }
@@ -2359,7 +2364,7 @@ contract SetProposalThreshold is AgoraGovernorTest {
 
     function testFuzz_RevertIf_NotAdminOrTimelock(address _actor, uint256 _proposalThreshold) public {
         vm.assume(_actor != admin && _actor != governor.timelock() && _actor != proxyAdmin);
-        vm.expectRevert("Only the admin or the governor timelock can call this function");
+        vm.expectRevert(NotAdminOrTimelock.selector);
         vm.prank(_actor);
         governor.setProposalThreshold(_proposalThreshold);
     }
@@ -2377,7 +2382,7 @@ contract SetAdmin is AgoraGovernorTest {
     function testFuzz_RevertIf_NotAdmin(address _actor, address _newAdmin) public {
         vm.assume(_actor != admin && _actor != governor.timelock() && _actor != proxyAdmin);
         vm.prank(_actor);
-        vm.expectRevert("Only the admin or the governor timelock can call this function");
+        vm.expectRevert(NotAdminOrTimelock.selector);
         governor.setAdmin(_newAdmin);
     }
 }
@@ -2394,7 +2399,7 @@ contract SetManager is AgoraGovernorTest {
     function testFuzz_RevertIf_NotAdmin(address _actor, address _newManager) public {
         vm.assume(_actor != admin && _actor != governor.timelock() && _actor != proxyAdmin);
         vm.prank(_actor);
-        vm.expectRevert("Only the admin or the governor timelock can call this function");
+        vm.expectRevert(NotAdminOrTimelock.selector);
         governor.setManager(_newManager);
     }
 }
@@ -2506,7 +2511,7 @@ contract AssignedScopes is AgoraGovernorTest {
         calldatas[1] = abi.encodeWithSignature("foobar(address,address,uint256)", _from, _to, uint256(15));
 
         uint8 requiredPropType = 0;
-        vm.expectRevert(abi.encodeWithSelector(InvalidProposedTxForType.selector, 0));
+        vm.expectRevert(InvalidProposedTxForType.selector);
         uint256 proposalId = governor.propose(targets, values, calldatas, "Test Invalid transaction wrong type.", 1);
     }
 }

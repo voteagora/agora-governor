@@ -20,4 +20,8 @@ abstract contract IAgoraGovernor is IGovernor {
         view
         virtual
         returns (uint256 againstVotes, uint256 forVotes, uint256 abstainVotes);
+
+    function validateProposalData(address[] memory targets, bytes[] memory calldatas, uint8 proposalType)
+        external
+        virtual;
 }
