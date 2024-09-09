@@ -129,7 +129,6 @@ contract SetProposalType is ProposalTypesConfiguratorTest {
         assertEq(propType.approvalThreshold, 6_000);
         assertEq(propType.name, "New Default");
         assertEq(propType.description, "Lorem Ipsum");
-        // assertEq(propType.validScopes, scopes);
 
         vm.prank(_adminOrTimelock(_actorSeed));
         proposalTypesConfigurator.setProposalType(1, 0, 0, "Optimistic", "Lorem Ipsum", address(0), scopes);
@@ -138,7 +137,6 @@ contract SetProposalType is ProposalTypesConfiguratorTest {
         assertEq(propType.approvalThreshold, 0);
         assertEq(propType.name, "Optimistic");
         assertEq(propType.description, "Lorem Ipsum");
-        // assertEq(propType.validScopes, scopes);
     }
 
     function testFuzz_SetScopeForProposalType(uint256 _actorSeed) public {
