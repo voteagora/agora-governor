@@ -71,7 +71,7 @@ interface IProposalTypesConfigurator {
 
     function proposalTypes(uint8 proposalTypeId) external view returns (ProposalType memory);
     function assignedScopes(uint8 proposalTypeId, bytes24 scopeKey) external view returns (Scope memory);
-    function scopes() external view returns (Scope[] memory);
+    function scopeExists(bytes24 key) external view returns (bool);
 
     function setProposalType(
         uint8 proposalTypeId,

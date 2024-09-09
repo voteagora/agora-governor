@@ -25,6 +25,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     mapping(uint8 proposalTypeId => ProposalType) internal _proposalTypes;
     mapping(uint8 proposalTypeId => bool) internal _proposalTypesExists;
     mapping(uint8 proposalTypeId => mapping(bytes24 key => Scope)) internal _assignedScopes;
+    mapping(bytes24 key => bool) internal _scopeExists;
     Scope[] internal _scopes;
 
     /*//////////////////////////////////////////////////////////////
@@ -89,8 +90,8 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @notice Gets the list of all scopes.
      * @return scopes List of all the Scope structs defined.
      */
-    function scopes() external view override returns (Scope[] memory) {
-        return _scopes;
+    function scopeExists(bytes24 key) external view override returns (bool) {
+        return _scopeExists[key];
     }
 
     /**
@@ -122,6 +123,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         _scopes.push(scope);
 
         _assignedScopes[proposalTypeId][key] = scope;
+        _scopeExists[key] = true;
         _proposalTypes[proposalTypeId].validScopes.push(key);
     }
 
