@@ -439,8 +439,9 @@ contract AgoraGovernor is
         string memory description,
         uint8 proposalType
     ) public virtual returns (uint256 proposalId) {
-        if (_msgSender() != manager) {
-            if (getVotes(_msgSender(), block.number - 1) < proposalThreshold()) revert InvalidVotesBelowThreshold();
+        address proposer = _msgSender();
+        if (proposer != manager && getVotes(proposer, block.number - 1) < proposalThreshold()) {
+            revert InvalidVotesBelowThreshold();
         }
 
         if (targets.length != values.length) revert InvalidProposalLength();
@@ -468,6 +469,7 @@ contract AgoraGovernor is
         proposal.voteStart.setDeadline(snapshot);
         proposal.voteEnd.setDeadline(deadline);
         proposal.proposalType = proposalType;
+        proposal.proposer = proposer;
 
         emit ProposalCreated(
             proposalId,
@@ -570,7 +572,7 @@ contract AgoraGovernor is
     }
 
     /**
-     * @notice Cancel a proposal. Only the admin or timelock can call this function.
+     * @notice Cancel a proposal. Only the admin, timelock, or proposer can call this function.
      * See {GovernorUpgradeableV2-_cancel}.
      */
     function cancel(
@@ -579,6 +581,13 @@ contract AgoraGovernor is
         bytes[] memory calldatas,
         bytes32 descriptionHash
     ) public onlyAdminOrTimelock returns (uint256) {
+        uint256 proposalId = hashProposal(targets, values, calldatas, descriptionHash);
+        address sender = _msgSender();
+        require(
+            sender == admin || sender == timelock() || sender == _proposals[proposalId].proposer,
+            "Governor: only admin, governor timelock, or proposer can cancel"
+        );
+
         return _cancel(targets, values, calldatas, descriptionHash);
     }
 
