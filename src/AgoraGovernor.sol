@@ -3,7 +3,6 @@ pragma solidity ^0.8.19;
 
 import {TimersUpgradeable} from "@openzeppelin/contracts-upgradeable-v4/utils/TimersUpgradeable.sol";
 import {SafeCastUpgradeable} from "@openzeppelin/contracts-upgradeable-v4/utils/math/SafeCastUpgradeable.sol";
-import {IVotesUpgradeable} from "@openzeppelin/contracts-upgradeable-v4/governance/utils/IVotesUpgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable-v4/proxy/utils/Initializable.sol";
 import {TimelockControllerUpgradeable} from
     "@openzeppelin/contracts-upgradeable-v4/governance/TimelockControllerUpgradeable.sol";
@@ -16,6 +15,7 @@ import {GovernorTimelockControlUpgradeableV2} from "src/lib/openzeppelin/v2/Gove
 import {IProposalTypesConfigurator} from "src/interfaces/IProposalTypesConfigurator.sol";
 import {VotingModule} from "src/modules/VotingModule.sol";
 import {ScopeKey} from "src/ScopeKey.sol";
+import {IVotingToken} from "src/interfaces/IVotingToken.sol";
 
 contract AgoraGovernor is
     Initializable,
@@ -68,6 +68,11 @@ contract AgoraGovernor is
     event AdminSet(address indexed oldAdmin, address indexed newAdmin);
     event ManagerSet(address indexed oldManager, address indexed newManager);
 
+    enum SupplyType {
+        Total,
+        Votable
+    }
+
     /*//////////////////////////////////////////////////////////////
                                  ERRORS
     //////////////////////////////////////////////////////////////*/
@@ -99,6 +104,8 @@ contract AgoraGovernor is
 
     IProposalTypesConfigurator public PROPOSAL_TYPES_CONFIGURATOR;
 
+    SupplyType public SUPPLY_TYPE;
+
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
     //////////////////////////////////////////////////////////////*/
@@ -125,6 +132,7 @@ contract AgoraGovernor is
     /**
      * @notice Initialize the governor with the given parameters.
      * @param _votingToken The governance token used for voting.
+     * @param _supplyType The type of supply to use for voting calculations.
      * @param _admin Admin address for the governor.
      * @param _manager Manager address.
      * @param _timelock The governance timelock.
@@ -132,7 +140,8 @@ contract AgoraGovernor is
      * @param _proposalTypes Initial proposal types to set.
      */
     function initialize(
-        IVotesUpgradeable _votingToken,
+        IVotingToken _votingToken,
+        SupplyType _supplyType,
         address _admin,
         address _manager,
         TimelockControllerUpgradeable _timelock,
@@ -140,6 +149,8 @@ contract AgoraGovernor is
         IProposalTypesConfigurator.ProposalType[] calldata _proposalTypes
     ) public initializer {
         PROPOSAL_TYPES_CONFIGURATOR = _proposalTypesConfigurator;
+        SUPPLY_TYPE = _supplyType;
+
         PROPOSAL_TYPES_CONFIGURATOR.initialize(address(this), _proposalTypes);
 
         __Governor_init("Agora");
@@ -163,7 +174,12 @@ contract AgoraGovernor is
      */
     function quorum(uint256 proposalId) public view virtual override returns (uint256) {
         uint256 snapshotBlock = proposalSnapshot(proposalId);
-        uint256 supply = token.getPastTotalSupply(snapshotBlock);
+        uint256 supply;
+        if (SUPPLY_TYPE == SupplyType.Total) {
+            supply = token.getPastTotalSupply(snapshotBlock);
+        } else {
+            supply = token.getPastVotableSupply(snapshotBlock);
+        }
 
         uint8 proposalTypeId = _proposals[proposalId].proposalType;
 
