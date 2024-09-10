@@ -20,6 +20,7 @@ interface IProposalTypesConfigurator {
     error Invalid4ByteSelector();
     error InvalidParamNotEqual();
     error InvalidParamRange();
+    error InvalidProposedTxForType();
 
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
@@ -94,4 +95,5 @@ interface IProposalTypesConfigurator {
     function updateScopeForProposalType(uint8 proposalTypeId, Scope calldata scope) external;
     function getLimit(uint8 proposalTypeId, bytes24 key) external returns (bytes memory);
     function validateProposedTx(bytes calldata proposedTx, uint8 proposalTypeId, bytes24 key) external;
+    function validateProposalData(address[] memory targets, bytes[] memory calldatas, uint8 proposalType) external;
 }

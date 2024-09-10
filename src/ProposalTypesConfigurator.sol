@@ -254,4 +254,25 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
             startIdx = endIdx;
         }
     }
+
+    /**
+     * @notice Validates the proposed transactions against the defined scopes based on the proposal type
+     * proposal threshold can propose.
+     * @param targets The list of target contract addresses.
+     * @param calldatas The list of proposed transaction calldata.
+     * @param proposalType The type of the proposal.
+     */
+    function validateProposalData(address[] memory targets, bytes[] calldata calldatas, uint8 proposalType) public {
+        for (uint8 i = 0; i < calldatas.length; i++) {
+            bytes24 scopeKey = ScopeKey._pack(targets[i], bytes4(calldatas[i]));
+
+            if (_assignedScopes[proposalType][scopeKey].exists) {
+                validateProposedTx(calldatas[i], proposalType, scopeKey);
+            } else {
+                if (_scopeExists[scopeKey]) {
+                    revert InvalidProposedTxForType();
+                }
+            }
+        }
+    }
 }

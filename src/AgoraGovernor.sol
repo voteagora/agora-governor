@@ -79,7 +79,6 @@ contract AgoraGovernor is
 
     error InvalidProposalType(uint8 proposalType);
     error InvalidProposalId();
-    error InvalidProposedTxForType();
     error InvalidProposalLength();
     error InvalidEmptyProposal();
     error InvalidVotesBelowThreshold();
@@ -432,30 +431,6 @@ contract AgoraGovernor is
     }
 
     /**
-     * @notice Validates the proposed transactions against the defined scopes based on the proposal type
-     * proposal threshold can propose.
-     * @param targets The list of target contract addresses.
-     * @param calldatas The list of proposed transaction calldata.
-     * @param proposalType The type of the proposal.
-     */
-    function validateProposalData(address[] memory targets, bytes[] memory calldatas, uint8 proposalType)
-        public
-        virtual
-    {
-        for (uint8 i = 0; i < calldatas.length; i++) {
-            bytes24 scopeKey = ScopeKey._pack(targets[i], bytes4(calldatas[i]));
-
-            if (PROPOSAL_TYPES_CONFIGURATOR.assignedScopes(proposalType, scopeKey).exists) {
-                PROPOSAL_TYPES_CONFIGURATOR.validateProposedTx(calldatas[i], proposalType, scopeKey);
-            } else {
-                if (PROPOSAL_TYPES_CONFIGURATOR.scopeExists(scopeKey)) {
-                    revert InvalidProposedTxForType();
-                }
-            }
-        }
-    }
-
-    /**
      * @notice Propose a new proposal. Only the manager or an address with votes above the proposal threshold can propose.
      * See {IGovernor-propose}.
      * @dev Updated version of `propose` in which `proposalType` is set and checked.
@@ -483,7 +458,7 @@ contract AgoraGovernor is
             revert InvalidProposalType(proposalType);
         }
 
-        validateProposalData(targets, calldatas, proposalType);
+        PROPOSAL_TYPES_CONFIGURATOR.validateProposalData(targets, calldatas, proposalType);
 
         proposalId = hashProposal(targets, values, calldatas, keccak256(bytes(description)));
 
