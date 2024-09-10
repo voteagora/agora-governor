@@ -432,9 +432,7 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotes, Gover
             executed: false,
             canceled: false,
             votingModule: address(0),
-            proposalType: proposalType,
-            __gap_unused0: 0,
-            __gap_unused1: 0
+            proposalType: proposalType
         });
 
         emit ProposalCreated(
@@ -515,9 +513,7 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotes, Gover
             executed: false,
             canceled: false,
             votingModule: address(0),
-            proposalType: proposalType,
-            __gap_unused0: 0,
-            __gap_unused1: 0
+            proposalType: proposalType
         });
 
         module.propose(proposalId, proposalData, descriptionHash);

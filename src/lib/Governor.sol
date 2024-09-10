@@ -26,18 +26,13 @@ abstract contract Governor is Context, ERC165, EIP712, IGovernor, IERC721Receive
 
     // solhint-disable var-name-mixedcase
     struct ProposalCore {
-        // --- start retyped from Timers.BlockNumber at offset 0x00 ---
         uint64 voteStart;
-        address proposer;
-        bytes4 __gap_unused0;
-        // --- start retyped from Timers.BlockNumber at offset 0x20 ---
         uint64 voteEnd;
-        bytes24 __gap_unused1;
-        // --- Remaining fields starting at offset 0x40 ---------------
-        bool executed;
-        bool canceled;
+        address proposer;
         address votingModule;
         uint8 proposalType;
+        bool executed;
+        bool canceled;
     }
     // solhint-enable var-name-mixedcase
 
@@ -284,9 +279,7 @@ abstract contract Governor is Context, ERC165, EIP712, IGovernor, IERC721Receive
             executed: false,
             canceled: false,
             votingModule: address(0),
-            proposalType: 0,
-            __gap_unused0: 0,
-            __gap_unused1: 0
+            proposalType: 0
         });
 
         emit ProposalCreated(

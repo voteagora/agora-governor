@@ -20,10 +20,17 @@ import {
     OptimisticModule_SocialSignalling as OptimisticModule,
     ProposalSettings as OptimisticProposalSettings
 } from "src/modules/OptimisticModule.sol";
-import {AgoraGovernorMock, AgoraGovernor} from "test/mocks/AgoraGovernorMock.sol";
+import {AgoraGovernor} from "src/AgoraGovernor.sol";
+import {AgoraGovernorMock} from "test/mocks/AgoraGovernorMock.sol";
 import {ApprovalVotingModuleMock} from "test/mocks/ApprovalVotingModuleMock.sol";
 import {VoteType} from "test/ApprovalVotingModule.t.sol";
 import {ExecutionTargetFake} from "test/fakes/ExecutionTargetFake.sol";
+
+import {Timers} from "@openzeppelin/contracts-v4/utils/Timers.sol";
+import {SafeCast} from "@openzeppelin/contracts-v4/utils/math/SafeCast.sol";
+import {IVotes} from "@openzeppelin/contracts-v4/governance/utils/IVotes.sol";
+import {TimelockController} from "@openzeppelin/contracts-v4/governance/TimelockController.sol";
+import {IGovernor} from "@openzeppelin/contracts-v4/governance/IGovernor.sol";
 
 enum ProposalState {
     Pending,
@@ -137,28 +144,14 @@ contract AgoraGovernorTest is Test {
         // Deploy timelock
         timelock = Timelock(payable(new TransparentUpgradeableProxy(address(new Timelock()), proxyAdmin, "")));
 
-        // Deploy governor impl
-        implementation = address(new AgoraGovernorMock());
-
-        // Deploy governor proxy
-        governorProxy = address(
-            new TransparentUpgradeableProxy(
-                implementation,
-                proxyAdmin,
-                abi.encodeCall(
-                    AgoraGovernor.initialize,
-                    (
-                        IVotesUpgradeable(address(govToken)),
-                        admin,
-                        manager,
-                        timelock,
-                        IProposalTypesConfigurator(proposalTypesConfigurator),
-                        new IProposalTypesConfigurator.ProposalType[](0)
-                    )
-                )
-            )
+        governor = new AgoraGovernorMock(
+            IVotes(address(govToken)),
+            admin,
+            manager,
+            TimelockController(payable(address(timelock))),
+            IProposalTypesConfigurator(proposalTypesConfigurator),
+            new IProposalTypesConfigurator.ProposalType[](0)
         );
-        governor = AgoraGovernorMock(payable(governorProxy));
 
         // Initialize timelock
         timelockDelay = 2 days;
@@ -270,24 +263,13 @@ contract Initialize is AgoraGovernorTest {
         _proposalTypes[2] = IProposalTypesConfigurator.ProposalType(7_500, 3_100, "Whatever", address(0), transactions);
         _proposalTypes[3] =
             IProposalTypesConfigurator.ProposalType(0, 0, "Optimistic", address(optimisticModule), transactions);
-        AgoraGovernor _governor = AgoraGovernor(
-            payable(
-                new TransparentUpgradeableProxy(
-                    implementation,
-                    proxyAdmin,
-                    abi.encodeCall(
-                        AgoraGovernor.initialize,
-                        (
-                            IVotesUpgradeable(_token),
-                            _admin,
-                            _manager,
-                            TimelockControllerUpgradeable(payable(_timelock)),
-                            IProposalTypesConfigurator(_proposalTypesConfigurator),
-                            _proposalTypes
-                        )
-                    )
-                )
-            )
+        AgoraGovernorMock _governor = new AgoraGovernorMock(
+            IVotes(address(_token)),
+            _admin,
+            _manager,
+            TimelockController(payable(address(_timelock))),
+            IProposalTypesConfigurator(_proposalTypesConfigurator),
+            new IProposalTypesConfigurator.ProposalType[](0)
         );
         assertEq(address(_governor.token()), _token);
         assertEq(_governor.admin(), _admin);
@@ -1972,7 +1954,7 @@ contract UpdateTimelock is AgoraGovernorTest {
         vm.assume(_actor != governor.timelock() && _actor != proxyAdmin);
         vm.prank(_actor);
         vm.expectRevert("Governor: onlyGovernance");
-        governor.updateTimelock(TimelockControllerUpgradeable(payable(_newTimelock)));
+        governor.updateTimelock(TimelockController(payable(_newTimelock)));
     }
 }
 
@@ -2389,20 +2371,30 @@ contract SetManager is AgoraGovernorTest {
     }
 }
 
-contract UpgradeTo is AgoraGovernorTest {
-    function test_UpgradesToNewImplementationAddress() public {
-        address _newImplementation = address(new AgoraGovernor());
-        vm.startPrank(proxyAdmin);
-        TransparentUpgradeableProxy(payable(governorProxy)).upgradeTo(_newImplementation);
-        assertEq(TransparentUpgradeableProxy(payable(governorProxy)).implementation(), _newImplementation);
-        vm.stopPrank();
-    }
+// TODO: requires transpiled upgradeable version
+// contract UpgradeTo is AgoraGovernorTest {
+//     function test_UpgradesToNewImplementationAddress() public {
+//         address _newImplementation = address(
+//             new AgoraGovernor(
+//                 IVotes(address(0)),
+//                 address(0),
+//                 address(0),
+//                 TimelockController(payable(address(0))),
+//                 IProposalTypesConfigurator(address(0)),
+//                 new IProposalTypesConfigurator.ProposalType[](0)
+//             )
+//         );
+//         vm.startPrank(proxyAdmin);
+//         TransparentUpgradeableProxy(payable(governorProxy)).upgradeTo(_newImplementation);
+//         assertEq(TransparentUpgradeableProxy(payable(governorProxy)).implementation(), _newImplementation);
+//         vm.stopPrank();
+//     }
 
-    function testFuzz_RevertIf_NotProxyAdmin(address _actor) public {
-        vm.assume(_actor != proxyAdmin);
-        address _newImplementation = address(new AgoraGovernor());
-        vm.prank(_actor);
-        vm.expectRevert(bytes(""));
-        TransparentUpgradeableProxy(payable(governorProxy)).upgradeTo(_newImplementation);
-    }
-}
+//     function testFuzz_RevertIf_NotProxyAdmin(address _actor) public {
+//         vm.assume(_actor != proxyAdmin);
+//         address _newImplementation = address(new AgoraGovernor());
+//         vm.prank(_actor);
+//         vm.expectRevert(bytes(""));
+//         TransparentUpgradeableProxy(payable(governorProxy)).upgradeTo(_newImplementation);
+//     }
+// }
