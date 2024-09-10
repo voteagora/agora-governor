@@ -24,7 +24,6 @@ import {AgoraGovernorMock, AgoraGovernor} from "test/mocks/AgoraGovernorMock.sol
 import {ApprovalVotingModuleMock} from "test/mocks/ApprovalVotingModuleMock.sol";
 import {VoteType} from "test/ApprovalVotingModule.t.sol";
 import {ExecutionTargetFake} from "test/fakes/ExecutionTargetFake.sol";
-import {ScopeKey} from "src/ScopeKey.sol";
 import {IVotingToken} from "src/interfaces/IVotingToken.sol";
 
 enum ProposalState {
@@ -39,8 +38,6 @@ enum ProposalState {
 }
 
 contract AgoraGovernorTest is Test {
-    using ScopeKey for bytes24;
-
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
@@ -194,6 +191,20 @@ contract AgoraGovernorTest is Test {
         );
         vm.stopPrank();
         targetFake = new ExecutionTargetFake();
+    }
+
+    /**
+     * @notice Generates the scope key defined as the contract address combined with the function selector
+     * @param contractAddress Address of the contract to be enforced by the scope
+     * @param selector A byte4 function selector on the contract to be enforced by the scope
+     */
+    function _pack(address contractAddress, bytes4 selector) internal pure returns (bytes24 result) {
+        bytes20 left = bytes20(contractAddress);
+        assembly ("memory-safe") {
+            left := and(left, shl(96, not(0)))
+            selector := and(selector, shl(224, not(0)))
+            result := or(left, shr(160, selector))
+        }
     }
 
     function _formatProposalData(uint256 _proposalTargetCalldata) public virtual returns (bytes memory proposalData) {
@@ -2431,7 +2442,7 @@ contract AssignedScopes is AgoraGovernorTest {
         // Setup Scope logic
         bytes32 txTypeHash = keccak256("transfer(address,address,uint256)");
         address contractAddress = makeAddr("contract");
-        bytes24 scopeKey = ScopeKey._pack(contractAddress, bytes4(txTypeHash));
+        bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
         address _from = makeAddr("from");
         address _to = makeAddr("to");
         bytes memory txEncoded = abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(10));

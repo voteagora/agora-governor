@@ -14,7 +14,6 @@ import {GovernorSettingsUpgradeableV2} from "src/lib/openzeppelin/v2/GovernorSet
 import {GovernorTimelockControlUpgradeableV2} from "src/lib/openzeppelin/v2/GovernorTimelockControlUpgradeableV2.sol";
 import {IProposalTypesConfigurator} from "src/interfaces/IProposalTypesConfigurator.sol";
 import {VotingModule} from "src/modules/VotingModule.sol";
-import {ScopeKey} from "src/ScopeKey.sol";
 import {IVotingToken} from "src/interfaces/IVotingToken.sol";
 
 contract AgoraGovernor is
@@ -25,8 +24,6 @@ contract AgoraGovernor is
     GovernorSettingsUpgradeableV2,
     GovernorTimelockControlUpgradeableV2
 {
-    using ScopeKey for bytes24;
-
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
