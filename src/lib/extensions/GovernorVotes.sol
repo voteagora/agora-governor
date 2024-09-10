@@ -2,7 +2,8 @@
 pragma solidity ^0.8.0;
 
 import {IERC5805} from "@openzeppelin/contracts-v4/interfaces/IERC5805.sol";
-import {Governor} from "src/lib/Governor.sol";
+import {IVotes} from "@openzeppelin/contracts-v4/governance/utils/IVotes.sol";
+import {Governor, SafeCast} from "src/lib/Governor.sol";
 
 /// Modifications:
 /// - Inherited `Governor`

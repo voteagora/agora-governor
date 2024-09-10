@@ -1,23 +1,22 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Contracts (last updated v4.8.0) (governance/Governor.sol)
-
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-upgradeable-v4/token/ERC721/IERC721ReceiverUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable-v4/token/ERC1155/IERC1155ReceiverUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable-v4/utils/cryptography/ECDSAUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable-v4/utils/cryptography/EIP712Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable-v4/utils/introspection/ERC165Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable-v4/utils/math/SafeCastUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable-v4/utils/structs/DoubleEndedQueueUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable-v4/utils/AddressUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable-v4/utils/ContextUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable-v4/utils/TimersUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable-v4/governance/IGovernorUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable-v4/proxy/utils/Initializable.sol";
+import {IERC721Receiver} from "@openzeppelin/contracts-v4/token/ERC721/IERC721Receiver.sol";
+import {IERC1155Receiver} from "@openzeppelin/contracts-v4/token/ERC1155/IERC1155Receiver.sol";
+import {ECDSA} from "@openzeppelin/contracts-v4/utils/cryptography/ECDSA.sol";
+import {EIP712} from "@openzeppelin/contracts-v4/utils/cryptography/EIP712.sol";
+import {IERC165, ERC165} from "@openzeppelin/contracts-v4/utils/introspection/ERC165.sol";
+import {SafeCast} from "@openzeppelin/contracts-v4/utils/math/SafeCast.sol";
+import {DoubleEndedQueue} from "@openzeppelin/contracts-v4/utils/structs/DoubleEndedQueue.sol";
+import {Address} from "@openzeppelin/contracts-v4/utils/Address.sol";
+import {Context} from "@openzeppelin/contracts-v4/utils/Context.sol";
+import {IGovernor} from "@openzeppelin/contracts-v4/governance/IGovernor.sol";
+import {IERC6372} from "@openzeppelin/contracts-v4/interfaces/IERC6372.sol";
+import {IVotes} from "@openzeppelin/contracts-v4/governance/utils/IVotes.sol";
 
 /// Modifications:
 /// - Added `votingModule` and `proposalType` to `ProposalCore` struct
+/// - Made `_proposals` internal
 abstract contract Governor is Context, ERC165, EIP712, IGovernor, IERC721Receiver, IERC1155Receiver {
     using DoubleEndedQueue for DoubleEndedQueue.Bytes32Deque;
 
@@ -45,7 +44,7 @@ abstract contract Governor is Context, ERC165, EIP712, IGovernor, IERC721Receive
     string private _name;
 
     /// @custom:oz-retyped-from mapping(uint256 => Governor.ProposalCore)
-    mapping(uint256 => ProposalCore) private _proposals;
+    mapping(uint256 => ProposalCore) internal _proposals;
 
     // This queue keeps track of the governor operating on itself. Calls to functions protected by the
     // {onlyGovernance} modifier needs to be whitelisted in this queue. Whitelisting is set in {_beforeExecute},
@@ -284,6 +283,8 @@ abstract contract Governor is Context, ERC165, EIP712, IGovernor, IERC721Receive
             voteEnd: SafeCast.toUint64(deadline),
             executed: false,
             canceled: false,
+            votingModule: address(0),
+            proposalType: 0,
             __gap_unused0: 0,
             __gap_unused1: 0
         });

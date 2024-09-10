@@ -1,29 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {TimersUpgradeable} from "@openzeppelin/contracts-upgradeable-v4/utils/TimersUpgradeable.sol";
-import {SafeCastUpgradeable} from "@openzeppelin/contracts-upgradeable-v4/utils/math/SafeCastUpgradeable.sol";
-import {IVotesUpgradeable} from "@openzeppelin/contracts-upgradeable-v4/governance/utils/IVotesUpgradeable.sol";
-import {Initializable} from "@openzeppelin/contracts-upgradeable-v4/proxy/utils/Initializable.sol";
-import {TimelockControllerUpgradeable} from
-    "@openzeppelin/contracts-upgradeable-v4/governance/TimelockControllerUpgradeable.sol";
-import {GovernorCountingSimpleUpgradeableV2} from "src/lib/openzeppelin/v2/GovernorCountingSimpleUpgradeableV2.sol";
-import {IGovernorUpgradeable} from "src/lib/openzeppelin/v2/GovernorUpgradeableV2.sol";
-import {GovernorUpgradeableV2} from "src/lib/openzeppelin/v2/GovernorUpgradeableV2.sol";
-import {GovernorVotesUpgradeableV2} from "src/lib/openzeppelin/v2/GovernorVotesUpgradeableV2.sol";
-import {GovernorSettingsUpgradeableV2} from "src/lib/openzeppelin/v2/GovernorSettingsUpgradeableV2.sol";
-import {GovernorTimelockControlUpgradeableV2} from "src/lib/openzeppelin/v2/GovernorTimelockControlUpgradeableV2.sol";
-import {IProposalTypesConfigurator} from "src/interfaces/IProposalTypesConfigurator.sol";
-import {VotingModule} from "src/modules/VotingModule.sol";
+import {Timers} from "@openzeppelin/contracts-v4/utils/Timers.sol";
+import {SafeCast} from "@openzeppelin/contracts-v4/utils/math/SafeCast.sol";
+import {IVotes} from "@openzeppelin/contracts-v4/governance/utils/IVotes.sol";
+import {TimelockController} from "@openzeppelin/contracts-v4/governance/TimelockController.sol";
+import {IGovernor} from "@openzeppelin/contracts-v4/governance/IGovernor.sol";
 
-contract AgoraGovernor is
-    Initializable,
-    GovernorUpgradeableV2,
-    GovernorCountingSimpleUpgradeableV2,
-    GovernorVotesUpgradeableV2,
-    GovernorSettingsUpgradeableV2,
-    GovernorTimelockControlUpgradeableV2
-{
+import {GovernorCountingSimple} from "src/lib/extensions/GovernorCountingSimple.sol";
+import {GovernorVotes} from "src/lib/extensions/GovernorVotes.sol";
+import {GovernorSettings} from "src/lib/extensions/GovernorSettings.sol";
+import {GovernorTimelockControl} from "src/lib/extensions/GovernorTimelockControl.sol";
+import {Governor} from "src/lib/Governor.sol";
+import {VotingModule} from "src/modules/VotingModule.sol";
+import {IProposalTypesConfigurator} from "src/interfaces/IProposalTypesConfigurator.sol";
+
+contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotes, GovernorSettings, GovernorTimelockControl {
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
@@ -76,8 +68,8 @@ contract AgoraGovernor is
                                LIBRARIES
     //////////////////////////////////////////////////////////////*/
 
-    using SafeCastUpgradeable for uint256;
-    using TimersUpgradeable for TimersUpgradeable.BlockNumber;
+    using SafeCast for uint256;
+    using Timers for Timers.BlockNumber;
 
     /*//////////////////////////////////////////////////////////////
                            IMMUTABLE STORAGE
@@ -111,10 +103,6 @@ contract AgoraGovernor is
                               CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
-    constructor() {
-        _disableInitializers();
-    }
-
     /**
      * @notice Initialize the governor with the given parameters.
      * @param _votingToken The governance token used for voting.
@@ -124,22 +112,21 @@ contract AgoraGovernor is
      * @param _proposalTypesConfigurator Proposal types configurator contract.
      * @param _proposalTypes Initial proposal types to set.
      */
-    function initialize(
-        IVotesUpgradeable _votingToken,
+    constructor(
+        IVotes _votingToken,
         address _admin,
         address _manager,
-        TimelockControllerUpgradeable _timelock,
+        TimelockController _timelock,
         IProposalTypesConfigurator _proposalTypesConfigurator,
-        IProposalTypesConfigurator.ProposalType[] calldata _proposalTypes
-    ) public initializer {
+        IProposalTypesConfigurator.ProposalType[] memory _proposalTypes
+    )
+        Governor("Agora")
+        GovernorVotes(_votingToken)
+        GovernorSettings(6575, 46027, 0)
+        GovernorTimelockControl(_timelock)
+    {
         PROPOSAL_TYPES_CONFIGURATOR = _proposalTypesConfigurator;
         PROPOSAL_TYPES_CONFIGURATOR.initialize(address(this), _proposalTypes);
-
-        __Governor_init("Agora");
-        __GovernorCountingSimple_init();
-        __GovernorVotes_init(_votingToken);
-        __GovernorSettings_init({initialVotingDelay: 6575, initialVotingPeriod: 46027, initialProposalThreshold: 0});
-        __GovernorTimelockControl_init(_timelock);
 
         admin = _admin;
         manager = _manager;
@@ -170,7 +157,7 @@ contract AgoraGovernor is
         internal
         view
         virtual
-        override(GovernorCountingSimpleUpgradeableV2, GovernorUpgradeableV2)
+        override(GovernorCountingSimple, Governor)
         returns (bool)
     {
         (uint256 againstVotes, uint256 forVotes, uint256 abstainVotes) = proposalVotes(proposalId);
@@ -185,7 +172,7 @@ contract AgoraGovernor is
         internal
         view
         virtual
-        override(GovernorCountingSimpleUpgradeableV2, GovernorUpgradeableV2)
+        override(GovernorCountingSimple, Governor)
         returns (bool voteSucceeded)
     {
         ProposalCore storage proposal = _proposals[proposalId];
@@ -223,13 +210,7 @@ contract AgoraGovernor is
      * Params encoding:
      * - modules = custom external params depending on module used
      */
-    function COUNTING_MODE()
-        public
-        pure
-        virtual
-        override(GovernorCountingSimpleUpgradeableV2, IGovernorUpgradeable)
-        returns (string memory)
-    {
+    function COUNTING_MODE() public pure virtual override(GovernorCountingSimple, IGovernor) returns (string memory) {
         return "support=bravo&quorum=against,for,abstain&params=modules";
     }
 
@@ -258,50 +239,40 @@ contract AgoraGovernor is
     }
 
     /**
-     * @inheritdoc GovernorSettingsUpgradeableV2
+     * @inheritdoc GovernorSettings
      */
-    function proposalThreshold()
-        public
-        view
-        override(GovernorSettingsUpgradeableV2, GovernorUpgradeableV2)
-        returns (uint256)
-    {
-        return GovernorSettingsUpgradeableV2.proposalThreshold();
+    function proposalThreshold() public view override(GovernorSettings, Governor) returns (uint256) {
+        return GovernorSettings.proposalThreshold();
     }
 
-    function _executor()
-        internal
-        view
-        override(GovernorUpgradeableV2, GovernorTimelockControlUpgradeableV2)
-        returns (address)
-    {
-        return GovernorTimelockControlUpgradeableV2._executor();
+    function _executor() internal view override(Governor, GovernorTimelockControl) returns (address) {
+        return GovernorTimelockControl._executor();
     }
 
     /**
-     * @inheritdoc GovernorTimelockControlUpgradeableV2
+     * @inheritdoc GovernorTimelockControl
      */
     function state(uint256 proposalId)
         public
         view
         virtual
-        override(GovernorUpgradeableV2, GovernorTimelockControlUpgradeableV2)
+        override(Governor, GovernorTimelockControl)
         returns (ProposalState)
     {
-        return GovernorTimelockControlUpgradeableV2.state(proposalId);
+        return GovernorTimelockControl.state(proposalId);
     }
 
     /**
-     * @inheritdoc GovernorTimelockControlUpgradeableV2
+     * @inheritdoc GovernorTimelockControl
      */
     function supportsInterface(bytes4 interfaceId)
         public
         view
         virtual
-        override(GovernorUpgradeableV2, GovernorTimelockControlUpgradeableV2)
+        override(Governor, GovernorTimelockControl)
         returns (bool)
     {
-        return GovernorTimelockControlUpgradeableV2.supportsInterface(interfaceId);
+        return GovernorTimelockControl.supportsInterface(interfaceId);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -328,21 +299,21 @@ contract AgoraGovernor is
     }
 
     /**
-     * @inheritdoc GovernorSettingsUpgradeableV2
+     * @inheritdoc GovernorSettings
      */
     function setVotingDelay(uint256 newVotingDelay) public override onlyAdminOrTimelock {
         _setVotingDelay(newVotingDelay);
     }
 
     /**
-     * @inheritdoc GovernorSettingsUpgradeableV2
+     * @inheritdoc GovernorSettings
      */
     function setVotingPeriod(uint256 newVotingPeriod) public override onlyAdminOrTimelock {
         _setVotingPeriod(newVotingPeriod);
     }
 
     /**
-     * @inheritdoc GovernorSettingsUpgradeableV2
+     * @inheritdoc GovernorSettings
      */
     function setProposalThreshold(uint256 newProposalThreshold) public override onlyAdminOrTimelock {
         _setProposalThreshold(newProposalThreshold);
@@ -396,7 +367,7 @@ contract AgoraGovernor is
     }
 
     /**
-     * @inheritdoc GovernorUpgradeableV2
+     * @inheritdoc Governor
      * @dev Updated version in which default `proposalType` is set to 0.
      */
     function propose(
@@ -404,7 +375,7 @@ contract AgoraGovernor is
         uint256[] memory values,
         bytes[] memory calldatas,
         string memory description
-    ) public virtual override(IGovernorUpgradeable, GovernorUpgradeableV2) returns (uint256) {
+    ) public virtual override(IGovernor, Governor) returns (uint256) {
         return propose(targets, values, calldatas, description, 0);
     }
 
@@ -420,15 +391,23 @@ contract AgoraGovernor is
         string memory description,
         uint8 proposalType
     ) public virtual returns (uint256 proposalId) {
-        if (_msgSender() != manager) {
+        address proposer = _msgSender();
+        require(_isValidDescriptionForProposer(proposer, description), "Governor: proposer restricted");
+
+        uint256 currentTimepoint = clock();
+        if (proposer != manager) {
             require(
-                getVotes(_msgSender(), block.number - 1) >= proposalThreshold(),
+                getVotes(proposer, currentTimepoint - 1) >= proposalThreshold(),
                 "Governor: proposer votes below proposal threshold"
             );
         }
+
+        proposalId = hashProposal(targets, values, calldatas, keccak256(bytes(description)));
+
         require(targets.length == values.length, "Governor: invalid proposal length");
         require(targets.length == calldatas.length, "Governor: invalid proposal length");
         require(targets.length > 0, "Governor: empty proposal");
+        require(_proposals[proposalId].voteStart == 0, "Governor: proposal already exists");
 
         // Revert if `proposalType` is unset or requires module
         if (
@@ -438,21 +417,24 @@ contract AgoraGovernor is
             revert InvalidProposalType(proposalType);
         }
 
-        proposalId = hashProposal(targets, values, calldatas, keccak256(bytes(description)));
+        uint256 snapshot = currentTimepoint + votingDelay();
+        uint256 deadline = snapshot + votingPeriod();
 
-        ProposalCore storage proposal = _proposals[proposalId];
-        require(proposal.voteStart.isUnset(), "Governor: proposal already exists");
-
-        uint64 snapshot = block.number.toUint64() + votingDelay().toUint64();
-        uint64 deadline = snapshot + votingPeriod().toUint64();
-
-        proposal.voteStart.setDeadline(snapshot);
-        proposal.voteEnd.setDeadline(deadline);
-        proposal.proposalType = proposalType;
+        _proposals[proposalId] = ProposalCore({
+            proposer: proposer,
+            voteStart: SafeCast.toUint64(snapshot),
+            voteEnd: SafeCast.toUint64(deadline),
+            executed: false,
+            canceled: false,
+            votingModule: address(0),
+            proposalType: proposalType,
+            __gap_unused0: 0,
+            __gap_unused1: 0
+        });
 
         emit ProposalCreated(
             proposalId,
-            _msgSender(),
+            proposer,
             targets,
             values,
             new string[](targets.length),
@@ -554,14 +536,21 @@ contract AgoraGovernor is
 
     /**
      * @notice Cancel a proposal. Only the admin or timelock can call this function.
-     * See {GovernorUpgradeableV2-_cancel}.
+     * See {Governor-_cancel}.
      */
     function cancel(
         address[] memory targets,
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) public onlyAdminOrTimelock returns (uint256) {
+    ) public override(IGovernor, Governor) returns (uint256) {
+        uint256 proposalId = hashProposal(targets, values, calldatas, descriptionHash);
+        require(state(proposalId) == ProposalState.Pending, "Governor: too late to cancel");
+        address caller = _msgSender();
+        require(
+            caller == admin || caller == timelock() || caller == _proposals[proposalId].proposer,
+            "Governor: only admin, governor timelock, or proposer can cancel"
+        );
         return _cancel(targets, values, calldatas, descriptionHash);
     }
 
@@ -570,12 +559,12 @@ contract AgoraGovernor is
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) internal override(GovernorUpgradeableV2, GovernorTimelockControlUpgradeableV2) returns (uint256) {
-        return GovernorTimelockControlUpgradeableV2._cancel(targets, values, calldatas, descriptionHash);
+    ) internal override(Governor, GovernorTimelockControl) returns (uint256) {
+        return GovernorTimelockControl._cancel(targets, values, calldatas, descriptionHash);
     }
 
     /**
-     * @notice Cancel a proposal with a custom voting module. See {GovernorUpgradeableV2-_cancel}.
+     * @notice Cancel a proposal with a custom voting module. See {Governor-_cancel}.
      * @param module The address of the voting module to use for this proposal.
      * @param proposalData The proposal data to pass to the voting module.
      * @param descriptionHash The hash of the proposal description.
@@ -595,7 +584,7 @@ contract AgoraGovernor is
 
         emit ProposalCanceled(proposalId);
 
-        // Code from GovernorTimelockControlUpgradeableV2._cancel
+        // Code from GovernorTimelockControl._cancel
         if (_timelockIds[proposalId] != 0) {
             _timelock.cancel(_timelockIds[proposalId]);
             delete _timelockIds[proposalId];
@@ -605,7 +594,7 @@ contract AgoraGovernor is
     }
 
     /**
-     * @inheritdoc GovernorTimelockControlUpgradeableV2
+     * @inheritdoc GovernorTimelockControl
      */
     function queue(address[] memory targets, uint256[] memory values, bytes[] memory calldatas, bytes32 descriptionHash)
         public
@@ -616,7 +605,7 @@ contract AgoraGovernor is
     }
 
     /**
-     * @notice Queue a proposal with a custom voting module. See {GovernorTimelockControlUpgradeableV2-queue}.
+     * @notice Queue a proposal with a custom voting module. See {GovernorTimelockControl-queue}.
      */
     function queueWithModule(VotingModule module, bytes memory proposalData, bytes32 descriptionHash)
         public
@@ -639,14 +628,14 @@ contract AgoraGovernor is
     }
 
     /**
-     * @inheritdoc GovernorUpgradeableV2
+     * @inheritdoc Governor
      */
     function execute(
         address[] memory targets,
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) public payable override(IGovernorUpgradeable, GovernorUpgradeableV2) returns (uint256) {
+    ) public payable override(IGovernor, Governor) returns (uint256) {
         return super.execute(targets, values, calldatas, descriptionHash);
     }
 
@@ -656,8 +645,8 @@ contract AgoraGovernor is
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) internal override(GovernorUpgradeableV2, GovernorTimelockControlUpgradeableV2) {
-        return GovernorTimelockControlUpgradeableV2._execute(proposalId, targets, values, calldatas, descriptionHash);
+    ) internal override(Governor, GovernorTimelockControl) {
+        return GovernorTimelockControl._execute(proposalId, targets, values, calldatas, descriptionHash);
     }
 
     /**

@@ -3,13 +3,14 @@ pragma solidity ^0.8.0;
 
 import {IGovernorTimelock} from "@openzeppelin/contracts-v4/governance/extensions/IGovernorTimelock.sol";
 import {TimelockController} from "@openzeppelin/contracts-v4/governance/TimelockController.sol";
-import {Governor} from "src/lib/Governor.sol";
+import {Governor, IGovernor, IERC165} from "src/lib/Governor.sol";
 
 /// Modifications:
 /// - Inherited `Governor`
+/// - Made `_timelock` and `_timelockIds` internal
 abstract contract GovernorTimelockControl is IGovernorTimelock, Governor {
-    TimelockController private _timelock;
-    mapping(uint256 => bytes32) private _timelockIds;
+    TimelockController internal _timelock;
+    mapping(uint256 => bytes32) internal _timelockIds;
 
     /**
      * @dev Emitted when the timelock controller used for proposal execution is modified.
