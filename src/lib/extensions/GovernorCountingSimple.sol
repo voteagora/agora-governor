@@ -1,24 +1,14 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Contracts (last updated v4.8.0) (governance/extensions/GovernorCountingSimple.sol)
-
 pragma solidity ^0.8.0;
 
-import "./GovernorUpgradeableV2.sol";
-import "@openzeppelin/contracts-upgradeable-v4/proxy/utils/Initializable.sol";
+import {Governor} from "src/lib/Governor.sol";
 
-/**
- * Modifications:
- * - Inherited `GovernorUpgradeableV2`
- * - Made _proposalVotes internal
- */
-abstract contract GovernorCountingSimpleUpgradeableV2 is Initializable, GovernorUpgradeableV2 {
-    function __GovernorCountingSimple_init() internal onlyInitializing {}
-
-    function __GovernorCountingSimple_init_unchained() internal onlyInitializing {}
+/// Modifications:
+/// - Inherited `Governor`
+abstract contract GovernorCountingSimple is Governor {
     /**
      * @dev Supported vote types. Matches Governor Bravo ordering.
      */
-
     enum VoteType {
         Against,
         For,
@@ -32,7 +22,7 @@ abstract contract GovernorCountingSimpleUpgradeableV2 is Initializable, Governor
         mapping(address => bool) hasVoted;
     }
 
-    mapping(uint256 => ProposalVote) internal _proposalVotes;
+    mapping(uint256 => ProposalVote) private _proposalVotes;
 
     /**
      * @dev See {IGovernor-COUNTING_MODE}.
@@ -105,11 +95,4 @@ abstract contract GovernorCountingSimpleUpgradeableV2 is Initializable, Governor
             revert("GovernorVotingSimple: invalid value for enum VoteType");
         }
     }
-
-    /**
-     * @dev This empty reserved space is put in place to allow future versions to add new
-     * variables without shifting down storage in the inheritance chain.
-     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
-     */
-    uint256[49] private __gap;
 }

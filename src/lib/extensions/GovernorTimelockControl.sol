@@ -1,41 +1,15 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Contracts (last updated v4.6.0) (governance/extensions/GovernorTimelockControl.sol)
-
 pragma solidity ^0.8.0;
 
-import {IGovernorTimelockUpgradeable} from
-    "@openzeppelin/contracts-upgradeable-v4/governance/extensions/IGovernorTimelockUpgradeable.sol";
-import "./GovernorUpgradeableV2.sol";
-import "@openzeppelin/contracts-upgradeable-v4/governance/TimelockControllerUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable-v4/proxy/utils/Initializable.sol";
+import {IGovernorTimelock} from "@openzeppelin/contracts-v4/governance/extensions/IGovernorTimelock.sol";
+import {TimelockController} from "@openzeppelin/contracts-v4/governance/TimelockController.sol";
+import {Governor} from "src/lib/Governor.sol";
 
-/**
- * @dev Extension of {Governor} that binds the execution process to an instance of {TimelockController}. This adds a
- * delay, enforced by the {TimelockController} to all successful proposal (in addition to the voting duration). The
- * {Governor} needs the proposer (and ideally the executor) roles for the {Governor} to work properly.
- *
- * Using this model means the proposal will be operated by the {TimelockController} and not by the {Governor}. Thus,
- * the assets and permissions must be attached to the {TimelockController}. Any asset sent to the {Governor} will be
- * inaccessible.
- *
- * WARNING: Setting up the TimelockController to have additional proposers besides the governor is very risky, as it
- * grants them powers that they must be trusted or known not to use: 1) {onlyGovernance} functions like {relay} are
- * available to them through the timelock, and 2) approved governance proposals can be blocked by them, effectively
- * executing a Denial of Service attack. This risk will be mitigated in a future release.
- *
- * _Available since v4.3._
- *
- * Modifications:
- * - Inherited `GovernorUpgradeableV2`
- * - Made _timelock, _timelockIds internal
- */
-abstract contract GovernorTimelockControlUpgradeableV2 is
-    Initializable,
-    IGovernorTimelockUpgradeable,
-    GovernorUpgradeableV2
-{
-    TimelockControllerUpgradeable internal _timelock;
-    mapping(uint256 => bytes32) internal _timelockIds;
+/// Modifications:
+/// - Inherited `Governor`
+abstract contract GovernorTimelockControl is IGovernorTimelock, Governor {
+    TimelockController private _timelock;
+    mapping(uint256 => bytes32) private _timelockIds;
 
     /**
      * @dev Emitted when the timelock controller used for proposal execution is modified.
@@ -45,50 +19,31 @@ abstract contract GovernorTimelockControlUpgradeableV2 is
     /**
      * @dev Set the timelock.
      */
-    function __GovernorTimelockControl_init(TimelockControllerUpgradeable timelockAddress) internal onlyInitializing {
-        __GovernorTimelockControl_init_unchained(timelockAddress);
-    }
-
-    function __GovernorTimelockControl_init_unchained(TimelockControllerUpgradeable timelockAddress)
-        internal
-        onlyInitializing
-    {
+    constructor(TimelockController timelockAddress) {
         _updateTimelock(timelockAddress);
     }
 
     /**
      * @dev See {IERC165-supportsInterface}.
      */
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        virtual
-        override(IERC165Upgradeable, GovernorUpgradeableV2)
-        returns (bool)
-    {
-        return interfaceId == type(IGovernorTimelockUpgradeable).interfaceId || super.supportsInterface(interfaceId);
+    function supportsInterface(bytes4 interfaceId) public view virtual override(IERC165, Governor) returns (bool) {
+        return interfaceId == type(IGovernorTimelock).interfaceId || super.supportsInterface(interfaceId);
     }
 
     /**
-     * @dev Overridden version of the {Governor-state} function with added support for the `Queued` status.
+     * @dev Overridden version of the {Governor-state} function with added support for the `Queued` state.
      */
-    function state(uint256 proposalId)
-        public
-        view
-        virtual
-        override(IGovernorUpgradeable, GovernorUpgradeableV2)
-        returns (ProposalState)
-    {
-        ProposalState status = super.state(proposalId);
+    function state(uint256 proposalId) public view virtual override(IGovernor, Governor) returns (ProposalState) {
+        ProposalState currentState = super.state(proposalId);
 
-        if (status != ProposalState.Succeeded) {
-            return status;
+        if (currentState != ProposalState.Succeeded) {
+            return currentState;
         }
 
         // core tracks execution, so we just have to check if successful proposal have been queued.
         bytes32 queueid = _timelockIds[proposalId];
         if (queueid == bytes32(0)) {
-            return status;
+            return currentState;
         } else if (_timelock.isOperationDone(queueid)) {
             return ProposalState.Executed;
         } else if (_timelock.isOperationPending(queueid)) {
@@ -184,19 +139,12 @@ abstract contract GovernorTimelockControlUpgradeableV2 is
      *
      * CAUTION: It is not recommended to change the timelock while there are other queued governance proposals.
      */
-    function updateTimelock(TimelockControllerUpgradeable newTimelock) external virtual onlyGovernance {
+    function updateTimelock(TimelockController newTimelock) external virtual onlyGovernance {
         _updateTimelock(newTimelock);
     }
 
-    function _updateTimelock(TimelockControllerUpgradeable newTimelock) private {
+    function _updateTimelock(TimelockController newTimelock) private {
         emit TimelockChange(address(_timelock), address(newTimelock));
         _timelock = newTimelock;
     }
-
-    /**
-     * @dev This empty reserved space is put in place to allow future versions to add new
-     * variables without shifting down storage in the inheritance chain.
-     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
-     */
-    uint256[48] private __gap;
 }

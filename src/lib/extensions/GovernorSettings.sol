@@ -1,16 +1,11 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Contracts v4.4.1 (governance/extensions/GovernorSettings.sol)
-
 pragma solidity ^0.8.0;
 
-import "./GovernorUpgradeableV2.sol";
-import "@openzeppelin/contracts-upgradeable-v4/proxy/utils/Initializable.sol";
+import {Governor} from "src/lib/Governor.sol";
 
-/**
- * Modifications:
- * - Inherited `GovernorUpgradeableV2`
- */
-abstract contract GovernorSettingsUpgradeableV2 is Initializable, GovernorUpgradeableV2 {
+/// Modifications:
+/// - Inherited `Governor`
+abstract contract GovernorSettings is Governor {
     uint256 private _votingDelay;
     uint256 private _votingPeriod;
     uint256 private _proposalThreshold;
@@ -22,19 +17,7 @@ abstract contract GovernorSettingsUpgradeableV2 is Initializable, GovernorUpgrad
     /**
      * @dev Initialize the governance parameters.
      */
-    function __GovernorSettings_init(
-        uint256 initialVotingDelay,
-        uint256 initialVotingPeriod,
-        uint256 initialProposalThreshold
-    ) internal onlyInitializing {
-        __GovernorSettings_init_unchained(initialVotingDelay, initialVotingPeriod, initialProposalThreshold);
-    }
-
-    function __GovernorSettings_init_unchained(
-        uint256 initialVotingDelay,
-        uint256 initialVotingPeriod,
-        uint256 initialProposalThreshold
-    ) internal onlyInitializing {
+    constructor(uint256 initialVotingDelay, uint256 initialVotingPeriod, uint256 initialProposalThreshold) {
         _setVotingDelay(initialVotingDelay);
         _setVotingPeriod(initialVotingPeriod);
         _setProposalThreshold(initialProposalThreshold);
@@ -119,11 +102,4 @@ abstract contract GovernorSettingsUpgradeableV2 is Initializable, GovernorUpgrad
         emit ProposalThresholdSet(_proposalThreshold, newProposalThreshold);
         _proposalThreshold = newProposalThreshold;
     }
-
-    /**
-     * @dev This empty reserved space is put in place to allow future versions to add new
-     * variables without shifting down storage in the inheritance chain.
-     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
-     */
-    uint256[47] private __gap;
 }
