@@ -24,6 +24,7 @@ import {AgoraGovernorMock, AgoraGovernor} from "test/mocks/AgoraGovernorMock.sol
 import {ApprovalVotingModuleMock} from "test/mocks/ApprovalVotingModuleMock.sol";
 import {VoteType} from "test/ApprovalVotingModule.t.sol";
 import {ExecutionTargetFake} from "test/fakes/ExecutionTargetFake.sol";
+import {IVotingToken} from "src/interfaces/IVotingToken.sol";
 
 enum ProposalState {
     Pending,
@@ -90,6 +91,12 @@ contract AgoraGovernorTest is Test {
 
     error InvalidProposalType(uint8 proposalType);
     error InvalidProposalId();
+    error InvalidProposedTxForType();
+    error InvalidProposalLength();
+    error InvalidEmptyProposal();
+    error InvalidVotesBelowThreshold();
+    error InvalidProposalExists();
+    error NotAdminOrTimelock();
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
@@ -148,7 +155,8 @@ contract AgoraGovernorTest is Test {
                 abi.encodeCall(
                     AgoraGovernor.initialize,
                     (
-                        IVotesUpgradeable(address(govToken)),
+                        IVotingToken(address(govToken)),
+                        AgoraGovernor.SupplyType.Total,
                         admin,
                         manager,
                         timelock,
@@ -169,18 +177,34 @@ contract AgoraGovernorTest is Test {
         module = new ApprovalVotingModuleMock(address(governor));
         optimisticModule = new OptimisticModule(address(governor));
 
-        bytes32[] memory transactions = new bytes32[](1);
+        bytes24[] memory scopes = new bytes24[](1);
 
         // do admin stuff
         vm.startPrank(admin);
         govToken.grantRole(govToken.MINTER_ROLE(), minter);
         governor.setModuleApproval(address(module), true);
         governor.setModuleApproval(address(optimisticModule), true);
-        proposalTypesConfigurator.setProposalType(0, 3_000, 5_000, "Default", address(0), transactions);
-        proposalTypesConfigurator.setProposalType(1, 5_000, 7_000, "Alt", address(module), transactions);
-        proposalTypesConfigurator.setProposalType(2, 0, 0, "Optimistic", address(optimisticModule), transactions);
+        proposalTypesConfigurator.setProposalType(0, 3_000, 5_000, "Default", "Lorem Ipsum", address(0), scopes);
+        proposalTypesConfigurator.setProposalType(1, 5_000, 7_000, "Alt", "Lorem Ipsum", address(module), scopes);
+        proposalTypesConfigurator.setProposalType(
+            2, 0, 0, "Optimistic", "Lorem Ipsum", address(optimisticModule), scopes
+        );
         vm.stopPrank();
         targetFake = new ExecutionTargetFake();
+    }
+
+    /**
+     * @notice Generates the scope key defined as the contract address combined with the function selector
+     * @param contractAddress Address of the contract to be enforced by the scope
+     * @param selector A byte4 function selector on the contract to be enforced by the scope
+     */
+    function _pack(address contractAddress, bytes4 selector) internal pure returns (bytes24 result) {
+        bytes20 left = bytes20(contractAddress);
+        assembly ("memory-safe") {
+            left := and(left, shl(96, not(0)))
+            selector := and(selector, shl(224, not(0)))
+            result := or(left, shr(160, selector))
+        }
     }
 
     function _formatProposalData(uint256 _proposalTargetCalldata) public virtual returns (bytes memory proposalData) {
@@ -261,15 +285,19 @@ contract Initialize is AgoraGovernorTest {
         public
         virtual
     {
-        bytes32[] memory transactions = new bytes32[](1);
+        bytes24[] memory scopes = new bytes24[](1);
         ProposalTypesConfigurator _proposalTypesConfigurator = new ProposalTypesConfigurator();
         IProposalTypesConfigurator.ProposalType[] memory _proposalTypes =
             new IProposalTypesConfigurator.ProposalType[](4);
-        _proposalTypes[0] = IProposalTypesConfigurator.ProposalType(1_500, 9_000, "Default", address(0), transactions);
-        _proposalTypes[1] = IProposalTypesConfigurator.ProposalType(3_500, 7_000, "Alt", address(0), transactions);
-        _proposalTypes[2] = IProposalTypesConfigurator.ProposalType(7_500, 3_100, "Whatever", address(0), transactions);
-        _proposalTypes[3] =
-            IProposalTypesConfigurator.ProposalType(0, 0, "Optimistic", address(optimisticModule), transactions);
+        _proposalTypes[0] =
+            IProposalTypesConfigurator.ProposalType(1_500, 9_000, "Default", "Lorem Ipsum", address(0), scopes);
+        _proposalTypes[1] =
+            IProposalTypesConfigurator.ProposalType(3_500, 7_000, "Alt", "Lorem Ipsum", address(0), scopes);
+        _proposalTypes[2] =
+            IProposalTypesConfigurator.ProposalType(7_500, 3_100, "Whatever", "Lorem Ipsum", address(0), scopes);
+        _proposalTypes[3] = IProposalTypesConfigurator.ProposalType(
+            0, 0, "Optimistic", "Lorem Ipsum", address(optimisticModule), scopes
+        );
         AgoraGovernor _governor = AgoraGovernor(
             payable(
                 new TransparentUpgradeableProxy(
@@ -278,7 +306,8 @@ contract Initialize is AgoraGovernorTest {
                     abi.encodeCall(
                         AgoraGovernor.initialize,
                         (
-                            IVotesUpgradeable(_token),
+                            IVotingToken(_token),
+                            AgoraGovernor.SupplyType.Total,
                             _admin,
                             _manager,
                             TimelockControllerUpgradeable(payable(_timelock)),
@@ -396,7 +425,7 @@ contract Propose is AgoraGovernorTest {
         vm.startPrank(_actor);
         govToken.delegate(_actor);
         vm.roll(vm.getBlockNumber() + 1);
-        vm.expectRevert("Governor: proposer votes below proposal threshold");
+        vm.expectRevert(InvalidVotesBelowThreshold.selector);
         if (_proposalType > 0) {
             governor.propose(targets, values, calldatas, "Test");
         } else {
@@ -414,7 +443,7 @@ contract Propose is AgoraGovernorTest {
         vm.startPrank(manager);
         governor.propose(targets, values, calldatas, "Test", 0);
 
-        vm.expectRevert("Governor: proposal already exists");
+        vm.expectRevert(InvalidProposalExists.selector);
         governor.propose(targets, values, calldatas, "Test", 0);
         vm.stopPrank();
     }
@@ -542,7 +571,7 @@ contract ProposeWithModule is AgoraGovernorTest {
         vm.startPrank(_actor);
         govToken.delegate(_actor);
         vm.roll(vm.getBlockNumber() + 1);
-        vm.expectRevert("Governor: proposer votes below proposal threshold");
+        vm.expectRevert(InvalidVotesBelowThreshold.selector);
         if (_proposalType > 0) {
             governor.proposeWithModule(VotingModule(module), proposalData, "", _proposalType);
         } else {
@@ -556,7 +585,7 @@ contract ProposeWithModule is AgoraGovernorTest {
         vm.startPrank(manager);
         governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
 
-        vm.expectRevert("Governor: proposal already exists");
+        vm.expectRevert(InvalidProposalExists.selector);
         governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
         vm.stopPrank();
     }
@@ -1738,7 +1767,7 @@ contract Cancel is AgoraGovernorTest {
         vm.stopPrank();
 
         vm.prank(_actor);
-        vm.expectRevert("Only the admin or the governor timelock can call this function");
+        vm.expectRevert(NotAdminOrTimelock.selector);
         governor.cancel(targets, values, calldatas, keccak256("Test"));
     }
 }
@@ -1894,7 +1923,7 @@ contract CancelWithModule is AgoraGovernorTest {
         vm.prank(manager);
         governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
 
-        vm.expectRevert("Only the admin or the governor timelock can call this function");
+        vm.expectRevert(NotAdminOrTimelock.selector);
         vm.prank(_actor);
         governor.cancelWithModule(VotingModule(module), proposalData, keccak256(bytes(description)));
     }
@@ -2033,8 +2062,8 @@ contract CastVote is AgoraGovernorTest {
         _mintAndDelegate(_voter, 100e18);
         _mintAndDelegate(_voter2, 100e18);
         vm.prank(admin);
-        bytes32[] memory transactions = new bytes32[](1);
-        proposalTypesConfigurator.setProposalType(0, 3_000, 9_910, "Default", address(0), transactions);
+        bytes24[] memory scopes = new bytes24[](1);
+        proposalTypesConfigurator.setProposalType(0, 3_000, 9_910, "Default", "Lorem Ipsum", address(0), scopes);
         address[] memory targets = new address[](1);
         targets[0] = address(this);
         uint256[] memory values = new uint256[](1);
@@ -2153,8 +2182,8 @@ contract CastVoteWithReasonAndParams is AgoraGovernorTest {
 contract EditProposalType is AgoraGovernorTest {
     function testFuzz_EditProposalTypeByAdminOrTimelock(uint256 _actorSeed) public virtual {
         vm.startPrank(_adminOrTimelock(_actorSeed));
-        bytes32[] memory transactions = new bytes32[](1);
-        proposalTypesConfigurator.setProposalType(0, 3_000, 9_910, "Default", address(0), transactions);
+        bytes24[] memory scopes = new bytes24[](1);
+        proposalTypesConfigurator.setProposalType(0, 3_000, 9_910, "Default", "Lorem Ipsum", address(0), scopes);
 
         address[] memory targets = new address[](1);
         targets[0] = address(this);
@@ -2185,7 +2214,7 @@ contract EditProposalType is AgoraGovernorTest {
         vm.prank(manager);
         uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
 
-        vm.expectRevert("Only the admin or the governor timelock can call this function");
+        vm.expectRevert(NotAdminOrTimelock.selector);
         vm.prank(_actor);
         governor.editProposalType(proposalId, 1);
     }
@@ -2287,7 +2316,7 @@ contract SetModuleApproval is AgoraGovernorTest {
     function test_RevertIf_NotAdminOrTimelock(address _actor, address _module) public {
         vm.assume(_actor != admin && _actor != governor.timelock() && _actor != proxyAdmin);
         vm.prank(_actor);
-        vm.expectRevert("Only the admin or the governor timelock can call this function");
+        vm.expectRevert(NotAdminOrTimelock.selector);
         governor.setModuleApproval(_module, true);
     }
 }
@@ -2304,7 +2333,7 @@ contract SetProposalDeadline is AgoraGovernorTest {
         vm.assume(_actor != admin && _actor != governor.timelock() && _actor != proxyAdmin);
         uint256 proposalId = _createValidProposal();
         vm.prank(_actor);
-        vm.expectRevert("Only the admin or the governor timelock can call this function");
+        vm.expectRevert(NotAdminOrTimelock.selector);
         governor.setProposalDeadline(proposalId, _proposalDeadline);
     }
 }
@@ -2318,7 +2347,7 @@ contract SetVotingDelay is AgoraGovernorTest {
 
     function testFuzz_RevertIf_NotAdminOrTimelock(address _actor, uint256 _votingDelay) public {
         vm.assume(_actor != admin && _actor != governor.timelock() && _actor != proxyAdmin);
-        vm.expectRevert("Only the admin or the governor timelock can call this function");
+        vm.expectRevert(NotAdminOrTimelock.selector);
         vm.prank(_actor);
         governor.setVotingDelay(_votingDelay);
     }
@@ -2334,7 +2363,7 @@ contract SetVotingPeriod is AgoraGovernorTest {
 
     function testFuzz_RevertIf_NotAdminOrTimelock(address _actor, uint256 _votingPeriod) public {
         vm.assume(_actor != admin && _actor != governor.timelock() && _actor != proxyAdmin);
-        vm.expectRevert("Only the admin or the governor timelock can call this function");
+        vm.expectRevert(NotAdminOrTimelock.selector);
         vm.prank(_actor);
         governor.setVotingPeriod(_votingPeriod);
     }
@@ -2349,7 +2378,7 @@ contract SetProposalThreshold is AgoraGovernorTest {
 
     function testFuzz_RevertIf_NotAdminOrTimelock(address _actor, uint256 _proposalThreshold) public {
         vm.assume(_actor != admin && _actor != governor.timelock() && _actor != proxyAdmin);
-        vm.expectRevert("Only the admin or the governor timelock can call this function");
+        vm.expectRevert(NotAdminOrTimelock.selector);
         vm.prank(_actor);
         governor.setProposalThreshold(_proposalThreshold);
     }
@@ -2367,7 +2396,7 @@ contract SetAdmin is AgoraGovernorTest {
     function testFuzz_RevertIf_NotAdmin(address _actor, address _newAdmin) public {
         vm.assume(_actor != admin && _actor != governor.timelock() && _actor != proxyAdmin);
         vm.prank(_actor);
-        vm.expectRevert("Only the admin or the governor timelock can call this function");
+        vm.expectRevert(NotAdminOrTimelock.selector);
         governor.setAdmin(_newAdmin);
     }
 }
@@ -2384,7 +2413,7 @@ contract SetManager is AgoraGovernorTest {
     function testFuzz_RevertIf_NotAdmin(address _actor, address _newManager) public {
         vm.assume(_actor != admin && _actor != governor.timelock() && _actor != proxyAdmin);
         vm.prank(_actor);
-        vm.expectRevert("Only the admin or the governor timelock can call this function");
+        vm.expectRevert(NotAdminOrTimelock.selector);
         governor.setManager(_newManager);
     }
 }
@@ -2404,5 +2433,99 @@ contract UpgradeTo is AgoraGovernorTest {
         vm.prank(_actor);
         vm.expectRevert(bytes(""));
         TransparentUpgradeableProxy(payable(governorProxy)).upgradeTo(_newImplementation);
+    }
+}
+
+contract AssignedScopes is AgoraGovernorTest {
+    function _createScopeForProposalType() internal {
+        bytes24[] memory scopes = new bytes24[](1);
+        // Setup Scope logic
+        bytes32 txTypeHash = keccak256("transfer(address,address,uint256)");
+        address contractAddress = makeAddr("contract");
+        bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
+        address _from = makeAddr("from");
+        address _to = makeAddr("to");
+        bytes memory txEncoded = abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(10));
+
+        bytes[] memory parameters = new bytes[](3);
+        parameters[0] = abi.encode(uint256(uint160(_from)));
+        parameters[1] = abi.encode(uint256(uint160(_to)));
+        parameters[2] = abi.encode(uint256(10));
+
+        IProposalTypesConfigurator.Comparators[] memory comparators = new IProposalTypesConfigurator.Comparators[](3);
+
+        comparators[0] = IProposalTypesConfigurator.Comparators(1); // EQ
+        comparators[1] = IProposalTypesConfigurator.Comparators(1); // EQ
+        comparators[2] = IProposalTypesConfigurator.Comparators(3); // GREATER THAN
+
+        proposalTypesConfigurator.setProposalType(0, 3_000, 9_910, "Default", "Lorem Ipsum", address(0), scopes);
+        proposalTypesConfigurator.setScopeForProposalType(0, scopeKey, txEncoded, parameters, comparators);
+    }
+
+    function test_CreateScopedProposal() public virtual {
+        vm.startPrank(admin);
+        _createScopeForProposalType();
+        vm.stopPrank();
+
+        address _from = makeAddr("from");
+        address _to = makeAddr("to");
+        address contractAddress = makeAddr("contract");
+
+        // Setup proposal
+        address[] memory targets = new address[](2);
+        targets[0] = contractAddress;
+        targets[1] = contractAddress;
+        uint256[] memory values = new uint256[](2);
+        bytes[] memory calldatas = new bytes[](2);
+        calldatas[0] = abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(15));
+        calldatas[1] = abi.encodeWithSignature("foobar(address,address,uint256)", _from, _to, uint256(15));
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test Valid transaction", 0);
+    }
+
+    function testRevert_CreateProposalWithInvalidProposedTx() public virtual {
+        vm.startPrank(admin);
+        _createScopeForProposalType();
+        vm.stopPrank();
+
+        address _from = makeAddr("from");
+        address _to = makeAddr("to");
+        address contractAddress = makeAddr("contract");
+
+        // Setup proposal
+        address[] memory targets = new address[](2);
+        targets[0] = contractAddress;
+        targets[1] = contractAddress;
+        uint256[] memory values = new uint256[](2);
+        bytes[] memory calldatas = new bytes[](2);
+        calldatas[0] = abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(10));
+        calldatas[1] = abi.encodeWithSignature("foobar(address,address,uint256)", _from, _to, uint256(15));
+
+        vm.expectRevert(IProposalTypesConfigurator.InvalidParamRange.selector);
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test Invalid transaction", 0);
+    }
+
+    function testRevert_CreateProposalWithInvalidProposalType() public virtual {
+        vm.startPrank(admin);
+        _createScopeForProposalType();
+        bytes24[] memory scopes = new bytes24[](1);
+        proposalTypesConfigurator.setProposalType(1, 3_000, 9_910, "Default2", "Lorem Ipsum", address(0), scopes);
+        vm.stopPrank();
+
+        address _from = makeAddr("from");
+        address _to = makeAddr("to");
+        address contractAddress = makeAddr("contract");
+
+        // Setup proposal
+        address[] memory targets = new address[](2);
+        targets[0] = contractAddress;
+        targets[1] = contractAddress;
+        uint256[] memory values = new uint256[](2);
+        bytes[] memory calldatas = new bytes[](2);
+        calldatas[0] = abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(15));
+        calldatas[1] = abi.encodeWithSignature("foobar(address,address,uint256)", _from, _to, uint256(15));
+
+        uint8 requiredPropType = 0;
+        vm.expectRevert(InvalidProposedTxForType.selector);
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test Invalid transaction wrong type.", 1);
     }
 }

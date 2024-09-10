@@ -3,7 +3,6 @@ pragma solidity ^0.8.19;
 
 import {TimersUpgradeable} from "@openzeppelin/contracts-upgradeable-v4/utils/TimersUpgradeable.sol";
 import {SafeCastUpgradeable} from "@openzeppelin/contracts-upgradeable-v4/utils/math/SafeCastUpgradeable.sol";
-import {IVotesUpgradeable} from "@openzeppelin/contracts-upgradeable-v4/governance/utils/IVotesUpgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable-v4/proxy/utils/Initializable.sol";
 import {TimelockControllerUpgradeable} from
     "@openzeppelin/contracts-upgradeable-v4/governance/TimelockControllerUpgradeable.sol";
@@ -15,6 +14,7 @@ import {GovernorSettingsUpgradeableV2} from "src/lib/openzeppelin/v2/GovernorSet
 import {GovernorTimelockControlUpgradeableV2} from "src/lib/openzeppelin/v2/GovernorTimelockControlUpgradeableV2.sol";
 import {IProposalTypesConfigurator} from "src/interfaces/IProposalTypesConfigurator.sol";
 import {VotingModule} from "src/modules/VotingModule.sol";
+import {IVotingToken} from "src/interfaces/IVotingToken.sol";
 
 contract AgoraGovernor is
     Initializable,
@@ -65,12 +65,22 @@ contract AgoraGovernor is
     event AdminSet(address indexed oldAdmin, address indexed newAdmin);
     event ManagerSet(address indexed oldManager, address indexed newManager);
 
+    enum SupplyType {
+        Total,
+        Votable
+    }
+
     /*//////////////////////////////////////////////////////////////
                                  ERRORS
     //////////////////////////////////////////////////////////////*/
 
     error InvalidProposalType(uint8 proposalType);
     error InvalidProposalId();
+    error InvalidProposalLength();
+    error InvalidEmptyProposal();
+    error InvalidVotesBelowThreshold();
+    error InvalidProposalExists();
+    error NotAdminOrTimelock();
 
     /*//////////////////////////////////////////////////////////////
                                LIBRARIES
@@ -90,6 +100,8 @@ contract AgoraGovernor is
 
     IProposalTypesConfigurator public PROPOSAL_TYPES_CONFIGURATOR;
 
+    SupplyType public SUPPLY_TYPE;
+
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
     //////////////////////////////////////////////////////////////*/
@@ -101,9 +113,7 @@ contract AgoraGovernor is
 
     modifier onlyAdminOrTimelock() {
         address sender = _msgSender();
-        require(
-            sender == admin || sender == timelock(), "Only the admin or the governor timelock can call this function"
-        );
+        if (sender != admin && sender != timelock()) revert NotAdminOrTimelock();
         _;
     }
 
@@ -118,6 +128,7 @@ contract AgoraGovernor is
     /**
      * @notice Initialize the governor with the given parameters.
      * @param _votingToken The governance token used for voting.
+     * @param _supplyType The type of supply to use for voting calculations.
      * @param _admin Admin address for the governor.
      * @param _manager Manager address.
      * @param _timelock The governance timelock.
@@ -125,7 +136,8 @@ contract AgoraGovernor is
      * @param _proposalTypes Initial proposal types to set.
      */
     function initialize(
-        IVotesUpgradeable _votingToken,
+        IVotingToken _votingToken,
+        SupplyType _supplyType,
         address _admin,
         address _manager,
         TimelockControllerUpgradeable _timelock,
@@ -133,6 +145,8 @@ contract AgoraGovernor is
         IProposalTypesConfigurator.ProposalType[] calldata _proposalTypes
     ) public initializer {
         PROPOSAL_TYPES_CONFIGURATOR = _proposalTypesConfigurator;
+        SUPPLY_TYPE = _supplyType;
+
         PROPOSAL_TYPES_CONFIGURATOR.initialize(address(this), _proposalTypes);
 
         __Governor_init("Agora");
@@ -156,7 +170,12 @@ contract AgoraGovernor is
      */
     function quorum(uint256 proposalId) public view virtual override returns (uint256) {
         uint256 snapshotBlock = proposalSnapshot(proposalId);
-        uint256 supply = token.getPastTotalSupply(snapshotBlock);
+        uint256 supply;
+        if (SUPPLY_TYPE == SupplyType.Total) {
+            supply = token.getPastTotalSupply(snapshotBlock);
+        } else {
+            supply = token.getPastVotableSupply(snapshotBlock);
+        }
 
         uint8 proposalTypeId = _proposals[proposalId].proposalType;
 
@@ -421,15 +440,13 @@ contract AgoraGovernor is
         uint8 proposalType
     ) public virtual returns (uint256 proposalId) {
         address proposer = _msgSender();
-        if (proposer != manager) {
-            require(
-                getVotes(proposer, block.number - 1) >= proposalThreshold(),
-                "Governor: proposer votes below proposal threshold"
-            );
+        if (proposer != manager && getVotes(proposer, block.number - 1) < proposalThreshold()) {
+            revert InvalidVotesBelowThreshold();
         }
-        require(targets.length == values.length, "Governor: invalid proposal length");
-        require(targets.length == calldatas.length, "Governor: invalid proposal length");
-        require(targets.length > 0, "Governor: empty proposal");
+
+        if (targets.length != values.length) revert InvalidProposalLength();
+        if (targets.length != calldatas.length) revert InvalidProposalLength();
+        if (targets.length == 0) revert InvalidEmptyProposal();
 
         // Revert if `proposalType` is unset or requires module
         if (
@@ -439,10 +456,12 @@ contract AgoraGovernor is
             revert InvalidProposalType(proposalType);
         }
 
+        PROPOSAL_TYPES_CONFIGURATOR.validateProposalData(targets, calldatas, proposalType);
+
         proposalId = hashProposal(targets, values, calldatas, keccak256(bytes(description)));
 
         ProposalCore storage proposal = _proposals[proposalId];
-        require(proposal.voteStart.isUnset(), "Governor: proposal already exists");
+        if (!proposal.voteStart.isUnset()) revert InvalidProposalExists();
 
         uint64 snapshot = block.number.toUint64() + votingDelay().toUint64();
         uint64 deadline = snapshot + votingPeriod().toUint64();
@@ -499,11 +518,9 @@ contract AgoraGovernor is
         uint8 proposalType
     ) public virtual returns (uint256 proposalId) {
         if (_msgSender() != manager) {
-            require(
-                getVotes(_msgSender(), block.number - 1) >= proposalThreshold(),
-                "Governor: proposer votes below proposal threshold"
-            );
+            if (getVotes(_msgSender(), block.number - 1) < proposalThreshold()) revert InvalidVotesBelowThreshold();
         }
+
         require(approvedModules[address(module)], "Governor: module not approved");
 
         // Revert if `proposalType` is unset or doesn't match module
@@ -519,7 +536,7 @@ contract AgoraGovernor is
         proposalId = hashProposalWithModule(address(module), proposalData, descriptionHash);
 
         ProposalCore storage proposal = _proposals[proposalId];
-        require(proposal.voteStart.isUnset(), "Governor: proposal already exists");
+        if (!proposal.voteStart.isUnset()) revert InvalidProposalExists();
 
         uint64 snapshot = block.number.toUint64() + votingDelay().toUint64();
         uint64 deadline = snapshot + votingPeriod().toUint64();
