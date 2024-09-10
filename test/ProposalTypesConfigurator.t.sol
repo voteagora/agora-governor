@@ -21,6 +21,8 @@ contract ProposalTypesConfiguratorTest is Test {
         bytes24[] validScopes
     );
 
+    event ScopeCreated(uint8 indexed proposalTypeId, bytes24 indexed scopeKey, bytes encodedLimit);
+
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
     //////////////////////////////////////////////////////////////*/
@@ -155,6 +157,8 @@ contract SetProposalType is ProposalTypesConfiguratorTest {
         bytes[] memory parameters = new bytes[](1);
         IProposalTypesConfigurator.Comparators[] memory comparators = new IProposalTypesConfigurator.Comparators[](1);
 
+        vm.expectEmit();
+        emit ScopeCreated(0, scopeKey, txEncoded);
         proposalTypesConfigurator.setScopeForProposalType(0, scopeKey, txEncoded, parameters, comparators);
 
         vm.stopPrank();

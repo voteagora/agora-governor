@@ -109,7 +109,8 @@ contract AgoraGovernor is
     mapping(address module => bool approved) public approvedModules;
 
     modifier onlyAdminOrTimelock() {
-        if (msg.sender != admin && msg.sender != timelock()) revert NotAdminOrTimelock();
+        address sender = _msgSender();
+        if (sender != admin && sender != timelock()) revert NotAdminOrTimelock();
         _;
     }
 

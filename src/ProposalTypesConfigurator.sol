@@ -9,11 +9,17 @@ import {ScopeKey} from "src/ScopeKey.sol";
  * Contract that stores proposalTypes for the Agora Governor.
  */
 contract ProposalTypesConfigurator is IProposalTypesConfigurator {
+    using ScopeKey for bytes24;
+
+    /*//////////////////////////////////////////////////////////////
+                                 EVENTS
+    //////////////////////////////////////////////////////////////*/
+
+    event ScopeCreated(uint8 indexed proposalTypeId, bytes24 indexed scopeKey, bytes encodedLimit);
+
     /*//////////////////////////////////////////////////////////////
                            IMMUTABLE STORAGE
     //////////////////////////////////////////////////////////////*/
-
-    using ScopeKey for bytes24;
 
     IAgoraGovernor public governor;
     uint16 public constant PERCENT_DIVISOR = 10_000;
@@ -72,7 +78,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param proposalTypeId Id of the proposal type.
      * @return ProposalType struct of of the proposal type.
      */
-    function proposalTypes(uint8 proposalTypeId) external view override returns (ProposalType memory) {
+    function proposalTypes(uint8 proposalTypeId) external view returns (ProposalType memory) {
         return _proposalTypes[proposalTypeId];
     }
 
@@ -82,7 +88,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param scopeKey The function selector + contract address that is the key for a scope.
      * @return Scope struct of the scope.
      */
-    function assignedScopes(uint8 proposalTypeId, bytes24 scopeKey) external view override returns (Scope memory) {
+    function assignedScopes(uint8 proposalTypeId, bytes24 scopeKey) external view returns (Scope memory) {
         return _assignedScopes[proposalTypeId][scopeKey];
     }
 
@@ -126,6 +132,8 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         _assignedScopes[proposalTypeId][key] = scope;
         _scopeExists[key] = true;
         _proposalTypes[proposalTypeId].validScopes.push(key);
+
+        emit ScopeCreated(proposalTypeId, key, encodedLimit);
     }
 
     /**
