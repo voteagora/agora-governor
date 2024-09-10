@@ -186,12 +186,12 @@ contract SetProposalType is ProposalTypesConfiguratorTest {
     }
 
     function testRevert_setScopeForProposalType_NotAdmin(address _actor) public {
-        vm.assume(_actor != admin);
+        vm.assume(_actor != admin && _actor != GovernorMock(governor).timelock());
         bytes32 txTypeHash = keccak256("transfer(address,address,uint)");
         address contractAddress = makeAddr("contract");
         bytes24 scopeKey = ScopeKey._pack(contractAddress, bytes4(txTypeHash));
         bytes memory txEncoded = abi.encode("transfer(address,address,uint)", 0xdeadbeef, 0xdeadbeef, 10);
-        vm.expectRevert(IProposalTypesConfigurator.NotAdmin.selector);
+        vm.expectRevert(IProposalTypesConfigurator.NotAdminOrTimelock.selector);
         proposalTypesConfigurator.setScopeForProposalType(
             1, scopeKey, txEncoded, new bytes[](1), new IProposalTypesConfigurator.Comparators[](1)
         );

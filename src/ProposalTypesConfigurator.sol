@@ -43,11 +43,6 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         _;
     }
 
-    modifier onlyAdmin() {
-        if (msg.sender != governor.admin()) revert NotAdmin();
-        _;
-    }
-
     /*//////////////////////////////////////////////////////////////
                                FUNCTIONS
     //////////////////////////////////////////////////////////////*/
@@ -115,7 +110,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         bytes calldata encodedLimit,
         bytes[] memory parameters,
         Comparators[] memory comparators
-    ) external override onlyAdmin {
+    ) external override onlyAdminOrTimelock {
         if (!_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
         if (parameters.length != comparators.length) revert InvalidParameterConditions();
         if (_assignedScopes[proposalTypeId][key].exists) revert NoDuplicateTxTypes(); // Do not allow multiple scopes for a single transaction type
@@ -181,7 +176,11 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param proposalTypeId Id of the proposal type
      * @param scope An object that contains the scope for a transaction type hash
      */
-    function updateScopeForProposalType(uint8 proposalTypeId, Scope calldata scope) external override onlyAdmin {
+    function updateScopeForProposalType(uint8 proposalTypeId, Scope calldata scope)
+        external
+        override
+        onlyAdminOrTimelock
+    {
         if (!_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
         if (scope.parameters.length != scope.comparators.length) revert InvalidParameterConditions();
         if (_assignedScopes[proposalTypeId][scope.key].exists) revert NoDuplicateTxTypes(); // Do not allow multiple scopes for a single transaction type
