@@ -24,8 +24,4 @@ contract AgoraGovernorMock is AgoraGovernor {
     function voteSucceeded(uint256 proposalId) public view returns (bool) {
         return _voteSucceeded(proposalId);
     }
-
-    function proposals(uint256 proposalId) public view returns (ProposalCore memory) {
-        return _proposals[proposalId];
-    }
 }

@@ -440,7 +440,7 @@ contract ProposeWithModule is AgoraGovernorTest {
         }
         vm.stopPrank();
 
-        assertEq(governor.proposals(proposalId).proposalType, _proposalType);
+        assertEq(governor.getProposalType(proposalId), _proposalType);
         assertEq(governor.proposalSnapshot(proposalId), snapshot);
         assertEq(governor.proposalDeadline(proposalId), deadline);
         assertEq(uint8(governor.state(proposalId)), uint8(IGovernorUpgradeable.ProposalState.Pending));
@@ -470,7 +470,7 @@ contract ProposeWithModule is AgoraGovernorTest {
         }
         vm.stopPrank();
 
-        assertEq(governor.proposals(proposalId).proposalType, _proposalType);
+        assertEq(governor.getProposalType(proposalId), _proposalType);
         assertEq(governor.proposalSnapshot(proposalId), snapshot);
         assertEq(governor.proposalDeadline(proposalId), deadline);
         assertEq(uint8(governor.state(proposalId)), uint8(IGovernorUpgradeable.ProposalState.Pending));
@@ -569,7 +569,7 @@ contract ProposeWithOptimisticModule is AgoraGovernorTest {
         vm.prank(_actor);
         governor.proposeWithModule(optimisticModule, proposalData, description, 2);
 
-        assertEq(governor.proposals(proposalId).proposalType, 2);
+        assertEq(governor.getProposalType(proposalId), 2);
         assertEq(governor.proposalSnapshot(proposalId), snapshot);
         assertEq(governor.proposalDeadline(proposalId), deadline);
         assertEq(uint8(governor.state(proposalId)), uint8(IGovernorUpgradeable.ProposalState.Pending));
@@ -2145,13 +2145,13 @@ contract EditProposalType is AgoraGovernorTest {
         calldatas[0] = abi.encodeWithSelector(this.executeCallback.selector);
 
         uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
-        assertEq(governor.proposals(proposalId).proposalType, 0);
+        assertEq(governor.getProposalType(proposalId), 0);
 
         vm.expectEmit();
         emit ProposalTypeUpdated(proposalId, 1);
         governor.editProposalType(proposalId, 1);
 
-        assertEq(governor.proposals(proposalId).proposalType, 1);
+        assertEq(governor.getProposalType(proposalId), 1);
 
         vm.stopPrank();
     }
@@ -2192,7 +2192,7 @@ contract EditProposalType is AgoraGovernorTest {
         calldatas[0] = abi.encodeWithSelector(this.executeCallback.selector);
 
         uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
-        assertEq(governor.proposals(proposalId).proposalType, 0);
+        assertEq(governor.getProposalType(proposalId), 0);
         vm.stopPrank();
         vm.prank(_adminOrTimelock(_actorSeed));
         vm.expectRevert(abi.encodeWithSelector(InvalidProposalType.selector, 3));
