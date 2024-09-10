@@ -3,14 +3,11 @@ pragma solidity ^0.8.19;
 
 import {IProposalTypesConfigurator} from "src/interfaces/IProposalTypesConfigurator.sol";
 import {IAgoraGovernor} from "src/interfaces/IAgoraGovernor.sol";
-import {ScopeKey} from "src/ScopeKey.sol";
 
 /**
  * Contract that stores proposalTypes for the Agora Governor.
  */
 contract ProposalTypesConfigurator is IProposalTypesConfigurator {
-    using ScopeKey for bytes24;
-
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
@@ -263,7 +260,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      */
     function validateProposalData(address[] memory targets, bytes[] calldata calldatas, uint8 proposalType) public {
         for (uint8 i = 0; i < calldatas.length; i++) {
-            bytes24 scopeKey = ScopeKey._pack(targets[i], bytes4(calldatas[i]));
+            bytes24 scopeKey = _pack(targets[i], bytes4(calldatas[i]));
 
             if (_assignedScopes[proposalType][scopeKey].exists) {
                 validateProposedTx(calldatas[i], proposalType, scopeKey);
@@ -272,6 +269,20 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
                     revert InvalidProposedTxForType();
                 }
             }
+        }
+    }
+
+    /**
+     * @notice Generates the scope key defined as the contract address combined with the function selector
+     * @param contractAddress Address of the contract to be enforced by the scope
+     * @param selector A byte4 function selector on the contract to be enforced by the scope
+     */
+    function _pack(address contractAddress, bytes4 selector) internal pure returns (bytes24 result) {
+        bytes20 left = bytes20(contractAddress);
+        assembly ("memory-safe") {
+            left := and(left, shl(96, not(0)))
+            selector := and(selector, shl(224, not(0)))
+            result := or(left, shr(160, selector))
         }
     }
 }
