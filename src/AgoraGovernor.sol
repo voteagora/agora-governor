@@ -131,7 +131,7 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotes, Gover
     }
 
     /*//////////////////////////////////////////////////////////////
-                             VIEW FUNCTIONS
+                              OVERRIDES
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Returns the quorum for a `proposalId`, in terms of number of votes: `supply * numerator / denominator`.
@@ -189,37 +189,11 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotes, Gover
         }
     }
 
-    /// @notice Returns the proposal type of a proposal.
-    /// @param proposalId The id of the proposal.
-    function getProposalType(uint256 proposalId) external view returns (uint8) {
-        return _proposals[proposalId].proposalType;
-    }
-
     /// @dev See {IGovernor-COUNTING_MODE}.
     /// Params encoding:
     /// - modules = custom external params depending on module used
     function COUNTING_MODE() public pure virtual override(GovernorCountingSimple, IGovernor) returns (string memory) {
         return "support=bravo&quorum=against,for,abstain&params=modules";
-    }
-
-    /// @dev Returns the current version of the governor.
-    function VERSION() public pure virtual returns (uint256) {
-        return GOVERNOR_VERSION;
-    }
-
-    /// @notice Calculate `proposalId` hashing similarly to `hashProposal` but based on `module` and `proposalData`.
-    /// See {IGovernor-hashProposal}.
-    /// @param module The address of the voting module to use for this proposal.
-    /// @param proposalData The proposal data to pass to the voting module.
-    /// @param descriptionHash The hash of the proposal description.
-    /// @return The id of the proposal.
-    function hashProposalWithModule(address module, bytes memory proposalData, bytes32 descriptionHash)
-        public
-        view
-        virtual
-        returns (uint256)
-    {
-        return uint256(keccak256(abi.encode(address(this), module, proposalData, descriptionHash)));
     }
 
     /// @inheritdoc GovernorSettings
@@ -253,9 +227,93 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotes, Gover
         return GovernorTimelockControl.supportsInterface(interfaceId);
     }
 
+    /// @inheritdoc Governor
+    /// @dev Updated version in which default `proposalType` is set to 0.
+    function propose(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        string memory description
+    ) public virtual override(IGovernor, Governor) returns (uint256) {
+        return propose(targets, values, calldatas, description, 0);
+    }
+
+    /// @notice Cancel a proposal. Only the admin or timelock can call this function.
+    /// See {Governor-_cancel}.
+    function cancel(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) public override(IGovernor, Governor) returns (uint256) {
+        uint256 proposalId = hashProposal(targets, values, calldatas, descriptionHash);
+        require(state(proposalId) == ProposalState.Pending, "Governor: too late to cancel");
+        address caller = _msgSender();
+        require(
+            caller == admin || caller == timelock() || caller == _proposals[proposalId].proposer,
+            "Governor: only admin, governor timelock, or proposer can cancel"
+        );
+        return _cancel(targets, values, calldatas, descriptionHash);
+    }
+
+    function _cancel(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) internal override(Governor, GovernorTimelockControl) returns (uint256) {
+        return GovernorTimelockControl._cancel(targets, values, calldatas, descriptionHash);
+    }
+
+    /// @inheritdoc Governor
+    function execute(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) public payable override(IGovernor, Governor) returns (uint256) {
+        return super.execute(targets, values, calldatas, descriptionHash);
+    }
+
+    function _execute(
+        uint256 proposalId,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) internal override(Governor, GovernorTimelockControl) {
+        return GovernorTimelockControl._execute(proposalId, targets, values, calldatas, descriptionHash);
+    }
+
     /*//////////////////////////////////////////////////////////////
                            WRITE FUNCTIONS
     //////////////////////////////////////////////////////////////*/
+
+    /// @dev Returns the current version of the governor.
+    function VERSION() public pure virtual returns (uint256) {
+        return GOVERNOR_VERSION;
+    }
+
+    /// @notice Calculate `proposalId` hashing similarly to `hashProposal` but based on `module` and `proposalData`.
+    /// See {IGovernor-hashProposal}.
+    /// @param module The address of the voting module to use for this proposal.
+    /// @param proposalData The proposal data to pass to the voting module.
+    /// @param descriptionHash The hash of the proposal description.
+    /// @return The id of the proposal.
+    function hashProposalWithModule(address module, bytes memory proposalData, bytes32 descriptionHash)
+        public
+        view
+        virtual
+        returns (uint256)
+    {
+        return uint256(keccak256(abi.encode(address(this), module, proposalData, descriptionHash)));
+    }
+
+    /// @notice Returns the proposal type of a proposal.
+    /// @param proposalId The id of the proposal.
+    function getProposalType(uint256 proposalId) external view returns (uint8) {
+        return _proposals[proposalId].proposalType;
+    }
 
     /// @notice Approve or reject a voting module. Only the admin or timelock can call this function.
     /// @param module The address of the voting module to approve or reject.
@@ -268,7 +326,7 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotes, Gover
     /// @param proposalId The id of the proposal.
     /// @param deadline The new deadline for the proposal.
     function setProposalDeadline(uint256 proposalId, uint64 deadline) external onlyAdminOrTimelock {
-        _proposals[proposalId].voteEnd.setDeadline(deadline);
+        _proposals[proposalId].voteEnd = deadline;
         emit ProposalDeadlineUpdated(proposalId, deadline);
     }
 
@@ -309,10 +367,10 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotes, Gover
         override
         returns (uint256 weight)
     {
+        ProposalCore storage proposal = _proposals[proposalId];
         require(state(proposalId) == ProposalState.Active, "Governor: vote not currently active");
 
-        weight = _getVotes(account, _proposals[proposalId].voteStart.getDeadline(), "");
-
+        weight = _getVotes(account, proposal.voteStart, params);
         _countVote(proposalId, account, support, weight, params);
 
         address votingModule = _proposals[proposalId].votingModule;
@@ -326,17 +384,6 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotes, Gover
         } else {
             emit VoteCastWithParams(account, proposalId, support, weight, reason, params);
         }
-    }
-
-    /// @inheritdoc Governor
-    /// @dev Updated version in which default `proposalType` is set to 0.
-    function propose(
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory calldatas,
-        string memory description
-    ) public virtual override(IGovernor, Governor) returns (uint256) {
-        return propose(targets, values, calldatas, description, 0);
     }
 
     /// @notice Propose a new proposal. Only the manager or an address with votes above the proposal threshold can propose.
@@ -496,33 +543,6 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotes, Gover
         emit ProposalTypeUpdated(proposalId, proposalType);
     }
 
-    /// @notice Cancel a proposal. Only the admin or timelock can call this function.
-    /// See {Governor-_cancel}.
-    function cancel(
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory calldatas,
-        bytes32 descriptionHash
-    ) public override(IGovernor, Governor) returns (uint256) {
-        uint256 proposalId = hashProposal(targets, values, calldatas, descriptionHash);
-        require(state(proposalId) == ProposalState.Pending, "Governor: too late to cancel");
-        address caller = _msgSender();
-        require(
-            caller == admin || caller == timelock() || caller == _proposals[proposalId].proposer,
-            "Governor: only admin, governor timelock, or proposer can cancel"
-        );
-        return _cancel(targets, values, calldatas, descriptionHash);
-    }
-
-    function _cancel(
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory calldatas,
-        bytes32 descriptionHash
-    ) internal override(Governor, GovernorTimelockControl) returns (uint256) {
-        return GovernorTimelockControl._cancel(targets, values, calldatas, descriptionHash);
-    }
-
     /// @notice Cancel a proposal with a custom voting module. See {Governor-_cancel}.
     /// @param module The address of the voting module to use for this proposal.
     /// @param proposalData The proposal data to pass to the voting module.
@@ -579,26 +599,6 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotes, Gover
         emit ProposalQueued(proposalId, block.timestamp + delay);
 
         return proposalId;
-    }
-
-    /// @inheritdoc Governor
-    function execute(
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory calldatas,
-        bytes32 descriptionHash
-    ) public payable override(IGovernor, Governor) returns (uint256) {
-        return super.execute(targets, values, calldatas, descriptionHash);
-    }
-
-    function _execute(
-        uint256 proposalId,
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory calldatas,
-        bytes32 descriptionHash
-    ) internal override(Governor, GovernorTimelockControl) {
-        return GovernorTimelockControl._execute(proposalId, targets, values, calldatas, descriptionHash);
     }
 
     /// Executes a proposal via a custom voting module. See {IGovernor-execute}.
