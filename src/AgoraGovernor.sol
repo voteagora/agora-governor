@@ -580,7 +580,7 @@ contract AgoraGovernor is
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) public onlyAdminOrTimelock returns (uint256) {
+    ) public returns (uint256) {
         uint256 proposalId = hashProposal(targets, values, calldatas, descriptionHash);
         address sender = _msgSender();
         require(
@@ -610,10 +610,15 @@ contract AgoraGovernor is
     function cancelWithModule(VotingModule module, bytes memory proposalData, bytes32 descriptionHash)
         public
         virtual
-        onlyAdminOrTimelock
         returns (uint256)
     {
         uint256 proposalId = hashProposalWithModule(address(module), proposalData, descriptionHash);
+        address sender = _msgSender();
+        require(
+            sender == admin || sender == timelock() || sender == _proposals[proposalId].proposer,
+            "Governor: only admin, governor timelock, or proposer can cancel"
+        );
+
         ProposalState status = state(proposalId);
 
         require(status != ProposalState.Canceled && status != ProposalState.Executed, "Governor: proposal not active");

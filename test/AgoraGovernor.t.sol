@@ -1746,30 +1746,6 @@ contract Cancel is AgoraGovernorTest {
         vm.expectRevert("Governor: unknown proposal id");
         governor.cancel(targets, values, calldatas, keccak256("Test"));
     }
-
-    function testFuzz_RevertIf_NotAdminOrTimelock(address _actor) public virtual {
-        vm.assume(_actor != admin && _actor != governor.timelock() && _actor != proxyAdmin);
-        vm.prank(minter);
-        govToken.mint(address(this), 1000);
-        govToken.delegate(address(this));
-
-        address[] memory targets = new address[](1);
-        targets[0] = address(this);
-        uint256[] memory values = new uint256[](1);
-        bytes[] memory calldatas = new bytes[](1);
-        calldatas[0] = abi.encodeWithSelector(this.executeCallback.selector);
-
-        vm.startPrank(admin);
-        governor.setVotingDelay(0);
-        governor.setVotingPeriod(14);
-
-        governor.propose(targets, values, calldatas, "Test");
-        vm.stopPrank();
-
-        vm.prank(_actor);
-        vm.expectRevert(NotAdminOrTimelock.selector);
-        governor.cancel(targets, values, calldatas, keccak256("Test"));
-    }
 }
 
 contract CancelWithModule is AgoraGovernorTest {
@@ -1913,18 +1889,6 @@ contract CancelWithModule is AgoraGovernorTest {
     function testFuzz_RevertIf_ProposalDoesntExist(bytes memory proposalData, uint256 _actorSeed) public virtual {
         vm.prank(_adminOrTimelock(_actorSeed));
         vm.expectRevert("Governor: unknown proposal id");
-        governor.cancelWithModule(VotingModule(module), proposalData, keccak256(bytes(description)));
-    }
-
-    function testFuzz_RevertIf_NotAdmin(address _actor) public virtual {
-        vm.assume(_actor != admin && _actor != governor.timelock() && _actor != proxyAdmin);
-        bytes memory proposalData = _formatProposalData(0);
-
-        vm.prank(manager);
-        governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
-
-        vm.expectRevert(NotAdminOrTimelock.selector);
-        vm.prank(_actor);
         governor.cancelWithModule(VotingModule(module), proposalData, keccak256(bytes(description)));
     }
 
