@@ -419,6 +419,7 @@ contract AgoraGovernor is
     /**
      * @inheritdoc GovernorUpgradeableV2
      */
+    function relay(address target, uint256 value, bytes calldata data)
         external
         payable
         virtual
