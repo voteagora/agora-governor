@@ -180,19 +180,20 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     {
         if (!_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
         if (scope.parameters.length != scope.comparators.length) revert InvalidParameterConditions();
-        if (_assignedScopes[proposalTypeId][scope.key].exists) revert NoDuplicateTxTypes(); // Do not allow multiple scopes for a single transaction type
+        bytes24 scopeKey = scope.key;
+        if (_assignedScopes[proposalTypeId][scopeKey].exists) revert NoDuplicateTxTypes(); // Do not allow multiple scopes for a single transaction type
 
         for (uint8 i = 0; i < _proposalTypes[proposalTypeId].validScopes.length; i++) {
-            if (_proposalTypes[proposalTypeId].validScopes[i] == scope.key) {
+            if (_proposalTypes[proposalTypeId].validScopes[i] == scopeKey) {
                 revert NoDuplicateTxTypes();
             }
         }
 
         _scopes.push(scope);
-        _scopeExists[scope.key] = true;
-        _proposalTypes[proposalTypeId].validScopes.push(scope.key);
-        _assignedScopes[proposalTypeId][scope.key] = scope;
-        emit ScopeCreated(proposalTypeId, scope.key, scope.encodedLimits);
+        _scopeExists[scopeKey] = true;
+        _proposalTypes[proposalTypeId].validScopes.push(scopeKey);
+        _assignedScopes[proposalTypeId][scopeKey] = scope;
+        emit ScopeCreated(proposalTypeId, scopeKey, scope.encodedLimits);
     }
 
     /**
