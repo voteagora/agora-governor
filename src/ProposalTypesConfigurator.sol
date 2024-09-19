@@ -173,17 +173,27 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param proposalTypeId Id of the proposal type
      * @param scope An object that contains the scope for a transaction type hash
      */
-    function updateScopeForProposalType(uint8 proposalTypeId, Scope calldata scope)
+    function addScopeForProposalType(uint8 proposalTypeId, Scope calldata scope)
         external
         override
         onlyAdminOrTimelock
     {
         if (!_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
         if (scope.parameters.length != scope.comparators.length) revert InvalidParameterConditions();
-        if (_assignedScopes[proposalTypeId][scope.key].exists) revert NoDuplicateTxTypes(); // Do not allow multiple scopes for a single transaction type
+        bytes24 scopeKey = scope.key;
+        if (_assignedScopes[proposalTypeId][scopeKey].exists) revert NoDuplicateTxTypes(); // Do not allow multiple scopes for a single transaction type
+
+        for (uint8 i = 0; i < _proposalTypes[proposalTypeId].validScopes.length; i++) {
+            if (_proposalTypes[proposalTypeId].validScopes[i] == scopeKey) {
+                revert NoDuplicateTxTypes();
+            }
+        }
 
         _scopes.push(scope);
-        _assignedScopes[proposalTypeId][scope.key] = scope;
+        _scopeExists[scopeKey] = true;
+        _proposalTypes[proposalTypeId].validScopes.push(scopeKey);
+        _assignedScopes[proposalTypeId][scopeKey] = scope;
+        emit ScopeCreated(proposalTypeId, scopeKey, scope.encodedLimits);
     }
 
     /**
@@ -211,7 +221,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         pure
         returns (bytes memory parameter)
     {
-        return limit[startIdx:endIdx + 1];
+        return limit[startIdx:endIdx];
     }
 
     /**
