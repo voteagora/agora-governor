@@ -228,7 +228,7 @@ contract ApprovalVotingModule is VotingModule {
                 }
 
                 // If `budgetAmount` for ETH is exceeded, skip option.
-                if (budgetExceeded) continue;
+                if (budgetExceeded) break;
 
                 // Check if budgetAmount is exceeded for non-ETH tokens
                 if (settings.budgetToken != address(0) && settings.budgetAmount != 0) {
