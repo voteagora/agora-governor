@@ -1258,7 +1258,7 @@ contract Execute is AgoraGovernorTest {
 
         vm.roll(block.number + 14);
 
-        vm.expectRevert("TimelockController: operation is not ready");
+        vm.expectRevert("Governor: proposal not queued");
         vm.prank(manager);
         governor.execute(targets, values, calldatas, keccak256("Test"));
     }
@@ -1319,7 +1319,7 @@ contract Execute is AgoraGovernorTest {
         assertEq(uint8(governor.state(proposalId)), uint8(ProposalState.Defeated));
 
         vm.prank(manager);
-        vm.expectRevert("Governor: proposal not successful");
+        vm.expectRevert("Governor: proposal not queued");
         governor.execute(targets, values, calldatas, keccak256("Test"));
     }
 
@@ -1358,7 +1358,7 @@ contract Execute is AgoraGovernorTest {
         vm.prank(manager);
         governor.execute(targets, values, calldatas, keccak256("Test"));
 
-        vm.expectRevert("Governor: proposal not successful");
+        vm.expectRevert("Governor: proposal not queued");
         vm.prank(manager);
         governor.execute(targets, values, calldatas, keccak256("Test"));
     }
@@ -1470,7 +1470,7 @@ contract ExecuteWithModule is AgoraGovernorTest {
 
         vm.roll(deadline + 1);
 
-        vm.expectRevert("TimelockController: operation is not ready");
+        vm.expectRevert("Governor: proposal not queued");
         vm.prank(manager);
         governor.executeWithModule(VotingModule(module), proposalData, keccak256(bytes(description)));
     }
@@ -1525,7 +1525,7 @@ contract ExecuteWithModule is AgoraGovernorTest {
         assertEq(uint8(governor.state(proposalId)), uint8(ProposalState.Defeated));
 
         vm.prank(manager);
-        vm.expectRevert("Governor: proposal not successful");
+        vm.expectRevert("Governor: proposal not queued");
         governor.executeWithModule(VotingModule(module), proposalData, keccak256(bytes(description)));
     }
 
@@ -1564,7 +1564,7 @@ contract ExecuteWithModule is AgoraGovernorTest {
         vm.prank(manager);
         governor.executeWithModule(VotingModule(module), proposalData, keccak256(bytes(description)));
 
-        vm.expectRevert("Governor: proposal not successful");
+        vm.expectRevert("Governor: proposal not queued");
         vm.prank(manager);
         governor.executeWithModule(VotingModule(module), proposalData, keccak256(bytes(description)));
     }
