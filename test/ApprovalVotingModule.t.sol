@@ -357,8 +357,7 @@ contract ApprovalVotingModuleTest is Test {
 
         module._countVote(proposalId, voter, uint8(VoteType.For), weight, params);
 
-        (address[] memory targets, uint256[] memory values, ) =
-            module._formatExecuteParams(proposalId, proposalData);
+        (address[] memory targets, uint256[] memory values,) = module._formatExecuteParams(proposalId, proposalData);
         vm.stopPrank();
 
         assertEq(targets.length, options.length);
