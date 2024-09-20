@@ -227,15 +227,14 @@ contract ApprovalVotingModule is VotingModule {
                     }
                 }
 
-                if (settings.budgetAmount != 0) {
-                    // If `budgetAmount` is exceeded, break outer loop. Executed for ETH
-                    if (budgetExceeded) break;
+                // If `budgetAmount` for ETH is exceeded, skip option.
+                if (budgetExceeded) continue;
 
-                    if (settings.budgetToken != address(0)) {
-                        if (option.budgetTokensSpent != 0) {
-                            if (totalValue + option.budgetTokensSpent > settings.budgetAmount) break; // break outer loop for non-ETH tokens
-                            totalValue += option.budgetTokensSpent;
-                        }
+                // Check if budgetAmount is exceeded for non-ETH tokens
+                if (settings.budgetToken != address(0) && settings.budgetAmount != 0) {
+                    if (option.budgetTokensSpent != 0) {
+                        if (totalValue + option.budgetTokensSpent > settings.budgetAmount) break; // break outer loop for non-ETH tokens
+                        totalValue += option.budgetTokensSpent;
                     }
                 }
 
