@@ -10,7 +10,6 @@ interface IProposalTypesConfigurator {
     error InvalidApprovalThreshold();
     error InvalidProposalType();
     error InvalidParameterConditions();
-    error NoDuplicateTxTypes();
     error InvalidScope();
     error NotAdminOrTimelock();
     error NotAdmin();

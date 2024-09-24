@@ -204,9 +204,9 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param key A type signature of a function and contract address that has a limit specified in a scope
      */
     function validateProposedTx(bytes calldata proposedTx, uint8 proposalTypeId, bytes24 key) public view {
-        Scope[] memory assignedScopes = _assignedScopes[proposalTypeId][key];
-        for (uint8 i = 0; i < assignedScopes.length; i++) {
-            Scope memory validScope = assignedScopes[i];
+        Scope[] memory scopes = _assignedScopes[proposalTypeId][key];
+        for (uint8 i = 0; i < scopes.length; i++) {
+            Scope memory validScope = scopes[i];
             bytes memory scopeLimit = validScope.encodedLimits;
             bytes4 selector = bytes4(scopeLimit);
             if (selector != bytes4(proposedTx[:4])) revert Invalid4ByteSelector();
