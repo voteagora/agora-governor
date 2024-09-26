@@ -283,7 +283,7 @@ contract AddScopeForProposalType is ProposalTypesConfiguratorTest {
         proposalTypesConfigurator.setScopeForProposalType(0, scopeKey1, txEncoded1, parameters, comparators);
 
         IProposalTypesConfigurator.Scope memory scope = IProposalTypesConfigurator.Scope(
-            scopeKey2, txEncoded2, new bytes[](1), new IProposalTypesConfigurator.Comparators[](1), 0, true
+            scopeKey2, txEncoded2, new bytes[](1), new IProposalTypesConfigurator.Comparators[](1), 0
         );
 
         emit ScopeCreated(0, scope.key, scope.encodedLimits);
@@ -300,7 +300,7 @@ contract AddScopeForProposalType is ProposalTypesConfiguratorTest {
 
         vm.expectRevert(IProposalTypesConfigurator.InvalidProposalType.selector);
         IProposalTypesConfigurator.Scope memory scope = IProposalTypesConfigurator.Scope(
-            scopeKey, txEncoded, new bytes[](1), new IProposalTypesConfigurator.Comparators[](1), 3, true
+            scopeKey, txEncoded, new bytes[](1), new IProposalTypesConfigurator.Comparators[](1), 3
         );
         proposalTypesConfigurator.addScopeForProposalType(3, scope);
         vm.stopPrank();
@@ -314,7 +314,7 @@ contract AddScopeForProposalType is ProposalTypesConfiguratorTest {
         bytes memory txEncoded = abi.encode("transfer(address,address,uint)", 0xdeadbeef, 0xdeadbeef, 10);
 
         IProposalTypesConfigurator.Scope memory scope = IProposalTypesConfigurator.Scope(
-            scopeKey, txEncoded, new bytes[](1), new IProposalTypesConfigurator.Comparators[](2), 0, true
+            scopeKey, txEncoded, new bytes[](1), new IProposalTypesConfigurator.Comparators[](2), 0
         );
         vm.expectRevert(IProposalTypesConfigurator.InvalidParameterConditions.selector);
         proposalTypesConfigurator.addScopeForProposalType(0, scope);

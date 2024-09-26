@@ -58,7 +58,6 @@ interface IProposalTypesConfigurator {
         bytes[] parameters;
         Comparators[] comparators;
         uint8 proposalTypeId;
-        bool exists;
     }
 
     /*//////////////////////////////////////////////////////////////
