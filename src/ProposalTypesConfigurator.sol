@@ -27,7 +27,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
 
     mapping(uint8 proposalTypeId => ProposalType) internal _proposalTypes;
     mapping(uint8 proposalTypeId => bool) internal _proposalTypesExists;
-    mapping(uint8 proposalTypeId => mapping(bytes24 key => Scope)) internal _assignedScopes;
+    mapping(uint8 proposalTypeId => mapping(bytes24 key => Scope[])) internal _assignedScopes;
     mapping(bytes24 key => bool) internal _scopeExists;
 
     /*//////////////////////////////////////////////////////////////
@@ -79,7 +79,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param scopeKey The function selector + contract address that is the key for a scope.
      * @return Scope struct of the scope.
      */
-    function assignedScopes(uint8 proposalTypeId, bytes24 scopeKey) external view returns (Scope memory) {
+    function assignedScopes(uint8 proposalTypeId, bytes24 scopeKey) external view returns (Scope[] memory) {
         return _assignedScopes[proposalTypeId][scopeKey];
     }
 
@@ -109,17 +109,10 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     ) external override onlyAdminOrTimelock {
         if (!_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
         if (parameters.length != comparators.length) revert InvalidParameterConditions();
-        if (_assignedScopes[proposalTypeId][key].exists) revert NoDuplicateTxTypes(); // Do not allow multiple scopes for a single transaction type
 
-        for (uint8 i = 0; i < _proposalTypes[proposalTypeId].validScopes.length; i++) {
-            if (_proposalTypes[proposalTypeId].validScopes[i] == key) {
-                revert NoDuplicateTxTypes();
-            }
-        }
+        Scope memory scope = Scope(key, encodedLimit, parameters, comparators, proposalTypeId);
 
-        Scope memory scope = Scope(key, encodedLimit, parameters, comparators, proposalTypeId, true);
-
-        _assignedScopes[proposalTypeId][key] = scope;
+        _assignedScopes[proposalTypeId][key].push(scope);
         _scopeExists[key] = true;
         _proposalTypes[proposalTypeId].validScopes.push(key);
 
@@ -179,30 +172,11 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         if (!_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
         if (scope.parameters.length != scope.comparators.length) revert InvalidParameterConditions();
         bytes24 scopeKey = scope.key;
-        if (_assignedScopes[proposalTypeId][scopeKey].exists) revert NoDuplicateTxTypes(); // Do not allow multiple scopes for a single transaction type
-
-        for (uint8 i = 0; i < _proposalTypes[proposalTypeId].validScopes.length; i++) {
-            if (_proposalTypes[proposalTypeId].validScopes[i] == scopeKey) {
-                revert NoDuplicateTxTypes();
-            }
-        }
 
         _scopeExists[scopeKey] = true;
         _proposalTypes[proposalTypeId].validScopes.push(scopeKey);
-        _assignedScopes[proposalTypeId][scopeKey] = scope;
+        _assignedScopes[proposalTypeId][scopeKey].push(scope);
         emit ScopeCreated(proposalTypeId, scopeKey, scope.encodedLimits);
-    }
-
-    /**
-     * @notice Retrives the encoded limit of a transaction type signature for a given proposal type.
-     * @param proposalTypeId Id of the proposal type
-     * @param key A type signature of a function and contract address that has a limit specified in a scope
-     */
-    function getLimit(uint8 proposalTypeId, bytes24 key) public view returns (bytes memory encodedLimits) {
-        if (!_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
-        if (!_assignedScopes[proposalTypeId][key].exists) revert InvalidScope();
-        Scope memory validScope = _assignedScopes[proposalTypeId][key];
-        return validScope.encodedLimits;
     }
 
     /**
@@ -230,31 +204,34 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param key A type signature of a function and contract address that has a limit specified in a scope
      */
     function validateProposedTx(bytes calldata proposedTx, uint8 proposalTypeId, bytes24 key) public view {
-        Scope memory validScope = _assignedScopes[proposalTypeId][key];
-        bytes memory scopeLimit = validScope.encodedLimits;
-        bytes4 selector = bytes4(scopeLimit);
-        if (selector != bytes4(proposedTx[:4])) revert Invalid4ByteSelector();
+        Scope[] memory scopes = _assignedScopes[proposalTypeId][key];
+        for (uint8 i = 0; i < scopes.length; i++) {
+            Scope memory validScope = scopes[i];
+            bytes memory scopeLimit = validScope.encodedLimits;
+            bytes4 selector = bytes4(scopeLimit);
+            if (selector != bytes4(proposedTx[:4])) revert Invalid4ByteSelector();
 
-        uint256 startIdx = 4;
-        uint256 endIdx = startIdx;
-        for (uint8 i = 0; i < validScope.parameters.length; i++) {
-            endIdx = endIdx + validScope.parameters[i].length;
+            uint256 startIdx = 4;
+            uint256 endIdx = startIdx;
+            for (uint8 j = 0; j < validScope.parameters.length; j++) {
+                endIdx = endIdx + validScope.parameters[j].length;
 
-            bytes32 param = bytes32(proposedTx[startIdx:endIdx]);
-            if (validScope.comparators[i] == Comparators.EQUAL) {
-                bytes32 scopedParam = bytes32(this.getParameter(scopeLimit, startIdx, endIdx));
-                if (scopedParam != param) revert InvalidParamNotEqual();
+                bytes32 param = bytes32(proposedTx[startIdx:endIdx]);
+                if (validScope.comparators[j] == Comparators.EQUAL) {
+                    bytes32 scopedParam = bytes32(this.getParameter(scopeLimit, startIdx, endIdx));
+                    if (scopedParam != param) revert InvalidParamNotEqual();
+                }
+
+                if (validScope.comparators[j] == Comparators.LESS_THAN) {
+                    if (param >= bytes32(validScope.parameters[j])) revert InvalidParamRange();
+                }
+
+                if (validScope.comparators[j] == Comparators.GREATER_THAN) {
+                    if (param <= bytes32(validScope.parameters[j])) revert InvalidParamRange();
+                }
+
+                startIdx = endIdx;
             }
-
-            if (validScope.comparators[i] == Comparators.LESS_THAN) {
-                if (param >= bytes32(validScope.parameters[i])) revert InvalidParamRange();
-            }
-
-            if (validScope.comparators[i] == Comparators.GREATER_THAN) {
-                if (param <= bytes32(validScope.parameters[i])) revert InvalidParamRange();
-            }
-
-            startIdx = endIdx;
         }
     }
 
@@ -265,11 +242,14 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param calldatas The list of proposed transaction calldata.
      * @param proposalType The type of the proposal.
      */
-    function validateProposalData(address[] memory targets, bytes[] calldata calldatas, uint8 proposalType) public {
+    function validateProposalData(address[] memory targets, bytes[] calldata calldatas, uint8 proposalType)
+        public
+        view
+    {
         for (uint8 i = 0; i < calldatas.length; i++) {
             bytes24 scopeKey = _pack(targets[i], bytes4(calldatas[i]));
 
-            if (_assignedScopes[proposalType][scopeKey].exists) {
+            if (_assignedScopes[proposalType][scopeKey].length != 0) {
                 validateProposedTx(calldatas[i], proposalType, scopeKey);
             } else {
                 if (_scopeExists[scopeKey]) {

@@ -10,7 +10,6 @@ interface IProposalTypesConfigurator {
     error InvalidApprovalThreshold();
     error InvalidProposalType();
     error InvalidParameterConditions();
-    error NoDuplicateTxTypes();
     error InvalidScope();
     error NotAdminOrTimelock();
     error NotAdmin();
@@ -59,7 +58,6 @@ interface IProposalTypesConfigurator {
         bytes[] parameters;
         Comparators[] comparators;
         uint8 proposalTypeId;
-        bool exists;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -69,7 +67,7 @@ interface IProposalTypesConfigurator {
     function initialize(address _governor, ProposalType[] calldata _proposalTypes) external;
 
     function proposalTypes(uint8 proposalTypeId) external view returns (ProposalType memory);
-    function assignedScopes(uint8 proposalTypeId, bytes24 scopeKey) external view returns (Scope memory);
+    function assignedScopes(uint8 proposalTypeId, bytes24 scopeKey) external view returns (Scope[] memory);
     function scopeExists(bytes24 key) external view returns (bool);
 
     function setProposalType(
@@ -91,7 +89,6 @@ interface IProposalTypesConfigurator {
     ) external;
 
     function addScopeForProposalType(uint8 proposalTypeId, Scope calldata scope) external;
-    function getLimit(uint8 proposalTypeId, bytes24 key) external returns (bytes memory);
     function validateProposedTx(bytes calldata proposedTx, uint8 proposalTypeId, bytes24 key) external;
     function validateProposalData(address[] memory targets, bytes[] memory calldatas, uint8 proposalType) external;
 }
