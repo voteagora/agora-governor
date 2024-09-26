@@ -242,7 +242,10 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param calldatas The list of proposed transaction calldata.
      * @param proposalType The type of the proposal.
      */
-    function validateProposalData(address[] memory targets, bytes[] calldata calldatas, uint8 proposalType) public view {
+    function validateProposalData(address[] memory targets, bytes[] calldata calldatas, uint8 proposalType)
+        public
+        view
+    {
         for (uint8 i = 0; i < calldatas.length; i++) {
             bytes24 scopeKey = _pack(targets[i], bytes4(calldatas[i]));
 
