@@ -13,6 +13,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     //////////////////////////////////////////////////////////////*/
 
     event ScopeCreated(uint8 indexed proposalTypeId, bytes24 indexed scopeKey, bytes encodedLimit);
+    event ScopeDisabled(bytes24 indexed scopeKey);
 
     /*//////////////////////////////////////////////////////////////
                            IMMUTABLE STORAGE
@@ -180,6 +181,19 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     }
 
     /**
+     * @notice Disables a scopes for all contract + function signatures.
+     * @param scopeKey the contract and function signature representing the scope key
+     */
+    function disableScope(bytes24 scopeKey)
+        external
+        override
+        onlyAdminOrTimelock
+    {
+        _scopeExists[scopeKey] = false;
+        emit ScopeDisabled(scopeKey);
+    }
+
+    /**
      * @dev Given the limitation that these byte values are stored in memory, this function allows us to use the slice syntax given that the parameter field
      * contains the correct byte length. Note that the way slice indices are handled such that [startIdx, endIdx)
      * @notice This will retrieve the parameter from the encoded transaction.
@@ -205,32 +219,35 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      */
     function validateProposedTx(bytes calldata proposedTx, uint8 proposalTypeId, bytes24 key) public view {
         Scope[] memory scopes = _assignedScopes[proposalTypeId][key];
-        for (uint8 i = 0; i < scopes.length; i++) {
-            Scope memory validScope = scopes[i];
-            bytes memory scopeLimit = validScope.encodedLimits;
-            bytes4 selector = bytes4(scopeLimit);
-            if (selector != bytes4(proposedTx[:4])) revert Invalid4ByteSelector();
 
-            uint256 startIdx = 4;
-            uint256 endIdx = startIdx;
-            for (uint8 j = 0; j < validScope.parameters.length; j++) {
-                endIdx = endIdx + validScope.parameters[j].length;
+        if (_scopeExists[key]) {
+            for (uint8 i = 0; i < scopes.length; i++) {
+                Scope memory validScope = scopes[i];
+                bytes memory scopeLimit = validScope.encodedLimits;
+                bytes4 selector = bytes4(scopeLimit);
+                if (selector != bytes4(proposedTx[:4])) revert Invalid4ByteSelector();
 
-                bytes32 param = bytes32(proposedTx[startIdx:endIdx]);
-                if (validScope.comparators[j] == Comparators.EQUAL) {
-                    bytes32 scopedParam = bytes32(this.getParameter(scopeLimit, startIdx, endIdx));
-                    if (scopedParam != param) revert InvalidParamNotEqual();
+                uint256 startIdx = 4;
+                uint256 endIdx = startIdx;
+                for (uint8 j = 0; j < validScope.parameters.length; j++) {
+                    endIdx = endIdx + validScope.parameters[j].length;
+
+                    bytes32 param = bytes32(proposedTx[startIdx:endIdx]);
+                    if (validScope.comparators[j] == Comparators.EQUAL) {
+                        bytes32 scopedParam = bytes32(this.getParameter(scopeLimit, startIdx, endIdx));
+                        if (scopedParam != param) revert InvalidParamNotEqual();
+                    }
+
+                    if (validScope.comparators[j] == Comparators.LESS_THAN) {
+                        if (param >= bytes32(validScope.parameters[j])) revert InvalidParamRange();
+                    }
+
+                    if (validScope.comparators[j] == Comparators.GREATER_THAN) {
+                        if (param <= bytes32(validScope.parameters[j])) revert InvalidParamRange();
+                    }
+
+                    startIdx = endIdx;
                 }
-
-                if (validScope.comparators[j] == Comparators.LESS_THAN) {
-                    if (param >= bytes32(validScope.parameters[j])) revert InvalidParamRange();
-                }
-
-                if (validScope.comparators[j] == Comparators.GREATER_THAN) {
-                    if (param <= bytes32(validScope.parameters[j])) revert InvalidParamRange();
-                }
-
-                startIdx = endIdx;
             }
         }
     }
