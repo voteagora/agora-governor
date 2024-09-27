@@ -20,6 +20,7 @@ contract ProposalTypesConfiguratorTest is Test {
     );
 
     event ScopeCreated(uint8 indexed proposalTypeId, bytes24 indexed scopeKey, bytes encodedLimit);
+    event ScopeDisabled(uint8 indexed proposalTypeId, bytes24 indexed scopeKey);
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
@@ -433,6 +434,19 @@ contract ValidateProposedTx is ProposalTypesConfiguratorTest {
         bytes memory proposedTx = abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(5));
         vm.expectRevert(IProposalTypesConfigurator.InvalidParamRange.selector);
         proposalTypesConfigurator.validateProposedTx(proposedTx, 0, scopeKey);
+    }
+}
+
+contract DisableScope is ProposalTypesConfiguratorTest {
+    function testFuzz_DisableScope(uint256 _actorSeed) public {
+        vm.prank(_adminOrTimelock(_actorSeed));
+        bytes32 txTypeHash = keccak256("transfer(address,address,uint256)");
+        address contractAddress = makeAddr("contract");
+        bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
+
+        vm.expectEmit();
+        emit ScopeDisabled(0, scopeKey);
+        proposalTypesConfigurator.disableScope(0, scopeKey);
     }
 }
 
