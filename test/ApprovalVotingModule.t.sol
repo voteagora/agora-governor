@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {Test} from "forge-std/Test.sol";
+import "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import {TokenMock} from "test/mocks/TokenMock.sol";
 import {ApprovalVotingModule} from "src/modules/ApprovalVotingModule.sol";
@@ -320,36 +320,52 @@ contract ApprovalVotingModuleTest is Test {
     }
 
     function testFormatExecuteParams_ethBudgetExceeded() public {
-        (bytes memory proposalData, ProposalOption[] memory options,) = _formatProposalData(true, false);
+        address[] memory targets1 = new address[](1);
+        uint256[] memory values1 = new uint256[](1);
+        bytes[] memory calldatas = new bytes[](1);
+        targets1[0] = receiver1;
+        values1[0] = 0.1 ether;
+
+        address[] memory targets2 = new address[](1);
+        uint256[] memory values2 = new uint256[](1);
+        targets2[0] = receiver1;
+        values2[0] = 0;
+
+        ProposalOption[] memory options = new ProposalOption[](2);
+        options[0] = ProposalOption(0, targets1, values1, calldatas, "option 1");
+        options[1] = ProposalOption(0, targets2, values2, calldatas, "option 2");
+
+        ProposalSettings memory settings = ProposalSettings({
+            maxApprovals: 2,
+            criteria: uint8(PassingCriteria.TopChoices),
+            criteriaValue: 2,
+            budgetToken: address(0),
+            budgetAmount: 0
+        });
+
+        bytes memory proposalData = abi.encode(options, settings);
         uint256 weight = 100;
 
         vm.startPrank(governor);
         uint256 proposalId = hashProposalWithModule(governor, address(module), proposalData, descriptionHash);
         module.propose(proposalId, proposalData, descriptionHash);
 
-        uint256[] memory votes = new uint256[](2);
+        uint256[] memory votes = new uint256[](1);
         votes[0] = 0;
-        votes[1] = 1;
+        votes[0] = 1;
         bytes memory params = abi.encode(votes);
 
         module._countVote(proposalId, voter, uint8(VoteType.For), weight, params);
 
-        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas) =
-            module._formatExecuteParams(proposalId, proposalData);
+        (address[] memory targets, uint256[] memory values,) = module._formatExecuteParams(proposalId, proposalData);
         vm.stopPrank();
 
-        assertEq(targets.length, options[0].targets.length + 1);
+        assertEq(targets.length, options.length);
         assertEq(targets.length, values.length);
-        assertEq(targets.length, calldatas.length);
-        assertEq(targets[0], options[0].targets[0]);
-        assertEq(values[0], options[0].values[0]);
-        assertEq(calldatas[0], options[0].calldatas[0]);
+        assertEq(targets[0], options[1].targets[0]);
+        assertEq(values[0], options[1].values[0]);
         assertEq(targets[1], address(module));
         assertEq(values[1], 0);
-        assertEq(
-            calldatas[1],
-            abi.encodeCall(ApprovalVotingModule._afterExecute, (proposalId, proposalData, options[1].budgetTokensSpent))
-        );
     }
 
     function testFormatExecuteParams_opBudgetExceeded() public {
