@@ -15,7 +15,6 @@ abstract contract VotingModule {
     error NotGovernor();
     error ExistingProposal();
     error InvalidParams();
-    error AlreadyVoted();
 
     /*//////////////////////////////////////////////////////////////
                                MODIFIERS
