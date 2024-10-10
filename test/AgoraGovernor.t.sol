@@ -2137,6 +2137,7 @@ contract EditProposalType is AgoraGovernorTest {
     function testFuzz_EditProposalTypeByAdminOrTimelock(uint256 _actorSeed) public virtual {
         vm.startPrank(_adminOrTimelock(_actorSeed));
         proposalTypesConfigurator.setProposalType(0, 3_000, 9_910, "Default", "Lorem Ipsum", address(0));
+        proposalTypesConfigurator.setProposalType(1, 3_000, 9_910, "Default 2", "Lorem Ipsum 2", address(0));
 
         address[] memory targets = new address[](1);
         targets[0] = address(this);
