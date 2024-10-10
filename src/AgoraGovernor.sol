@@ -30,16 +30,6 @@ contract AgoraGovernor is
     //////////////////////////////////////////////////////////////*/
 
     event ProposalCreated(
-        uint256 proposalId,
-        address proposer,
-        address votingModule,
-        bytes proposalData,
-        uint256 startBlock,
-        uint256 endBlock,
-        string description
-    );
-
-    event ProposalCreated(
         uint256 indexed proposalId,
         address indexed proposer,
         address[] targets,
