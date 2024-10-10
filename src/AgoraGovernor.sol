@@ -580,8 +580,11 @@ contract AgoraGovernor is
     function editProposalType(uint256 proposalId, uint8 proposalType) external onlyAdminOrTimelock {
         if (proposalSnapshot(proposalId) == 0) revert InvalidProposalId();
 
-        // Revert if `proposalType` is unset
-        if (bytes(PROPOSAL_TYPES_CONFIGURATOR.proposalTypes(proposalType).name).length == 0) {
+        // Revert if `proposalType` is unset or the proposal has a different voting module
+        if (
+            bytes(PROPOSAL_TYPES_CONFIGURATOR.proposalTypes(proposalType).name).length == 0
+                || PROPOSAL_TYPES_CONFIGURATOR.proposalTypes(proposalType).module != _proposals[proposalId].votingModule
+        ) {
             revert InvalidProposalType(proposalType);
         }
 
