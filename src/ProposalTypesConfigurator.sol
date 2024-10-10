@@ -240,17 +240,17 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * proposal threshold can propose.
      * @param targets The list of target contract addresses.
      * @param calldatas The list of proposed transaction calldata.
-     * @param proposalType The type of the proposal.
+     * @param proposalTypeId The type of the proposal.
      */
-    function validateProposalData(address[] memory targets, bytes[] calldata calldatas, uint8 proposalType)
+    function validateProposalData(address[] memory targets, bytes[] calldata calldatas, uint8 proposalTypeId)
         public
         view
     {
         for (uint8 i = 0; i < calldatas.length; i++) {
             bytes24 scopeKey = _pack(targets[i], bytes4(calldatas[i]));
 
-            if (_assignedScopes[proposalType][scopeKey].length != 0) {
-                validateProposedTx(calldatas[i], proposalType, scopeKey);
+            if (_assignedScopes[proposalTypeId][scopeKey].length != 0) {
+                validateProposedTx(calldatas[i], proposalTypeId, scopeKey);
             } else {
                 if (_scopeExists[scopeKey]) {
                     revert InvalidProposedTxForType();

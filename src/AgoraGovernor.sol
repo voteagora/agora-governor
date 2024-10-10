@@ -49,7 +49,7 @@ contract AgoraGovernor is
         uint256 startBlock,
         uint256 endBlock,
         string description,
-        uint8 proposalType
+        uint8 proposalTypeId
     );
     event ProposalCreated(
         uint256 indexed proposalId,
@@ -59,9 +59,9 @@ contract AgoraGovernor is
         uint256 startBlock,
         uint256 endBlock,
         string description,
-        uint8 proposalType
+        uint8 proposalTypeId
     );
-    event ProposalTypeUpdated(uint256 indexed proposalId, uint8 proposalType);
+    event ProposalTypeUpdated(uint256 indexed proposalId, uint8 proposalTypeId);
     event ProposalDeadlineUpdated(uint256 proposalId, uint64 deadline);
     event AdminSet(address indexed oldAdmin, address indexed newAdmin);
     event ManagerSet(address indexed oldManager, address indexed newManager);
@@ -75,7 +75,7 @@ contract AgoraGovernor is
                                  ERRORS
     //////////////////////////////////////////////////////////////*/
 
-    error InvalidProposalType(uint8 proposalType);
+    error InvalidProposalType(uint8 proposalTypeId);
     error InvalidProposalId();
     error InvalidProposalLength();
     error InvalidEmptyProposal();
@@ -454,7 +454,7 @@ contract AgoraGovernor is
         uint256[] memory values,
         bytes[] memory calldatas,
         string memory description,
-        uint8 proposalType
+        uint8 proposalTypeId
     ) public virtual returns (uint256 proposalId) {
         address proposer = _msgSender();
         if (proposer != manager && getVotes(proposer, block.number - 1) < proposalThreshold()) {
@@ -467,13 +467,13 @@ contract AgoraGovernor is
 
         // Revert if `proposalType` is unset or requires module
         if (
-            bytes(PROPOSAL_TYPES_CONFIGURATOR.proposalTypes(proposalType).name).length == 0
-                || PROPOSAL_TYPES_CONFIGURATOR.proposalTypes(proposalType).module != address(0)
+            bytes(PROPOSAL_TYPES_CONFIGURATOR.proposalTypes(proposalTypeId).name).length == 0
+                || PROPOSAL_TYPES_CONFIGURATOR.proposalTypes(proposalTypeId).module != address(0)
         ) {
-            revert InvalidProposalType(proposalType);
+            revert InvalidProposalType(proposalTypeId);
         }
 
-        PROPOSAL_TYPES_CONFIGURATOR.validateProposalData(targets, calldatas, proposalType);
+        PROPOSAL_TYPES_CONFIGURATOR.validateProposalData(targets, calldatas, proposalTypeId);
 
         proposalId = hashProposal(targets, values, calldatas, keccak256(bytes(description)));
 
@@ -485,7 +485,7 @@ contract AgoraGovernor is
 
         proposal.voteStart.setDeadline(snapshot);
         proposal.voteEnd.setDeadline(deadline);
-        proposal.proposalType = proposalType;
+        proposal.proposalType = proposalTypeId;
         proposal.proposer = proposer;
 
         emit ProposalCreated(
@@ -498,7 +498,7 @@ contract AgoraGovernor is
             snapshot,
             deadline,
             description,
-            proposalType
+            proposalTypeId
         );
     }
 
@@ -524,15 +524,15 @@ contract AgoraGovernor is
      * @param module The address of the voting module to use for this proposal.
      * @param proposalData The proposal data to pass to the voting module.
      * @param description The description of the proposal.
-     * @param proposalType The type of the proposal.
-     * @dev Updated version in which `proposalType` is set and checked.
+     * @param proposalTypeId The type of the proposal.
+     * @dev Updated version in which `proposalTypeId` is set and checked.
      * @return proposalId The id of the proposal.
      */
     function proposeWithModule(
         VotingModule module,
         bytes memory proposalData,
         string memory description,
-        uint8 proposalType
+        uint8 proposalTypeId
     ) public virtual returns (uint256 proposalId) {
         address proposer = _msgSender();
         if (proposer != manager) {
@@ -541,12 +541,12 @@ contract AgoraGovernor is
 
         require(approvedModules[address(module)], "Governor: module not approved");
 
-        // Revert if `proposalType` is unset or doesn't match module
+        // Revert if `proposalTypeId` is unset or doesn't match module
         if (
-            bytes(PROPOSAL_TYPES_CONFIGURATOR.proposalTypes(proposalType).name).length == 0
-                || PROPOSAL_TYPES_CONFIGURATOR.proposalTypes(proposalType).module != address(module)
+            bytes(PROPOSAL_TYPES_CONFIGURATOR.proposalTypes(proposalTypeId).name).length == 0
+                || PROPOSAL_TYPES_CONFIGURATOR.proposalTypes(proposalTypeId).module != address(module)
         ) {
-            revert InvalidProposalType(proposalType);
+            revert InvalidProposalType(proposalTypeId);
         }
 
         bytes32 descriptionHash = keccak256(bytes(description));
@@ -562,35 +562,35 @@ contract AgoraGovernor is
         proposal.voteStart.setDeadline(snapshot);
         proposal.voteEnd.setDeadline(deadline);
         proposal.votingModule = address(module);
-        proposal.proposalType = proposalType;
+        proposal.proposalType = proposalTypeId;
         proposal.proposer = proposer;
 
         module.propose(proposalId, proposalData, descriptionHash);
 
         emit ProposalCreated(
-            proposalId, proposer, address(module), proposalData, snapshot, deadline, description, proposalType
+            proposalId, proposer, address(module), proposalData, snapshot, deadline, description, proposalTypeId
         );
     }
 
     /**
-     * @notice Allows admin or timelock to modify the proposalType of a proposal, in case it was set incorrectly.
+     * @notice Allows admin or timelock to modify the `proposalTypeId` of a proposal, in case it was set incorrectly.
      * @param proposalId The id of the proposal.
-     * @param proposalType The new proposal type.
+     * @param proposalTypeId The new proposal type.
      */
-    function editProposalType(uint256 proposalId, uint8 proposalType) external onlyAdminOrTimelock {
+    function editProposalType(uint256 proposalId, uint8 proposalTypeId) external onlyAdminOrTimelock {
         if (proposalSnapshot(proposalId) == 0) revert InvalidProposalId();
 
-        // Revert if `proposalType` is unset or the proposal has a different voting module
+        // Revert if `proposalTypeId` is unset or the proposal has a different voting module
         if (
-            bytes(PROPOSAL_TYPES_CONFIGURATOR.proposalTypes(proposalType).name).length == 0
-                || PROPOSAL_TYPES_CONFIGURATOR.proposalTypes(proposalType).module != _proposals[proposalId].votingModule
+            bytes(PROPOSAL_TYPES_CONFIGURATOR.proposalTypes(proposalTypeId).name).length == 0
+                || PROPOSAL_TYPES_CONFIGURATOR.proposalTypes(proposalTypeId).module != _proposals[proposalId].votingModule
         ) {
-            revert InvalidProposalType(proposalType);
+            revert InvalidProposalType(proposalTypeId);
         }
 
-        _proposals[proposalId].proposalType = proposalType;
+        _proposals[proposalId].proposalType = proposalTypeId;
 
-        emit ProposalTypeUpdated(proposalId, proposalType);
+        emit ProposalTypeUpdated(proposalId, proposalTypeId);
     }
 
     /**

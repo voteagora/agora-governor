@@ -90,5 +90,5 @@ interface IProposalTypesConfigurator {
 
     function addScopeForProposalType(uint8 proposalTypeId, Scope calldata scope) external;
     function validateProposedTx(bytes calldata proposedTx, uint8 proposalTypeId, bytes24 key) external;
-    function validateProposalData(address[] memory targets, bytes[] memory calldatas, uint8 proposalType) external;
+    function validateProposalData(address[] memory targets, bytes[] memory calldatas, uint8 proposalTypeId) external;
 }
