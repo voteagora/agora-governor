@@ -370,8 +370,8 @@ contract ValidateProposedTx is ProposalTypesConfiguratorTest {
         vm.expectRevert(IProposalTypesConfigurator.InvalidParamRange.selector);
         proposalTypesConfigurator.validateProposedTx(proposedTx, 0, scopeKey);
     }
-
 }
+
 contract DisableScope is ProposalTypesConfiguratorTest {
     function testFuzz_DisableScope(uint256 _actorSeed) public {
         vm.prank(_adminOrTimelock(_actorSeed));

@@ -184,11 +184,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @notice Disables a scopes for all contract + function signatures.
      * @param scopeKey the contract and function signature representing the scope key
      */
-    function disableScope(bytes24 scopeKey)
-        external
-        override
-        onlyAdminOrTimelock
-    {
+    function disableScope(bytes24 scopeKey) external override onlyAdminOrTimelock {
         _scopeExists[scopeKey] = false;
         emit ScopeDisabled(scopeKey);
     }
