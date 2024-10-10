@@ -16,10 +16,7 @@ import {
     ProposalSettings,
     PassingCriteria
 } from "src/modules/ApprovalVotingModule.sol";
-import {
-    OptimisticModule,
-    ProposalSettings as OptimisticProposalSettings
-} from "src/modules/OptimisticModule.sol";
+import {OptimisticModule, ProposalSettings as OptimisticProposalSettings} from "src/modules/OptimisticModule.sol";
 import {AgoraGovernorMock, AgoraGovernor} from "test/mocks/AgoraGovernorMock.sol";
 import {ApprovalVotingModuleMock} from "test/mocks/ApprovalVotingModuleMock.sol";
 import {VoteType} from "test/ApprovalVotingModule.t.sol";
