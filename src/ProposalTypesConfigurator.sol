@@ -19,6 +19,8 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     //////////////////////////////////////////////////////////////*/
 
     IAgoraGovernor public governor;
+
+    /// @notice Max value of `quorum` and `approvalThreshold` in `ProposalType`
     uint16 public constant PERCENT_DIVISOR = 10_000;
 
     /*//////////////////////////////////////////////////////////////
@@ -53,7 +55,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         if (_governor == address(0)) revert InvalidGovernor();
 
         governor = IAgoraGovernor(_governor);
-        
+
         for (uint8 i = 0; i < _proposalTypesInit.length; i++) {
             _setProposalType(
                 i,
