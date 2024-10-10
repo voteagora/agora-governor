@@ -21,6 +21,8 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     //////////////////////////////////////////////////////////////*/
 
     IAgoraGovernor public governor;
+
+    /// @notice Max value of `quorum` and `approvalThreshold` in `ProposalType`
     uint16 public constant PERCENT_DIVISOR = 10_000;
 
     /*//////////////////////////////////////////////////////////////
@@ -52,7 +54,10 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      */
     function initialize(address _governor, ProposalType[] calldata _proposalTypesInit) external {
         if (address(governor) != address(0)) revert AlreadyInit();
+        if (_governor == address(0)) revert InvalidGovernor();
+
         governor = IAgoraGovernor(_governor);
+
         for (uint8 i = 0; i < _proposalTypesInit.length; i++) {
             _setProposalType(
                 i,
@@ -250,17 +255,17 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * proposal threshold can propose.
      * @param targets The list of target contract addresses.
      * @param calldatas The list of proposed transaction calldata.
-     * @param proposalType The type of the proposal.
+     * @param proposalTypeId The type of the proposal.
      */
-    function validateProposalData(address[] memory targets, bytes[] calldata calldatas, uint8 proposalType)
+    function validateProposalData(address[] memory targets, bytes[] calldata calldatas, uint8 proposalTypeId)
         public
         view
     {
         for (uint8 i = 0; i < calldatas.length; i++) {
             bytes24 scopeKey = _pack(targets[i], bytes4(calldatas[i]));
 
-            if (_assignedScopes[proposalType][scopeKey].length != 0) {
-                validateProposedTx(calldatas[i], proposalType, scopeKey);
+            if (_assignedScopes[proposalTypeId][scopeKey].length != 0) {
+                validateProposedTx(calldatas[i], proposalTypeId, scopeKey);
             } else {
                 if (_scopeExists[scopeKey]) {
                     revert InvalidProposedTxForType();
