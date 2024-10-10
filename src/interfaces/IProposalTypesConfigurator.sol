@@ -24,12 +24,7 @@ interface IProposalTypesConfigurator {
     //////////////////////////////////////////////////////////////*/
 
     event ProposalTypeSet(
-        uint8 indexed proposalTypeId,
-        uint16 quorum,
-        uint16 approvalThreshold,
-        string name,
-        string description,
-        bytes24[] validScopes
+        uint8 indexed proposalTypeId, uint16 quorum, uint16 approvalThreshold, string name, string description
     );
 
     /*//////////////////////////////////////////////////////////////
@@ -42,7 +37,6 @@ interface IProposalTypesConfigurator {
         string name;
         string description;
         address module;
-        bytes24[] validScopes;
     }
 
     enum Comparators {
@@ -58,6 +52,7 @@ interface IProposalTypesConfigurator {
         bytes[] parameters;
         Comparators[] comparators;
         uint8 proposalTypeId;
+        string description;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -76,8 +71,7 @@ interface IProposalTypesConfigurator {
         uint16 approvalThreshold,
         string memory name,
         string memory description,
-        address module,
-        bytes24[] memory validScopes
+        address module
     ) external;
 
     function setScopeForProposalType(
@@ -85,7 +79,8 @@ interface IProposalTypesConfigurator {
         bytes24 key,
         bytes calldata encodedLimit,
         bytes[] memory parameters,
-        Comparators[] memory comparators
+        Comparators[] memory comparators,
+        string memory description
     ) external;
 
     function addScopeForProposalType(uint8 proposalTypeId, Scope calldata scope) external;
