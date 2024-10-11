@@ -26,7 +26,6 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     //////////////////////////////////////////////////////////////*/
 
     mapping(uint8 proposalTypeId => ProposalType) internal _proposalTypes;
-    mapping(uint8 proposalTypeId => bool) internal _proposalTypesExists;
     mapping(uint8 proposalTypeId => mapping(bytes24 key => Scope)) internal _assignedScopes;
     mapping(bytes24 key => bool) internal _scopeExists;
     Scope[] internal _scopes;
@@ -108,7 +107,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         bytes[] memory parameters,
         Comparators[] memory comparators
     ) external override onlyAdminOrTimelock {
-        if (!_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
+        if (!_proposalTypes[proposalTypeId].exists) revert InvalidProposalType();
         if (parameters.length != comparators.length) revert InvalidParameterConditions();
         if (_assignedScopes[proposalTypeId][key].exists) revert NoDuplicateTxTypes(); // Do not allow multiple scopes for a single transaction type
 
@@ -162,8 +161,8 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         if (quorum > PERCENT_DIVISOR) revert InvalidQuorum();
         if (approvalThreshold > PERCENT_DIVISOR) revert InvalidApprovalThreshold();
 
-        _proposalTypes[proposalTypeId] = ProposalType(quorum, approvalThreshold, name, description, module, validScopes);
-        _proposalTypesExists[proposalTypeId] = true;
+        _proposalTypes[proposalTypeId] =
+            ProposalType(quorum, approvalThreshold, name, description, module, validScopes, true);
 
         emit ProposalTypeSet(proposalTypeId, quorum, approvalThreshold, name, description, validScopes);
     }
@@ -178,7 +177,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         override
         onlyAdminOrTimelock
     {
-        if (!_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
+        if (!_proposalTypes[proposalTypeId].exists) revert InvalidProposalType();
         if (scope.parameters.length != scope.comparators.length) revert InvalidParameterConditions();
         if (_assignedScopes[proposalTypeId][scope.key].exists) revert NoDuplicateTxTypes(); // Do not allow multiple scopes for a single transaction type
 
@@ -192,7 +191,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param key A type signature of a function and contract address that has a limit specified in a scope
      */
     function getLimit(uint8 proposalTypeId, bytes24 key) public view returns (bytes memory encodedLimits) {
-        if (!_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
+        if (!_proposalTypes[proposalTypeId].exists) revert InvalidProposalType();
         if (!_assignedScopes[proposalTypeId][key].exists) revert InvalidScope();
         Scope memory validScope = _assignedScopes[proposalTypeId][key];
         return validScope.encodedLimits;
