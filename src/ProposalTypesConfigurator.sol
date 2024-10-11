@@ -199,22 +199,6 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     }
 
     /**
-     * @dev Given the limitation that these byte values are stored in memory, this function allows us to use the slice syntax given that the parameter field
-     * contains the correct byte length. Note that the way slice indices are handled such that [startIdx, endIdx)
-     * @notice This will retrieve the parameter from the encoded transaction.
-     * @param limit The abi.encodedWithSignature that contains the limits with parameters i.e abi.encodedWithSignature('functionSelector(a,b)', _a, _b)
-     * @param startIdx The start index in the byte array that contains the parameter, inclusive.
-     * @param endIdx The end index in the byte array that contains parameter exclusive
-     */
-    function getParameter(bytes calldata limit, uint256 startIdx, uint256 endIdx)
-        public
-        pure
-        returns (bytes memory parameter)
-    {
-        return limit[startIdx:endIdx + 1];
-    }
-
-    /**
      * @notice Validates that a proposed transaction conforms to the scope defined in a given proposal type. Note: This
      *   version only supports functions that have for each parameter 32-byte abi encodings, please see the ABI
      *   specification to see which types are not supported.
@@ -235,8 +219,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
 
             bytes32 param = bytes32(proposedTx[startIdx:endIdx]);
             if (validScope.comparators[i] == Comparators.EQUAL) {
-                bytes32 scopedParam = bytes32(this.getParameter(scopeLimit, startIdx, endIdx));
-                if (scopedParam != param) revert InvalidParamNotEqual();
+                if (param != bytes32(validScope.parameters[i])) revert InvalidParamNotEqual();
             }
 
             if (validScope.comparators[i] == Comparators.LESS_THAN) {
