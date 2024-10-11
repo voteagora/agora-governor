@@ -38,6 +38,7 @@ interface IProposalTypesConfigurator {
         string name;
         string description;
         address module;
+        bool exists;
     }
 
     enum Comparators {

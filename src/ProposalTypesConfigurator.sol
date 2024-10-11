@@ -30,7 +30,6 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     //////////////////////////////////////////////////////////////*/
 
     mapping(uint8 proposalTypeId => ProposalType) internal _proposalTypes;
-    mapping(uint8 proposalTypeId => bool) internal _proposalTypesExists;
     mapping(uint8 proposalTypeId => mapping(bytes24 key => Scope[])) internal _assignedScopes;
     mapping(bytes24 key => bool) internal _scopeExists;
 
@@ -115,7 +114,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         Comparators[] memory comparators,
         string calldata description
     ) external override onlyAdminOrTimelock {
-        if (!_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
+        if (!_proposalTypes[proposalTypeId].exists) revert InvalidProposalType();
         if (parameters.length != comparators.length) revert InvalidParameterConditions();
 
         Scope memory scope = Scope(key, encodedLimit, parameters, comparators, proposalTypeId, description);
@@ -157,8 +156,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         if (quorum > PERCENT_DIVISOR) revert InvalidQuorum();
         if (approvalThreshold > PERCENT_DIVISOR) revert InvalidApprovalThreshold();
 
-        _proposalTypes[proposalTypeId] = ProposalType(quorum, approvalThreshold, name, description, module);
-        _proposalTypesExists[proposalTypeId] = true;
+        _proposalTypes[proposalTypeId] = ProposalType(quorum, approvalThreshold, name, description, module, true);
 
         emit ProposalTypeSet(proposalTypeId, quorum, approvalThreshold, name, description);
     }
@@ -173,7 +171,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         override
         onlyAdminOrTimelock
     {
-        if (!_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
+        if (!_proposalTypes[proposalTypeId].exists) revert InvalidProposalType();
         if (scope.parameters.length != scope.comparators.length) revert InvalidParameterConditions();
         bytes24 scopeKey = scope.key;
 
@@ -189,22 +187,6 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     function disableScope(bytes24 scopeKey) external override onlyAdminOrTimelock {
         _scopeExists[scopeKey] = false;
         emit ScopeDisabled(scopeKey);
-    }
-
-    /**
-     * @dev Given the limitation that these byte values are stored in memory, this function allows us to use the slice syntax given that the parameter field
-     * contains the correct byte length. Note that the way slice indices are handled such that [startIdx, endIdx)
-     * @notice This will retrieve the parameter from the encoded transaction.
-     * @param limit The abi.encodedWithSignature that contains the limits with parameters i.e abi.encodedWithSignature('functionSelector(a,b)', _a, _b)
-     * @param startIdx The start index in the byte array that contains the parameter, inclusive.
-     * @param endIdx The end index in the byte array that contains parameter exclusive
-     */
-    function getParameter(bytes calldata limit, uint256 startIdx, uint256 endIdx)
-        public
-        pure
-        returns (bytes memory parameter)
-    {
-        return limit[startIdx:endIdx];
     }
 
     /**
@@ -232,16 +214,20 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
 
                     bytes32 param = bytes32(proposedTx[startIdx:endIdx]);
                     if (validScope.comparators[j] == Comparators.EQUAL) {
-                        bytes32 scopedParam = bytes32(this.getParameter(scopeLimit, startIdx, endIdx));
+                        bytes32 scopedParam = bytes32(validScope.parameters[j]);
                         if (scopedParam != param) revert InvalidParamNotEqual();
                     }
 
                     if (validScope.comparators[j] == Comparators.LESS_THAN) {
-                        if (param >= bytes32(validScope.parameters[j])) revert InvalidParamRange();
+                        if (param >= bytes32(validScope.parameters[j])) {
+                            revert InvalidParamRange();
+                        }
                     }
 
                     if (validScope.comparators[j] == Comparators.GREATER_THAN) {
-                        if (param <= bytes32(validScope.parameters[j])) revert InvalidParamRange();
+                        if (param <= bytes32(validScope.parameters[j])) {
+                            revert InvalidParamRange();
+                        }
                     }
 
                     startIdx = endIdx;
