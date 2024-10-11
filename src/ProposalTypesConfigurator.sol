@@ -192,7 +192,10 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     /**
      * @notice Validates that a proposed transaction conforms to the scope defined in a given proposal type. Note: This
      *   version only supports functions that have for each parameter 32-byte abi encodings, please see the ABI
-     *   specification to see which types are not supported.
+     *   specification to see which types are not supported. The types that are supported are as follows:
+     *      - Uint
+     *      - Address
+     *      - Bytes32
      * @param proposedTx The calldata of the proposed transaction
      * @param proposalTypeId Id of the proposal type
      * @param key A type signature of a function and contract address that has a limit specified in a scope
