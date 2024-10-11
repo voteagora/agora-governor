@@ -43,7 +43,7 @@ interface IProposalTypesConfigurator {
         string name;
         string description;
         address module;
-        bytes24[] validScopes;
+        bool exists;
     }
 
     enum Comparators {
