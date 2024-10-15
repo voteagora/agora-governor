@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import {IProposalTypesConfigurator} from "src/interfaces/IProposalTypesConfigurator.sol";
 import {IAgoraGovernor} from "src/interfaces/IAgoraGovernor.sol";
+import {Validator} from "src/Validator.sol";
 
 /**
  * Contract that stores proposalTypes for the Agora Governor.
@@ -112,12 +113,14 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         bytes calldata encodedLimit,
         bytes[] memory parameters,
         Comparators[] memory comparators,
+        SupportedTypes[] memory types,
         string calldata description
     ) external override onlyAdminOrTimelock {
         if (!_proposalTypes[proposalTypeId].exists) revert InvalidProposalType();
         if (parameters.length != comparators.length) revert InvalidParameterConditions();
+        if (parameters.length != types.length) revert InvalidParameterConditions();
 
-        Scope memory scope = Scope(key, encodedLimit, parameters, comparators, proposalTypeId, description);
+        Scope memory scope = Scope(key, encodedLimit, parameters, comparators, types, proposalTypeId, description);
 
         _assignedScopes[proposalTypeId][key].push(scope);
         _scopeExists[key] = true;
