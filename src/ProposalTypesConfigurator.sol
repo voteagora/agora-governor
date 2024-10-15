@@ -22,6 +22,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     //////////////////////////////////////////////////////////////*/
 
     IAgoraGovernor public governor;
+    Validator internal validator;
 
     /// @notice Max value of `quorum` and `approvalThreshold` in `ProposalType`
     uint16 public constant PERCENT_DIVISOR = 10_000;
@@ -56,6 +57,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         if (address(governor) != address(0)) revert AlreadyInit();
         if (_governor == address(0)) revert InvalidGovernor();
 
+        validator = new Validator();
         governor = IAgoraGovernor(_governor);
 
         for (uint8 i = 0; i < _proposalTypesInit.length; i++) {
@@ -105,6 +107,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param encodedLimit An ABI encoded string containing the function selector and relevant parameter values.
      * @param parameters The list of byte represented values to be compared against the encoded limits.
      * @param comparators List of enumuerated values represent which comparison to use when enforcing limit checks on parameters.
+     * @param types List of enumuerated types that map onto each of the supplied parameters.
      * @param description String that's the describes the scope
      */
     function setScopeForProposalType(
@@ -219,21 +222,53 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
                     endIdx = endIdx + validScope.parameters[j].length;
 
                     bytes32 param = bytes32(proposedTx[startIdx:endIdx]);
-                    if (validScope.comparators[j] == Comparators.EQUAL) {
-                        bytes32 scopedParam = bytes32(validScope.parameters[j]);
-                        if (scopedParam != param) revert InvalidParamNotEqual();
+
+                    if (validScope.types[j] == SupportedTypes.UINT8) {
+                        validator.validate_uint8(
+                            proposedTx[startIdx:endIdx], validScope.parameters[j], validScope.comparators[j]
+                        );
                     }
 
-                    if (validScope.comparators[j] == Comparators.LESS_THAN) {
-                        if (param >= bytes32(validScope.parameters[j])) {
-                            revert InvalidParamRange();
-                        }
+                    if (validScope.types[j] == SupportedTypes.UINT16) {
+                        validator.validate_uint16(
+                            proposedTx[startIdx:endIdx], validScope.parameters[j], validScope.comparators[j]
+                        );
                     }
 
-                    if (validScope.comparators[j] == Comparators.GREATER_THAN) {
-                        if (param <= bytes32(validScope.parameters[j])) {
-                            revert InvalidParamRange();
-                        }
+                    if (validScope.types[j] == SupportedTypes.UINT32) {
+                        validator.validate_uint32(
+                            proposedTx[startIdx:endIdx], validScope.parameters[j], validScope.comparators[j]
+                        );
+                    }
+
+                    if (validScope.types[j] == SupportedTypes.UINT64) {
+                        validator.validate_uint64(
+                            proposedTx[startIdx:endIdx], validScope.parameters[j], validScope.comparators[j]
+                        );
+                    }
+
+                    if (validScope.types[j] == SupportedTypes.UINT128) {
+                        validator.validate_uint128(
+                            proposedTx[startIdx:endIdx], validScope.parameters[j], validScope.comparators[j]
+                        );
+                    }
+
+                    if (validScope.types[j] == SupportedTypes.UINT256) {
+                        validator.validate_uint256(
+                            proposedTx[startIdx:endIdx], validScope.parameters[j], validScope.comparators[j]
+                        );
+                    }
+
+                    if (validScope.types[j] == SupportedTypes.ADDRESS) {
+                        validator.validate_address(
+                            proposedTx[startIdx:endIdx], validScope.parameters[j], validScope.comparators[j]
+                        );
+                    }
+
+                    if (validScope.types[j] == SupportedTypes.BYTES32) {
+                        validator.validate_bytes32(
+                            proposedTx[startIdx:endIdx], validScope.parameters[j], validScope.comparators[j]
+                        );
                     }
 
                     startIdx = endIdx;

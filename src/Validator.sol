@@ -10,7 +10,11 @@ contract Validator {
     error InvalidParamNotEqual();
     error InvalidParamRange();
 
-    function validate_uint8(bytes calldata param, bytes calldata scopedParam, IProposalTypesConfigurator.Comparators comparison) public {
+    function validate_uint8(
+        bytes calldata param,
+        bytes calldata scopedParam,
+        IProposalTypesConfigurator.Comparators comparison
+    ) public pure {
         uint8 typedParam = uint8(bytes1(param[0:1]));
         uint8 scopedParamTyped = uint8(bytes1(scopedParam[0:1]));
 
@@ -31,7 +35,11 @@ contract Validator {
         }
     }
 
-    function validate_uint16(bytes calldata param, bytes calldata scopedParam, IProposalTypesConfigurator.Comparators comparison) public {
+    function validate_uint16(
+        bytes calldata param,
+        bytes calldata scopedParam,
+        IProposalTypesConfigurator.Comparators comparison
+    ) public pure {
         uint16 typedParam = uint16(bytes2(param[0:2]));
         uint16 scopedParamTyped = uint16(bytes2(scopedParam[0:2]));
 
@@ -52,7 +60,11 @@ contract Validator {
         }
     }
 
-    function validate_uint32(bytes calldata param, bytes calldata scopedParam, IProposalTypesConfigurator.Comparators comparison) public {
+    function validate_uint32(
+        bytes calldata param,
+        bytes calldata scopedParam,
+        IProposalTypesConfigurator.Comparators comparison
+    ) public pure {
         uint32 typedParam = uint32(bytes4(param[0:4]));
         uint32 scopedParamTyped = uint32(bytes4(scopedParam[0:4]));
 
@@ -73,7 +85,11 @@ contract Validator {
         }
     }
 
-    function validate_uint64(bytes calldata param, bytes calldata scopedParam, IProposalTypesConfigurator.Comparators comparison) public {
+    function validate_uint64(
+        bytes calldata param,
+        bytes calldata scopedParam,
+        IProposalTypesConfigurator.Comparators comparison
+    ) public pure {
         uint64 typedParam = uint64(bytes8(param[0:8]));
         uint64 scopedParamTyped = uint64(bytes8(scopedParam[0:8]));
 
@@ -94,7 +110,11 @@ contract Validator {
         }
     }
 
-    function validate_uint128(bytes calldata param, bytes calldata scopedParam, IProposalTypesConfigurator.Comparators comparison) public {
+    function validate_uint128(
+        bytes calldata param,
+        bytes calldata scopedParam,
+        IProposalTypesConfigurator.Comparators comparison
+    ) public pure {
         uint128 typedParam = uint128(bytes16(param[0:16]));
         uint128 scopedParamTyped = uint128(bytes16(scopedParam[0:16]));
 
@@ -115,7 +135,11 @@ contract Validator {
         }
     }
 
-    function validate_uint256(bytes calldata param, bytes calldata scopedParam, IProposalTypesConfigurator.Comparators comparison) public {
+    function validate_uint256(
+        bytes calldata param,
+        bytes calldata scopedParam,
+        IProposalTypesConfigurator.Comparators comparison
+    ) public pure {
         uint256 typedParam = uint256(bytes32(param[0:32]));
         uint256 scopedParamTyped = uint256(bytes32(scopedParam[0:32]));
 
@@ -136,7 +160,11 @@ contract Validator {
         }
     }
 
-    function validate_address(bytes calldata param, bytes calldata scopedParam, IProposalTypesConfigurator.Comparators comparison) public {
+    function validate_address(
+        bytes calldata param,
+        bytes calldata scopedParam,
+        IProposalTypesConfigurator.Comparators comparison
+    ) public pure {
         address typedParam = address(bytes20(param[0:20]));
         address scopedParamTyped = address(bytes20(scopedParam[0:20]));
 
@@ -157,7 +185,11 @@ contract Validator {
         }
     }
 
-    function validate_bytes32(bytes calldata param, bytes calldata scopedParam, IProposalTypesConfigurator.Comparators comparison) public {
+    function validate_bytes32(
+        bytes calldata param,
+        bytes calldata scopedParam,
+        IProposalTypesConfigurator.Comparators comparison
+    ) public pure {
         bytes32 typedParam = bytes32(param[0:32]);
         bytes32 scopedParamTyped = bytes32(scopedParam[0:32]);
 
@@ -178,4 +210,3 @@ contract Validator {
         }
     }
 }
-
