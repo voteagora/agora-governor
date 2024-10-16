@@ -742,7 +742,7 @@ contract ProposeWithOptimisticModule is AgoraGovernorTest {
     ) public {
         vm.assume(_actor != proxyAdmin && _actorFor != proxyAdmin && _actorAgainst != proxyAdmin);
         vm.assume(_actor != address(0) && _actorFor != address(0) && _actorAgainst != address(0));
-        vm.assume(_actorFor != _actorAgainst);
+        vm.assume(_actor != _actorFor && _actorFor != _actorAgainst && _actorAgainst != _actor);
         _totalMintAmount = bound(_totalMintAmount, 1e4, type(uint208).max);
         _againstThresholdPercentage = bound(_againstThresholdPercentage, 1, optimisticModule.PERCENT_DIVISOR());
         uint256 _againstThreshold =
