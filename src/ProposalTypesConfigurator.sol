@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import {IProposalTypesConfigurator} from "src/interfaces/IProposalTypesConfigurator.sol";
 import {IAgoraGovernor} from "src/interfaces/IAgoraGovernor.sol";
+import {Validator} from "src/Validator.sol";
 
 /**
  * Contract that stores proposalTypes for the Agora Governor.
@@ -104,6 +105,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param encodedLimit An ABI encoded string containing the function selector and relevant parameter values.
      * @param parameters The list of byte represented values to be compared against the encoded limits.
      * @param comparators List of enumuerated values represent which comparison to use when enforcing limit checks on parameters.
+     * @param types List of enumuerated types that map onto each of the supplied parameters.
      * @param description String that's the describes the scope
      */
     function setScopeForProposalType(
@@ -112,12 +114,14 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         bytes calldata encodedLimit,
         bytes[] memory parameters,
         Comparators[] memory comparators,
+        SupportedTypes[] memory types,
         string calldata description
     ) external override onlyAdminOrTimelock {
         if (!_proposalTypes[proposalTypeId].exists) revert InvalidProposalType();
         if (parameters.length != comparators.length) revert InvalidParameterConditions();
+        if (parameters.length != types.length) revert InvalidParameterConditions();
 
-        Scope memory scope = Scope(key, encodedLimit, parameters, comparators, proposalTypeId, description);
+        Scope memory scope = Scope(key, encodedLimit, parameters, comparators, types, proposalTypeId, description);
 
         _assignedScopes[proposalTypeId][key].push(scope);
         _scopeExists[key] = true;
@@ -215,23 +219,12 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
                 for (uint8 j = 0; j < validScope.parameters.length; j++) {
                     endIdx = endIdx + validScope.parameters[j].length;
 
-                    bytes32 param = bytes32(proposedTx[startIdx:endIdx]);
-                    if (validScope.comparators[j] == Comparators.EQUAL) {
-                        bytes32 scopedParam = bytes32(validScope.parameters[j]);
-                        if (scopedParam != param) revert InvalidParamNotEqual();
-                    }
-
-                    if (validScope.comparators[j] == Comparators.LESS_THAN) {
-                        if (param >= bytes32(validScope.parameters[j])) {
-                            revert InvalidParamRange();
-                        }
-                    }
-
-                    if (validScope.comparators[j] == Comparators.GREATER_THAN) {
-                        if (param <= bytes32(validScope.parameters[j])) {
-                            revert InvalidParamRange();
-                        }
-                    }
+                    Validator.determineValidation(
+                        proposedTx[startIdx:endIdx],
+                        validScope.parameters[j],
+                        validScope.types[j],
+                        validScope.comparators[j]
+                    );
 
                     startIdx = endIdx;
                 }
