@@ -49,6 +49,7 @@ interface IProposalTypesConfigurator {
     }
 
     enum SupportedTypes {
+        NONE,
         UINT8,
         UINT16,
         UINT32,
@@ -56,8 +57,7 @@ interface IProposalTypesConfigurator {
         UINT128,
         UINT256,
         ADDRESS,
-        BYTES32,
-        NONE
+        BYTES32
     }
 
     struct Scope {

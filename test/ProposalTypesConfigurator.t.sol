@@ -64,9 +64,9 @@ contract ProposalTypesConfiguratorTest is Test {
 
         IProposalTypesConfigurator.SupportedTypes[] memory types = new IProposalTypesConfigurator.SupportedTypes[](3);
 
-        types[0] = IProposalTypesConfigurator.SupportedTypes(6); // address
-        types[1] = IProposalTypesConfigurator.SupportedTypes(6); // address
-        types[2] = IProposalTypesConfigurator.SupportedTypes(5); // uint256
+        types[0] = IProposalTypesConfigurator.SupportedTypes(7); // address
+        types[1] = IProposalTypesConfigurator.SupportedTypes(7); // address
+        types[2] = IProposalTypesConfigurator.SupportedTypes(6); // uint256
 
         proposalTypesConfigurator.setScopeForProposalType(
             0, scopeKey, txEncoded, parameters, comparators, types, "Lorem Ipsum"
@@ -454,9 +454,9 @@ contract MultipleScopeValidation is ProposalTypesConfiguratorTest {
 
         IProposalTypesConfigurator.SupportedTypes[] memory types = new IProposalTypesConfigurator.SupportedTypes[](3);
 
-        types[0] = IProposalTypesConfigurator.SupportedTypes(6); // address
-        types[1] = IProposalTypesConfigurator.SupportedTypes(6); // address
-        types[2] = IProposalTypesConfigurator.SupportedTypes(5); // uint256
+        types[0] = IProposalTypesConfigurator.SupportedTypes(7); // address
+        types[1] = IProposalTypesConfigurator.SupportedTypes(7); // address
+        types[2] = IProposalTypesConfigurator.SupportedTypes(6); // uint256
 
         IProposalTypesConfigurator.Comparators[] memory comparators1 = new IProposalTypesConfigurator.Comparators[](3);
 

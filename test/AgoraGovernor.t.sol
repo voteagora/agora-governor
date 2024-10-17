@@ -2413,9 +2413,9 @@ contract AssignedScopes is AgoraGovernorTest {
 
         IProposalTypesConfigurator.SupportedTypes[] memory types = new IProposalTypesConfigurator.SupportedTypes[](3);
 
-        types[0] = IProposalTypesConfigurator.SupportedTypes(6); // address
-        types[1] = IProposalTypesConfigurator.SupportedTypes(6); // address
-        types[2] = IProposalTypesConfigurator.SupportedTypes(5); // uint256
+        types[0] = IProposalTypesConfigurator.SupportedTypes(7); // address
+        types[1] = IProposalTypesConfigurator.SupportedTypes(7); // address
+        types[2] = IProposalTypesConfigurator.SupportedTypes(6); // uint256
 
         proposalTypesConfigurator.setProposalType(0, 3_000, 9_910, "Default", "Lorem Ipsum", address(0));
         proposalTypesConfigurator.setScopeForProposalType(
