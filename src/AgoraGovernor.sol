@@ -16,6 +16,7 @@ import {IProposalTypesConfigurator} from "src/interfaces/IProposalTypesConfigura
 import {VotingModule} from "src/modules/VotingModule.sol";
 import {IVotingToken} from "src/interfaces/IVotingToken.sol";
 
+// @custom:security-contact security@voteagora.com
 contract AgoraGovernor is
     Initializable,
     GovernorUpgradeableV2,
