@@ -49,6 +49,7 @@ struct Proposal {
     ProposalSettings settings;
 }
 
+// @custom:security-contact security@voteagora.com
 contract ApprovalVotingModule is VotingModule {
     /*//////////////////////////////////////////////////////////////
                                  ERRORS
