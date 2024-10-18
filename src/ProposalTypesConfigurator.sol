@@ -51,7 +51,10 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      */
     function initialize(address _governor, ProposalType[] calldata _proposalTypesInit) external {
         if (address(governor) != address(0)) revert AlreadyInit();
+        if (_governor == address(0)) revert InvalidGovernor();
+
         governor = IAgoraGovernor(_governor);
+        
         for (uint8 i = 0; i < _proposalTypesInit.length; i++) {
             _setProposalType(
                 i,

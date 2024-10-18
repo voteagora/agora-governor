@@ -15,6 +15,7 @@ interface IProposalTypesConfigurator {
     error NotAdminOrTimelock();
     error NotAdmin();
     error AlreadyInit();
+    error InvalidGovernor();
     error Invalid4ByteSelector();
     error InvalidParamNotEqual();
     error InvalidParamRange();

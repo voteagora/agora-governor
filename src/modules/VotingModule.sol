@@ -6,7 +6,7 @@ abstract contract VotingModule {
                             IMMUTABLE STORAGE
     //////////////////////////////////////////////////////////////*/
 
-    address immutable governor;
+    address public immutable governor;
 
     /*//////////////////////////////////////////////////////////////
                                  ERRORS
