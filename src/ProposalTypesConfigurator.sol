@@ -211,7 +211,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         pure
         returns (bytes memory parameter)
     {
-        return limit[startIdx:endIdx + 1];
+        return limit[startIdx:endIdx];
     }
 
     /**
