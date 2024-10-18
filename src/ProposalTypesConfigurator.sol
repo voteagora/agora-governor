@@ -29,7 +29,6 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     mapping(uint8 proposalTypeId => bool) internal _proposalTypesExists;
     mapping(uint8 proposalTypeId => mapping(bytes24 key => Scope)) internal _assignedScopes;
     mapping(bytes24 key => bool) internal _scopeExists;
-    Scope[] internal _scopes;
 
     /*//////////////////////////////////////////////////////////////
                                MODIFIERS
@@ -119,7 +118,6 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         }
 
         Scope memory scope = Scope(key, encodedLimit, parameters, comparators, proposalTypeId, true);
-        _scopes.push(scope);
 
         _assignedScopes[proposalTypeId][key] = scope;
         _scopeExists[key] = true;
@@ -182,8 +180,10 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         if (scope.parameters.length != scope.comparators.length) revert InvalidParameterConditions();
         if (_assignedScopes[proposalTypeId][scope.key].exists) revert NoDuplicateTxTypes(); // Do not allow multiple scopes for a single transaction type
 
-        _scopes.push(scope);
-        _assignedScopes[proposalTypeId][scope.key] = scope;
+        _scopeExists[scopeKey] = true;
+        _proposalTypes[proposalTypeId].validScopes.push(scopeKey);
+        _assignedScopes[proposalTypeId][scopeKey] = scope;
+        emit ScopeCreated(proposalTypeId, scopeKey, scope.encodedLimits);
     }
 
     /**
