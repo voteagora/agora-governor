@@ -173,7 +173,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param proposalTypeId Id of the proposal type
      * @param scope An object that contains the scope for a transaction type hash
      */
-    function updateScopeForProposalType(uint8 proposalTypeId, Scope calldata scope)
+    function addScopeForProposalType(uint8 proposalTypeId, Scope calldata scope)
         external
         override
         onlyAdminOrTimelock
@@ -184,6 +184,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
 
         _scopes.push(scope);
         _assignedScopes[proposalTypeId][scope.key] = scope;
+        emit ScopeCreated(proposalTypeId, scope.key, scope.encodedLimits);
     }
 
     /**
