@@ -2148,6 +2148,7 @@ contract EditProposalType is AgoraGovernorTest {
         vm.startPrank(_adminOrTimelock(_actorSeed));
         bytes24[] memory scopes = new bytes24[](1);
         proposalTypesConfigurator.setProposalType(0, 3_000, 9_910, "Default", "Lorem Ipsum", address(0), scopes);
+        proposalTypesConfigurator.setProposalType(1, 3_000, 9_910, "Default 2", "Lorem Ipsum 2", address(0), scopes);
 
         address[] memory targets = new address[](1);
         targets[0] = address(this);

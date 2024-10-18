@@ -210,17 +210,13 @@ contract ApprovalVotingModule is VotingModule {
                 option = sortedOptions[i];
 
                 for (n = 0; n < option.targets.length;) {
-                    if (settings.budgetAmount != 0) {
-                        // If `budgetToken` is ETH and value is not zero, add transaction value to `totalValue`
-                        if (settings.budgetToken == address(0)) {
-                            if (option.values[n] != 0) {
-                                if (totalValue + option.values[n] > settings.budgetAmount) {
-                                    budgetExceeded = true;
-                                    break; // break inner loop
-                                }
-                                totalValue += option.values[n];
-                            }
+                    // If `budgetToken` is ETH and value is not zero, add transaction value to `totalValue`
+                    if (settings.budgetToken == address(0) && option.values[n] != 0) {
+                        if (totalValue + option.values[n] > settings.budgetAmount) {
+                            budgetExceeded = true;
+                            break; // break inner loop
                         }
+                        totalValue += option.values[n];
                     }
 
                     unchecked {
