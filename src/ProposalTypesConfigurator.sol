@@ -12,7 +12,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
 
-    event ScopeCreated(uint8 indexed proposalTypeId, bytes24 indexed scopeKey, bytes encodedLimit);
+    event ScopeCreated(uint8 indexed proposalTypeId, bytes24 indexed scopeKey, bytes4 selector);
 
     /*//////////////////////////////////////////////////////////////
                            IMMUTABLE STORAGE
@@ -97,14 +97,14 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @notice Sets the scope for a given proposal type.
      * @param proposalTypeId Id of the proposal type.
      * @param key A function selector and contract address that represent the type hash, i.e. 4byte(keccak256("foobar(uint,address)")) + bytes20(contractAddress).
-     * @param encodedLimit An ABI encoded string containing the function selector and relevant parameter values.
-     * @param parameters The list of byte represented values to be compared against the encoded limits.
+     * @param selector A 4 byte function selector.
+     * @param parameters The list of byte represented values to be compared.
      * @param comparators List of enumuerated values represent which comparison to use when enforcing limit checks on parameters.
      */
     function setScopeForProposalType(
         uint8 proposalTypeId,
         bytes24 key,
-        bytes calldata encodedLimit,
+        bytes4 selector,
         bytes[] memory parameters,
         Comparators[] memory comparators
     ) external override onlyAdminOrTimelock {
@@ -118,14 +118,14 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
             }
         }
 
-        Scope memory scope = Scope(key, encodedLimit, parameters, comparators, proposalTypeId, true);
+        Scope memory scope = Scope(key, selector, parameters, comparators, proposalTypeId, true);
         _scopes.push(scope);
 
         _assignedScopes[proposalTypeId][key] = scope;
         _scopeExists[key] = true;
         _proposalTypes[proposalTypeId].validScopes.push(key);
 
-        emit ScopeCreated(proposalTypeId, key, encodedLimit);
+        emit ScopeCreated(proposalTypeId, key, selector);
     }
 
     /**
@@ -187,15 +187,15 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     }
 
     /**
-     * @notice Retrives the encoded limit of a transaction type signature for a given proposal type.
+     * @notice Retrives the function selector of a transaction for a given proposal type.
      * @param proposalTypeId Id of the proposal type
      * @param key A type signature of a function and contract address that has a limit specified in a scope
      */
-    function getLimit(uint8 proposalTypeId, bytes24 key) public view returns (bytes memory encodedLimits) {
+    function getSelector(uint8 proposalTypeId, bytes24 key) public view returns (bytes4 selector) {
         if (!_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
         if (!_assignedScopes[proposalTypeId][key].exists) revert InvalidScope();
         Scope memory validScope = _assignedScopes[proposalTypeId][key];
-        return validScope.encodedLimits;
+        return validScope.selector;
     }
 
     /**
@@ -224,9 +224,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      */
     function validateProposedTx(bytes calldata proposedTx, uint8 proposalTypeId, bytes24 key) public view {
         Scope memory validScope = _assignedScopes[proposalTypeId][key];
-        bytes memory scopeLimit = validScope.encodedLimits;
-        bytes4 selector = bytes4(scopeLimit);
-        if (selector != bytes4(proposedTx[:4])) revert Invalid4ByteSelector();
+        if (validScope.selector != bytes4(proposedTx[:4])) revert Invalid4ByteSelector();
 
         uint256 startIdx = 4;
         uint256 endIdx = startIdx;
@@ -235,7 +233,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
 
             bytes32 param = bytes32(proposedTx[startIdx:endIdx]);
             if (validScope.comparators[i] == Comparators.EQUAL) {
-                bytes32 scopedParam = bytes32(this.getParameter(scopeLimit, startIdx, endIdx));
+                bytes32 scopedParam = bytes32(validScope.parameters[i]);
                 if (scopedParam != param) revert InvalidParamNotEqual();
             }
 

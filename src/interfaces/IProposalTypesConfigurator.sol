@@ -55,7 +55,7 @@ interface IProposalTypesConfigurator {
 
     struct Scope {
         bytes24 key;
-        bytes encodedLimits;
+        bytes4 selector;
         bytes[] parameters;
         Comparators[] comparators;
         uint8 proposalTypeId;
@@ -85,13 +85,13 @@ interface IProposalTypesConfigurator {
     function setScopeForProposalType(
         uint8 proposalTypeId,
         bytes24 key,
-        bytes calldata encodedLimit,
+        bytes4 selector,
         bytes[] memory parameters,
         Comparators[] memory comparators
     ) external;
 
     function updateScopeForProposalType(uint8 proposalTypeId, Scope calldata scope) external;
-    function getLimit(uint8 proposalTypeId, bytes24 key) external returns (bytes memory);
+    function getSelector(uint8 proposalTypeId, bytes24 key) external returns (bytes4);
     function validateProposedTx(bytes calldata proposedTx, uint8 proposalTypeId, bytes24 key) external;
     function validateProposalData(address[] memory targets, bytes[] memory calldatas, uint8 proposalType) external;
 }
