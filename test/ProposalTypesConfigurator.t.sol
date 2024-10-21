@@ -19,7 +19,7 @@ contract ProposalTypesConfiguratorTest is Test {
         bytes24[] validScopes
     );
 
-    event ScopeCreated(uint8 indexed proposalTypeId, bytes24 indexed scopeKey, bytes encodedLimit);
+    event ScopeCreated(uint8 indexed proposalTypeId, bytes24 indexed scopeKey, bytes4 selector);
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
@@ -54,7 +54,7 @@ contract ProposalTypesConfiguratorTest is Test {
         bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
         address _from = makeAddr("from");
         address _to = makeAddr("to");
-        bytes memory txEncoded = abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(10));
+        bytes4 txEncoded = bytes4(abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(10)));
 
         bytes[] memory parameters = new bytes[](3);
         parameters[0] = abi.encode(uint256(uint160(_from)));
@@ -192,7 +192,7 @@ contract SetProposalType is ProposalTypesConfiguratorTest {
         bytes32 txTypeHash = keccak256("transfer(address,address,uint)");
         address contractAddress = makeAddr("contract");
         bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
-        bytes memory txEncoded = abi.encode("transfer(address,address,uint)", 0xdeadbeef, 0xdeadbeef, 10);
+        bytes4 txEncoded = bytes4(abi.encode("transfer(address,address,uint)", 0xdeadbeef, 0xdeadbeef, 10));
         bytes[] memory parameters = new bytes[](1);
         IProposalTypesConfigurator.Comparators[] memory comparators = new IProposalTypesConfigurator.Comparators[](1);
 
@@ -202,8 +202,8 @@ contract SetProposalType is ProposalTypesConfiguratorTest {
 
         vm.stopPrank();
 
-        bytes memory limit = proposalTypesConfigurator.getLimit(0, scopeKey);
-        assertEq(limit, txEncoded);
+        bytes4 selector = proposalTypesConfigurator.getSelector(0, scopeKey);
+        assertEq(selector, txEncoded);
     }
 
     function test_RevertIf_NotAdminOrTimelock(address _actor) public {
@@ -229,7 +229,7 @@ contract SetProposalType is ProposalTypesConfiguratorTest {
         bytes32 txTypeHash = keccak256("transfer(address,address,uint)");
         address contractAddress = makeAddr("contract");
         bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
-        bytes memory txEncoded = abi.encode("transfer(address,address,uint)", 0xdeadbeef, 0xdeadbeef, 10);
+        bytes4 txEncoded = bytes4(abi.encode("transfer(address,address,uint256)", 0xdeadbeef, 0xdeadbeef, 10));
         vm.expectRevert(IProposalTypesConfigurator.NotAdminOrTimelock.selector);
         proposalTypesConfigurator.setScopeForProposalType(
             1, scopeKey, txEncoded, new bytes[](1), new IProposalTypesConfigurator.Comparators[](1)
@@ -241,7 +241,7 @@ contract SetProposalType is ProposalTypesConfiguratorTest {
         bytes32 txTypeHash = keccak256("transfer(address,address,uint)");
         address contractAddress = makeAddr("contract");
         bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
-        bytes memory txEncoded = abi.encode("transfer(address,address,uint)", 0xdeadbeef, 0xdeadbeef, 10);
+        bytes4 txEncoded = bytes4(abi.encode("transfer(address,address,uint256)", 0xdeadbeef, 0xdeadbeef, 10));
         vm.expectRevert(IProposalTypesConfigurator.InvalidProposalType.selector);
         proposalTypesConfigurator.setScopeForProposalType(
             2, scopeKey, txEncoded, new bytes[](1), new IProposalTypesConfigurator.Comparators[](1)
@@ -254,7 +254,7 @@ contract SetProposalType is ProposalTypesConfiguratorTest {
         bytes32 txTypeHash = keccak256("transfer(address,address,uint256)");
         address contractAddress = makeAddr("contract");
         bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
-        bytes memory txEncoded = abi.encode("transfer(address,address,uint256)", 0xdeadbeef, 0xdeadbeef, 10);
+        bytes4 txEncoded = bytes4(abi.encode("transfer(address,address,uint256)", 0xdeadbeef, 0xdeadbeef, 10));
         vm.expectRevert(IProposalTypesConfigurator.InvalidParameterConditions.selector);
         proposalTypesConfigurator.setScopeForProposalType(
             0, scopeKey, txEncoded, new bytes[](2), new IProposalTypesConfigurator.Comparators[](1)
@@ -265,7 +265,7 @@ contract SetProposalType is ProposalTypesConfiguratorTest {
     function testRevert_setScopeForProposalType_NoDuplicateTxTypes() public {
         vm.startPrank(admin);
         bytes32 txTypeHash = keccak256("transfer(address,address,uint)");
-        bytes memory txEncoded = abi.encode("transfer(address,address,uint)", 0xdeadbeef, 0xdeadbeef, 10);
+        bytes4 txEncoded = bytes4(abi.encode("transfer(address,address,uint)", 0xdeadbeef, 0xdeadbeef, 10));
         address contractAddress = makeAddr("contract");
         bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
         proposalTypesConfigurator.setScopeForProposalType(
@@ -292,10 +292,10 @@ contract UpdateScopeForProposalType is ProposalTypesConfiguratorTest {
         bytes32 txTypeHash1 = keccak256("transfer(address,address,uint)");
         address contractAddress = makeAddr("contract");
         bytes24 scopeKey1 = _pack(contractAddress, bytes4(txTypeHash1));
-        bytes memory txEncoded1 = abi.encode("transfer(address,address,uint)", 0xdeadbeef, 0xdeadbeef, 10);
+        bytes4 txEncoded1 = bytes4(abi.encode("transfer(address,address,uint)", 0xdeadbeef, 0xdeadbeef, 10));
 
         bytes32 txTypeHash2 = keccak256("initialize(address,address)");
-        bytes memory txEncoded2 = abi.encode("initialize(address,address)", 0xdeadbeef, 0xdeadbeef);
+        bytes4 txEncoded2 = bytes4(abi.encode("initialize(address,address)", 0xdeadbeef, 0xdeadbeef));
         bytes[] memory parameters = new bytes[](1);
         bytes24 scopeKey2 = _pack(contractAddress, bytes4(txTypeHash2));
         IProposalTypesConfigurator.Comparators[] memory comparators = new IProposalTypesConfigurator.Comparators[](1);
@@ -308,8 +308,8 @@ contract UpdateScopeForProposalType is ProposalTypesConfiguratorTest {
         proposalTypesConfigurator.updateScopeForProposalType(0, scope);
         vm.stopPrank();
 
-        bytes memory limit1 = proposalTypesConfigurator.getLimit(0, scopeKey1);
-        bytes memory limit2 = proposalTypesConfigurator.getLimit(0, scopeKey2);
+        bytes4 limit1 = proposalTypesConfigurator.getSelector(0, scopeKey1);
+        bytes4 limit2 = proposalTypesConfigurator.getSelector(0, scopeKey2);
         assertEq(limit1, txEncoded1);
         assertEq(limit2, txEncoded2);
     }
@@ -319,7 +319,7 @@ contract UpdateScopeForProposalType is ProposalTypesConfiguratorTest {
         bytes32 txTypeHash = keccak256("transfer(address,address,uint)");
         address contractAddress = makeAddr("contract");
         bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
-        bytes memory txEncoded = abi.encode("transfer(address,address,uint)", 0xdeadbeef, 0xdeadbeef, 10);
+        bytes4 txEncoded = bytes4(abi.encode("transfer(address,address,uint)", 0xdeadbeef, 0xdeadbeef, 10));
 
         vm.expectRevert(IProposalTypesConfigurator.InvalidProposalType.selector);
         IProposalTypesConfigurator.Scope memory scope = IProposalTypesConfigurator.Scope(
@@ -334,7 +334,7 @@ contract UpdateScopeForProposalType is ProposalTypesConfiguratorTest {
         bytes32 txTypeHash = keccak256("transfer(address,address,uint)");
         address contractAddress = makeAddr("contract");
         bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
-        bytes memory txEncoded = abi.encode("transfer(address,address,uint)", 0xdeadbeef, 0xdeadbeef, 10);
+        bytes4 txEncoded = bytes4(abi.encode("transfer(address,address,uint)", 0xdeadbeef, 0xdeadbeef, 10));
 
         proposalTypesConfigurator.setScopeForProposalType(
             0, scopeKey, txEncoded, new bytes[](1), new IProposalTypesConfigurator.Comparators[](1)
@@ -353,7 +353,7 @@ contract UpdateScopeForProposalType is ProposalTypesConfiguratorTest {
         bytes32 txTypeHash = keccak256("transfer(address,address,uint)");
         address contractAddress = makeAddr("contract");
         bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
-        bytes memory txEncoded = abi.encode("transfer(address,address,uint)", 0xdeadbeef, 0xdeadbeef, 10);
+        bytes4 txEncoded = bytes4(abi.encode("transfer(address,address,uint)", 0xdeadbeef, 0xdeadbeef, 10));
 
         IProposalTypesConfigurator.Scope memory scope = IProposalTypesConfigurator.Scope(
             scopeKey, txEncoded, new bytes[](1), new IProposalTypesConfigurator.Comparators[](2), 0, true
@@ -367,7 +367,7 @@ contract UpdateScopeForProposalType is ProposalTypesConfiguratorTest {
 contract getLimit is ProposalTypesConfiguratorTest {
     function testRevert_getLimit_InvalidProposalType() public {
         vm.expectRevert(IProposalTypesConfigurator.InvalidProposalType.selector);
-        proposalTypesConfigurator.getLimit(3, bytes24(keccak256("foobar(address,address)")));
+        proposalTypesConfigurator.getSelector(3, bytes24(keccak256("foobar(address,address)")));
     }
 
     function testRevert_getLimit_InvalidScope() public {
@@ -375,7 +375,7 @@ contract getLimit is ProposalTypesConfiguratorTest {
         bytes32 txTypeHash = keccak256("transfer(address,address,uint)");
         address contractAddress = makeAddr("contract");
         bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
-        bytes memory txEncoded = abi.encode("transfer(address,address,uint)", 0xdeadbeef, 0xdeadbeef, 10);
+        bytes4 txEncoded = bytes4(abi.encode("transfer(address,address,uint)", 0xdeadbeef, 0xdeadbeef, 10));
 
         proposalTypesConfigurator.setScopeForProposalType(
             0, scopeKey, txEncoded, new bytes[](1), new IProposalTypesConfigurator.Comparators[](1)
@@ -383,7 +383,7 @@ contract getLimit is ProposalTypesConfiguratorTest {
         vm.stopPrank();
 
         vm.expectRevert(IProposalTypesConfigurator.InvalidScope.selector);
-        proposalTypesConfigurator.getLimit(0, bytes24(keccak256("foobar(address,address)")));
+        proposalTypesConfigurator.getSelector(0, bytes24(keccak256("foobar(address,address)")));
     }
 }
 
