@@ -12,7 +12,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
 
-    event ScopeCreated(uint8 indexed proposalTypeId, bytes24 indexed scopeKey, bytes encodedLimit);
+    event ScopeCreated(uint8 indexed proposalTypeId, bytes24 indexed scopeKey, bytes encodedLimit, string description);
 
     /*//////////////////////////////////////////////////////////////
                            IMMUTABLE STORAGE
@@ -59,8 +59,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
                 _proposalTypesInit[i].approvalThreshold,
                 _proposalTypesInit[i].name,
                 _proposalTypesInit[i].description,
-                _proposalTypesInit[i].module,
-                _proposalTypesInit[i].validScopes
+                _proposalTypesInit[i].module
             );
         }
     }
@@ -100,32 +99,28 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param encodedLimit An ABI encoded string containing the function selector and relevant parameter values.
      * @param parameters The list of byte represented values to be compared against the encoded limits.
      * @param comparators List of enumuerated values represent which comparison to use when enforcing limit checks on parameters.
+     * @param description String that's the describes the scope
      */
     function setScopeForProposalType(
         uint8 proposalTypeId,
         bytes24 key,
         bytes calldata encodedLimit,
         bytes[] memory parameters,
-        Comparators[] memory comparators
+        Comparators[] memory comparators,
+        string calldata description
     ) external override onlyAdminOrTimelock {
         if (!_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
         if (parameters.length != comparators.length) revert InvalidParameterConditions();
         if (_assignedScopes[proposalTypeId][key].exists) revert NoDuplicateTxTypes(); // Do not allow multiple scopes for a single transaction type
 
-        for (uint8 i = 0; i < _proposalTypes[proposalTypeId].validScopes.length; i++) {
-            if (_proposalTypes[proposalTypeId].validScopes[i] == key) {
-                revert NoDuplicateTxTypes();
-            }
-        }
+        Scope memory scope = Scope(key, encodedLimit, parameters, comparators, proposalTypeId, description, true);
 
-        Scope memory scope = Scope(key, encodedLimit, parameters, comparators, proposalTypeId, true);
         _scopes.push(scope);
 
         _assignedScopes[proposalTypeId][key] = scope;
         _scopeExists[key] = true;
-        _proposalTypes[proposalTypeId].validScopes.push(key);
 
-        emit ScopeCreated(proposalTypeId, key, encodedLimit);
+        emit ScopeCreated(proposalTypeId, key, encodedLimit, description);
     }
 
     /**
@@ -136,7 +131,6 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param name Name of the proposal type
      * @param description Describes the proposal type
      * @param module Address of module that can only use this proposal type
-     * @param validScopes A list of function selector and contract address that represent the type hash, i.e. 4byte(keccak256("foobar(uint,address)")) + bytes20(contractAddress).
      */
     function setProposalType(
         uint8 proposalTypeId,
@@ -144,10 +138,9 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         uint16 approvalThreshold,
         string calldata name,
         string calldata description,
-        address module,
-        bytes24[] memory validScopes
+        address module
     ) external override onlyAdminOrTimelock {
-        _setProposalType(proposalTypeId, quorum, approvalThreshold, name, description, module, validScopes);
+        _setProposalType(proposalTypeId, quorum, approvalThreshold, name, description, module);
     }
 
     function _setProposalType(
@@ -156,16 +149,15 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         uint16 approvalThreshold,
         string calldata name,
         string calldata description,
-        address module,
-        bytes24[] memory validScopes
+        address module
     ) internal {
         if (quorum > PERCENT_DIVISOR) revert InvalidQuorum();
         if (approvalThreshold > PERCENT_DIVISOR) revert InvalidApprovalThreshold();
 
-        _proposalTypes[proposalTypeId] = ProposalType(quorum, approvalThreshold, name, description, module, validScopes);
+        _proposalTypes[proposalTypeId] = ProposalType(quorum, approvalThreshold, name, description, module);
         _proposalTypesExists[proposalTypeId] = true;
 
-        emit ProposalTypeSet(proposalTypeId, quorum, approvalThreshold, name, description, validScopes);
+        emit ProposalTypeSet(proposalTypeId, quorum, approvalThreshold, name, description);
     }
 
     /**
@@ -182,8 +174,9 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         if (scope.parameters.length != scope.comparators.length) revert InvalidParameterConditions();
         if (_assignedScopes[proposalTypeId][scope.key].exists) revert NoDuplicateTxTypes(); // Do not allow multiple scopes for a single transaction type
 
-        _scopes.push(scope);
+        _scopeExists[scope.key] = true;
         _assignedScopes[proposalTypeId][scope.key] = scope;
+        emit ScopeCreated(proposalTypeId, scope.key, scope.encodedLimits, scope.description);
     }
 
     /**

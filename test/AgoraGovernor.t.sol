@@ -177,18 +177,14 @@ contract AgoraGovernorTest is Test {
         module = new ApprovalVotingModuleMock(address(governor));
         optimisticModule = new OptimisticModule(address(governor));
 
-        bytes24[] memory scopes = new bytes24[](1);
-
         // do admin stuff
         vm.startPrank(admin);
         govToken.grantRole(govToken.MINTER_ROLE(), minter);
         governor.setModuleApproval(address(module), true);
         governor.setModuleApproval(address(optimisticModule), true);
-        proposalTypesConfigurator.setProposalType(0, 3_000, 5_000, "Default", "Lorem Ipsum", address(0), scopes);
-        proposalTypesConfigurator.setProposalType(1, 5_000, 7_000, "Alt", "Lorem Ipsum", address(module), scopes);
-        proposalTypesConfigurator.setProposalType(
-            2, 0, 0, "Optimistic", "Lorem Ipsum", address(optimisticModule), scopes
-        );
+        proposalTypesConfigurator.setProposalType(0, 3_000, 5_000, "Default", "Lorem Ipsum", address(0));
+        proposalTypesConfigurator.setProposalType(1, 5_000, 7_000, "Alt", "Lorem Ipsum", address(module));
+        proposalTypesConfigurator.setProposalType(2, 0, 0, "Optimistic", "Lorem Ipsum", address(optimisticModule));
         vm.stopPrank();
         targetFake = new ExecutionTargetFake();
     }
@@ -285,19 +281,14 @@ contract Initialize is AgoraGovernorTest {
         public
         virtual
     {
-        bytes24[] memory scopes = new bytes24[](1);
         ProposalTypesConfigurator _proposalTypesConfigurator = new ProposalTypesConfigurator();
         IProposalTypesConfigurator.ProposalType[] memory _proposalTypes =
             new IProposalTypesConfigurator.ProposalType[](4);
-        _proposalTypes[0] =
-            IProposalTypesConfigurator.ProposalType(1_500, 9_000, "Default", "Lorem Ipsum", address(0), scopes);
-        _proposalTypes[1] =
-            IProposalTypesConfigurator.ProposalType(3_500, 7_000, "Alt", "Lorem Ipsum", address(0), scopes);
-        _proposalTypes[2] =
-            IProposalTypesConfigurator.ProposalType(7_500, 3_100, "Whatever", "Lorem Ipsum", address(0), scopes);
-        _proposalTypes[3] = IProposalTypesConfigurator.ProposalType(
-            0, 0, "Optimistic", "Lorem Ipsum", address(optimisticModule), scopes
-        );
+        _proposalTypes[0] = IProposalTypesConfigurator.ProposalType(1_500, 9_000, "Default", "Lorem Ipsum", address(0));
+        _proposalTypes[1] = IProposalTypesConfigurator.ProposalType(3_500, 7_000, "Alt", "Lorem Ipsum", address(0));
+        _proposalTypes[2] = IProposalTypesConfigurator.ProposalType(7_500, 3_100, "Whatever", "Lorem Ipsum", address(0));
+        _proposalTypes[3] =
+            IProposalTypesConfigurator.ProposalType(0, 0, "Optimistic", "Lorem Ipsum", address(optimisticModule));
         AgoraGovernor _governor = AgoraGovernor(
             payable(
                 new TransparentUpgradeableProxy(
@@ -2026,8 +2017,7 @@ contract CastVote is AgoraGovernorTest {
         _mintAndDelegate(_voter, 100e18);
         _mintAndDelegate(_voter2, 100e18);
         vm.prank(admin);
-        bytes24[] memory scopes = new bytes24[](1);
-        proposalTypesConfigurator.setProposalType(0, 3_000, 9_910, "Default", "Lorem Ipsum", address(0), scopes);
+        proposalTypesConfigurator.setProposalType(0, 3_000, 9_910, "Default", "Lorem Ipsum", address(0));
         address[] memory targets = new address[](1);
         targets[0] = address(this);
         uint256[] memory values = new uint256[](1);
@@ -2146,8 +2136,7 @@ contract CastVoteWithReasonAndParams is AgoraGovernorTest {
 contract EditProposalType is AgoraGovernorTest {
     function testFuzz_EditProposalTypeByAdminOrTimelock(uint256 _actorSeed) public virtual {
         vm.startPrank(_adminOrTimelock(_actorSeed));
-        bytes24[] memory scopes = new bytes24[](1);
-        proposalTypesConfigurator.setProposalType(0, 3_000, 9_910, "Default", "Lorem Ipsum", address(0), scopes);
+        proposalTypesConfigurator.setProposalType(0, 3_000, 9_910, "Default", "Lorem Ipsum", address(0));
 
         address[] memory targets = new address[](1);
         targets[0] = address(this);
@@ -2402,7 +2391,6 @@ contract UpgradeTo is AgoraGovernorTest {
 
 contract AssignedScopes is AgoraGovernorTest {
     function _createScopeForProposalType() internal {
-        bytes24[] memory scopes = new bytes24[](1);
         // Setup Scope logic
         bytes32 txTypeHash = keccak256("transfer(address,address,uint256)");
         address contractAddress = makeAddr("contract");
@@ -2422,8 +2410,10 @@ contract AssignedScopes is AgoraGovernorTest {
         comparators[1] = IProposalTypesConfigurator.Comparators(1); // EQ
         comparators[2] = IProposalTypesConfigurator.Comparators(3); // GREATER THAN
 
-        proposalTypesConfigurator.setProposalType(0, 3_000, 9_910, "Default", "Lorem Ipsum", address(0), scopes);
-        proposalTypesConfigurator.setScopeForProposalType(0, scopeKey, txEncoded, parameters, comparators);
+        proposalTypesConfigurator.setProposalType(0, 3_000, 9_910, "Default", "Lorem Ipsum", address(0));
+        proposalTypesConfigurator.setScopeForProposalType(
+            0, scopeKey, txEncoded, parameters, comparators, "Lorem Ipsum"
+        );
     }
 
     function test_CreateScopedProposal() public virtual {
@@ -2471,8 +2461,7 @@ contract AssignedScopes is AgoraGovernorTest {
     function testRevert_CreateProposalWithInvalidProposalType() public virtual {
         vm.startPrank(admin);
         _createScopeForProposalType();
-        bytes24[] memory scopes = new bytes24[](1);
-        proposalTypesConfigurator.setProposalType(1, 3_000, 9_910, "Default2", "Lorem Ipsum", address(0), scopes);
+        proposalTypesConfigurator.setProposalType(1, 3_000, 9_910, "Default2", "Lorem Ipsum", address(0));
         vm.stopPrank();
 
         address _from = makeAddr("from");
