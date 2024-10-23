@@ -53,11 +53,24 @@ interface IProposalTypesConfigurator {
         GREATER_THAN
     }
 
+    enum SupportedTypes {
+        NONE,
+        UINT8,
+        UINT16,
+        UINT32,
+        UINT64,
+        UINT128,
+        UINT256,
+        ADDRESS,
+        BYTES32
+    }
+
     struct Scope {
         bytes24 key;
         bytes encodedLimits;
         bytes[] parameters;
         Comparators[] comparators;
+        SupportedTypes[] types;
         uint8 proposalTypeId;
         bool exists;
     }
@@ -87,7 +100,8 @@ interface IProposalTypesConfigurator {
         bytes24 key,
         bytes calldata encodedLimit,
         bytes[] memory parameters,
-        Comparators[] memory comparators
+        Comparators[] memory comparators,
+        SupportedTypes[] memory types
     ) external;
 
     function updateScopeForProposalType(uint8 proposalTypeId, Scope calldata scope) external;

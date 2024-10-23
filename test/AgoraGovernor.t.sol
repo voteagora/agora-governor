@@ -2422,8 +2422,16 @@ contract AssignedScopes is AgoraGovernorTest {
         comparators[1] = IProposalTypesConfigurator.Comparators(1); // EQ
         comparators[2] = IProposalTypesConfigurator.Comparators(3); // GREATER THAN
 
+        IProposalTypesConfigurator.SupportedTypes[] memory types = new IProposalTypesConfigurator.SupportedTypes[](3);
+
+        types[0] = IProposalTypesConfigurator.SupportedTypes(7); // address
+        types[1] = IProposalTypesConfigurator.SupportedTypes(7); // address
+        types[2] = IProposalTypesConfigurator.SupportedTypes(6); // uint256
+
         proposalTypesConfigurator.setProposalType(0, 3_000, 9_910, "Default", "Lorem Ipsum", address(0), scopes);
-        proposalTypesConfigurator.setScopeForProposalType(0, scopeKey, txEncoded, parameters, comparators);
+        proposalTypesConfigurator.setScopeForProposalType(
+            0, scopeKey, txEncoded, parameters, comparators, types
+        );
     }
 
     function test_CreateScopedProposal() public virtual {

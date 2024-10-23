@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import {IProposalTypesConfigurator} from "src/interfaces/IProposalTypesConfigurator.sol";
 import {IAgoraGovernor} from "src/interfaces/IAgoraGovernor.sol";
+import {Validator} from "src/Validator.sol";
 
 /**
  * Contract that stores proposalTypes for the Agora Governor.
@@ -100,13 +101,15 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param encodedLimit An ABI encoded string containing the function selector and relevant parameter values.
      * @param parameters The list of byte represented values to be compared against the encoded limits.
      * @param comparators List of enumuerated values represent which comparison to use when enforcing limit checks on parameters.
+     * @param types List of enumuerated types that map onto each of the supplied parameters.
      */
     function setScopeForProposalType(
         uint8 proposalTypeId,
         bytes24 key,
         bytes calldata encodedLimit,
         bytes[] memory parameters,
-        Comparators[] memory comparators
+        Comparators[] memory comparators,
+        SupportedTypes[] memory types
     ) external override onlyAdminOrTimelock {
         if (!_proposalTypesExists[proposalTypeId]) revert InvalidProposalType();
         if (parameters.length != comparators.length) revert InvalidParameterConditions();
@@ -118,7 +121,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
             }
         }
 
-        Scope memory scope = Scope(key, encodedLimit, parameters, comparators, proposalTypeId, true);
+        Scope memory scope = Scope(key, encodedLimit, parameters, comparators, types, proposalTypeId, true);
         _scopes.push(scope);
 
         _assignedScopes[proposalTypeId][key] = scope;
@@ -232,21 +235,9 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         uint256 endIdx = startIdx;
         for (uint8 i = 0; i < validScope.parameters.length; i++) {
             endIdx = endIdx + validScope.parameters[i].length;
-
-            bytes32 param = bytes32(proposedTx[startIdx:endIdx]);
-            if (validScope.comparators[i] == Comparators.EQUAL) {
-                bytes32 scopedParam = bytes32(this.getParameter(scopeLimit, startIdx, endIdx));
-                if (scopedParam != param) revert InvalidParamNotEqual();
-            }
-
-            if (validScope.comparators[i] == Comparators.LESS_THAN) {
-                if (param >= bytes32(validScope.parameters[i])) revert InvalidParamRange();
-            }
-
-            if (validScope.comparators[i] == Comparators.GREATER_THAN) {
-                if (param <= bytes32(validScope.parameters[i])) revert InvalidParamRange();
-            }
-
+            Validator.determineValidation(
+                proposedTx[startIdx:endIdx], validScope.parameters[i], validScope.types[i], validScope.comparators[i]
+            );
             startIdx = endIdx;
         }
     }
@@ -258,7 +249,10 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param calldatas The list of proposed transaction calldata.
      * @param proposalType The type of the proposal.
      */
-    function validateProposalData(address[] memory targets, bytes[] calldata calldatas, uint8 proposalType) public {
+    function validateProposalData(address[] memory targets, bytes[] calldata calldatas, uint8 proposalType)
+        external
+        view
+    {
         for (uint8 i = 0; i < calldatas.length; i++) {
             bytes24 scopeKey = _pack(targets[i], bytes4(calldatas[i]));
 
