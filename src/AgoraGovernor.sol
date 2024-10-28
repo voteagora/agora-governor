@@ -16,6 +16,7 @@ import {IProposalTypesConfigurator} from "src/interfaces/IProposalTypesConfigura
 import {VotingModule} from "src/modules/VotingModule.sol";
 import {IVotingToken} from "src/interfaces/IVotingToken.sol";
 
+/// @custom:security-contact security@voteagora.com
 contract AgoraGovernor is
     Initializable,
     GovernorUpgradeableV2,
@@ -27,16 +28,6 @@ contract AgoraGovernor is
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
-
-    event ProposalCreated(
-        uint256 proposalId,
-        address proposer,
-        address votingModule,
-        bytes proposalData,
-        uint256 startBlock,
-        uint256 endBlock,
-        string description
-    );
 
     event ProposalCreated(
         uint256 indexed proposalId,
@@ -95,7 +86,7 @@ contract AgoraGovernor is
 
     uint256 private constant GOVERNOR_VERSION = 1;
 
-    // Max value of `quorum` and `approvalThreshold` in `ProposalType`
+    /// @notice Max value of `quorum` and `approvalThreshold` in `ProposalType`
     uint16 public constant PERCENT_DIVISOR = 10_000;
 
     IProposalTypesConfigurator public PROPOSAL_TYPES_CONFIGURATOR;
@@ -517,8 +508,9 @@ contract AgoraGovernor is
         string memory description,
         uint8 proposalTypeId
     ) public virtual returns (uint256 proposalId) {
-        if (_msgSender() != manager) {
-            if (getVotes(_msgSender(), block.number - 1) < proposalThreshold()) revert InvalidVotesBelowThreshold();
+        address proposer = _msgSender();
+        if (proposer != manager) {
+            if (getVotes(proposer, block.number - 1) < proposalThreshold()) revert InvalidVotesBelowThreshold();
         }
 
         require(approvedModules[address(module)], "Governor: module not approved");
@@ -562,7 +554,7 @@ contract AgoraGovernor is
     function editProposalType(uint256 proposalId, uint8 proposalTypeId) external onlyAdminOrTimelock {
         if (proposalSnapshot(proposalId) == 0) revert InvalidProposalId();
 
-        // Revert if `proposalTypeId` is unset or the proposal has a different voting module
+        // Revert if `proposalType` is unset or the proposal has a different voting module
         if (
             bytes(PROPOSAL_TYPES_CONFIGURATOR.proposalTypes(proposalTypeId).name).length == 0
                 || PROPOSAL_TYPES_CONFIGURATOR.proposalTypes(proposalTypeId).module != _proposals[proposalId].votingModule
@@ -624,8 +616,8 @@ contract AgoraGovernor is
         );
 
         ProposalState status = state(proposalId);
-
         require(status != ProposalState.Canceled && status != ProposalState.Executed, "Governor: proposal not active");
+
         _proposals[proposalId].canceled = true;
 
         emit ProposalCanceled(proposalId);
