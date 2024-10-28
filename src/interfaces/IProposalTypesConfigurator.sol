@@ -15,6 +15,7 @@ interface IProposalTypesConfigurator {
     error NotAdminOrTimelock();
     error NotAdmin();
     error AlreadyInit();
+    error InvalidGovernor();
     error Invalid4ByteSelector();
     error InvalidParamNotEqual();
     error InvalidParamRange();
@@ -25,12 +26,7 @@ interface IProposalTypesConfigurator {
     //////////////////////////////////////////////////////////////*/
 
     event ProposalTypeSet(
-        uint8 indexed proposalTypeId,
-        uint16 quorum,
-        uint16 approvalThreshold,
-        string name,
-        string description,
-        bytes24[] validScopes
+        uint8 indexed proposalTypeId, uint16 quorum, uint16 approvalThreshold, string name, string description
     );
 
     /*//////////////////////////////////////////////////////////////
@@ -43,7 +39,7 @@ interface IProposalTypesConfigurator {
         string name;
         string description;
         address module;
-        bytes24[] validScopes;
+        bool exists;
     }
 
     enum Comparators {
@@ -67,11 +63,12 @@ interface IProposalTypesConfigurator {
 
     struct Scope {
         bytes24 key;
-        bytes encodedLimits;
+        bytes4 selector;
         bytes[] parameters;
         Comparators[] comparators;
         SupportedTypes[] types;
         uint8 proposalTypeId;
+        string description;
         bool exists;
     }
 
@@ -91,21 +88,22 @@ interface IProposalTypesConfigurator {
         uint16 approvalThreshold,
         string memory name,
         string memory description,
-        address module,
-        bytes24[] memory validScopes
+        address module
     ) external;
 
     function setScopeForProposalType(
         uint8 proposalTypeId,
         bytes24 key,
-        bytes calldata encodedLimit,
+        bytes4 selector,
         bytes[] memory parameters,
         Comparators[] memory comparators,
         SupportedTypes[] memory types
+        string memory description
     ) external;
 
-    function updateScopeForProposalType(uint8 proposalTypeId, Scope calldata scope) external;
-    function getLimit(uint8 proposalTypeId, bytes24 key) external returns (bytes memory);
+    function getSelector(uint8 proposalTypeId, bytes24 key) external returns (bytes4);
+    function addScopeForProposalType(uint8 proposalTypeId, Scope calldata scope) external;
+    function disableScope(uint8 proposalTypeId, bytes24 scopeKey) external;
     function validateProposedTx(bytes calldata proposedTx, uint8 proposalTypeId, bytes24 key) external;
-    function validateProposalData(address[] memory targets, bytes[] memory calldatas, uint8 proposalType) external;
+    function validateProposalData(address[] memory targets, bytes[] memory calldatas, uint8 proposalTypeId) external;
 }

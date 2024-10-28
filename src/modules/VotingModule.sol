@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
+/// @custom:security-contact security@voteagora.com
 abstract contract VotingModule {
     /*//////////////////////////////////////////////////////////////
                             IMMUTABLE STORAGE
     //////////////////////////////////////////////////////////////*/
 
-    address immutable governor;
+    address public immutable governor;
 
     /*//////////////////////////////////////////////////////////////
                                  ERRORS
@@ -15,7 +16,6 @@ abstract contract VotingModule {
     error NotGovernor();
     error ExistingProposal();
     error InvalidParams();
-    error AlreadyVoted();
 
     /*//////////////////////////////////////////////////////////////
                                MODIFIERS
@@ -56,9 +56,12 @@ abstract contract VotingModule {
         return true;
     }
 
+    /// @notice See {IGovernor-COUNTING_MODE}.
     function COUNTING_MODE() external pure virtual returns (string memory);
 
+    /// @notice Defines the encoding for the expected `proposalData` in `propose`.
     function PROPOSAL_DATA_ENCODING() external pure virtual returns (string memory);
 
+    /// @notice Defines the encoding for the expected `params` in `_countVote`.
     function VOTE_PARAMS_ENCODING() external pure virtual returns (string memory);
 }
