@@ -386,35 +386,7 @@ contract AddScopeForProposalType is ProposalTypesConfiguratorTest {
         vm.stopPrank();
     }
 
-    function testRevert_addScopeForProposalType_NoDuplicateTxTypes() public {
-        vm.startPrank(admin);
-        bytes32 txTypeHash = keccak256("transfer(address,address,uint)");
-        address contractAddress = makeAddr("contract");
-        bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
-        bytes4 txEncoded = bytes4(abi.encode("transfer(address,address,uint)", 0xdeadbeef, 0xdeadbeef, 10));
-
-        proposalTypesConfigurator.setScopeForProposalType(
-            0,
-            scopeKey,
-            txEncoded,
-            new bytes[](1),
-            new IProposalTypesConfigurator.Comparators[](1),
-            new IProposalTypesConfigurator.SupportedTypes[](1),
-            "Lorem"
-        );
-
-        vm.expectRevert(IProposalTypesConfigurator.NoDuplicateTxTypes.selector);
-        IProposalTypesConfigurator.Scope memory scope = IProposalTypesConfigurator.Scope(
-            scopeKey,
-            txEncoded,
-            new bytes[](1),
-            new IProposalTypesConfigurator.Comparators[](1),
-            new IProposalTypesConfigurator.SupportedTypes[](1),
-            0,
-            "Lorem",
-            true
-        );
-        proposalTypesConfigurator.addScopeForProposalType(0, scope);
+   
         vm.stopPrank();
     }
 
@@ -438,35 +410,6 @@ contract AddScopeForProposalType is ProposalTypesConfiguratorTest {
         vm.expectRevert(IProposalTypesConfigurator.InvalidParameterConditions.selector);
         proposalTypesConfigurator.addScopeForProposalType(0, scope);
         vm.stopPrank();
-    }
-}
-
-contract getLimit is ProposalTypesConfiguratorTest {
-    function testRevert_getLimit_InvalidProposalType() public {
-        vm.expectRevert(IProposalTypesConfigurator.InvalidProposalType.selector);
-        proposalTypesConfigurator.getSelector(3, bytes24(keccak256("foobar(address,address)")));
-    }
-
-    function testRevert_getLimit_InvalidScope() public {
-        vm.startPrank(admin);
-        bytes32 txTypeHash = keccak256("transfer(address,address,uint)");
-        address contractAddress = makeAddr("contract");
-        bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
-        bytes4 txEncoded = bytes4(abi.encode("transfer(address,address,uint)", 0xdeadbeef, 0xdeadbeef, 10));
-
-        proposalTypesConfigurator.setScopeForProposalType(
-            0,
-            scopeKey,
-            txEncoded,
-            new bytes[](1),
-            new IProposalTypesConfigurator.Comparators[](1),
-            new IProposalTypesConfigurator.SupportedTypes[](1),
-            "Lorem"
-        );
-        vm.stopPrank();
-
-        vm.expectRevert(IProposalTypesConfigurator.InvalidScope.selector);
-        proposalTypesConfigurator.getSelector(0, bytes24(keccak256("foobar(address,address)")));
     }
 }
 
@@ -529,6 +472,54 @@ contract DisableScope is ProposalTypesConfiguratorTest {
         vm.expectEmit();
         emit ScopeDisabled(0, scopeKey);
         proposalTypesConfigurator.disableScope(0, scopeKey);
+    }
+}
+
+contract MultipleScopeValidation is ProposalTypesConfiguratorTest {
+    function testFuzz_MultipleScopeValidationRange(uint256 _actorSeed) public {
+        vm.prank(_adminOrTimelock(_actorSeed));
+        vm.expectEmit();
+        emit ProposalTypeSet(0, 4_000, 6_000, "New Default", "Lorem Ipsum");
+        proposalTypesConfigurator.setProposalType(0, 4_000, 6_000, "New Default", "Lorem Ipsum", address(0));
+
+        vm.startPrank(admin);
+        bytes32 txTypeHash = keccak256("transfer(address,address,uint256)");
+        address contractAddress = makeAddr("contract");
+        bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
+        address _from = makeAddr("from");
+        address _to = makeAddr("to");
+        bytes memory txEncoded1 = abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(10));
+
+        bytes[] memory parameters1 = new bytes[](3);
+        parameters1[0] = abi.encode(uint256(uint160(_from)));
+        parameters1[1] = abi.encode(uint256(uint160(_to)));
+        parameters1[2] = abi.encode(uint256(10));
+
+        IProposalTypesConfigurator.Comparators[] memory comparators1 = new IProposalTypesConfigurator.Comparators[](3);
+
+        comparators1[0] = IProposalTypesConfigurator.Comparators(1); // EQ
+        comparators1[1] = IProposalTypesConfigurator.Comparators(1); // EQ
+        comparators1[2] = IProposalTypesConfigurator.Comparators(3); // GREATER THAN
+
+        proposalTypesConfigurator.setScopeForProposalType(0, scopeKey, txEncoded1, parameters1, comparators1, "Lorem");
+
+        bytes[] memory parameters2 = new bytes[](3);
+        parameters2[0] = abi.encode(uint256(uint160(_from)));
+        parameters2[1] = abi.encode(uint256(uint160(_to)));
+        parameters2[2] = abi.encode(uint256(50));
+
+        IProposalTypesConfigurator.Comparators[] memory comparators2 = new IProposalTypesConfigurator.Comparators[](3);
+
+        comparators2[0] = IProposalTypesConfigurator.Comparators(1); // EQ
+        comparators2[1] = IProposalTypesConfigurator.Comparators(1); // EQ
+        comparators2[2] = IProposalTypesConfigurator.Comparators(2); // LESS THAN
+
+        bytes memory txEncoded2 = abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(50));
+        proposalTypesConfigurator.setScopeForProposalType(0, scopeKey, txEncoded2, parameters2, comparators2, "Lorem");
+
+        vm.stopPrank();
+        bytes memory proposedTx = abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(15));
+        proposalTypesConfigurator.validateProposedTx(proposedTx, 0, scopeKey);
     }
 }
 

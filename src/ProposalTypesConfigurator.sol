@@ -31,7 +31,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     //////////////////////////////////////////////////////////////*/
 
     mapping(uint8 proposalTypeId => ProposalType) internal _proposalTypes;
-    mapping(uint8 proposalTypeId => mapping(bytes24 key => Scope)) internal _assignedScopes;
+    mapping(uint8 proposalTypeId => mapping(bytes24 key => Scope[])) internal _assignedScopes;
     mapping(bytes24 key => bool) internal _scopeExists;
 
     /*//////////////////////////////////////////////////////////////
@@ -85,7 +85,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param scopeKey The function selector + contract address that is the key for a scope.
      * @return Scope struct of the scope.
      */
-    function assignedScopes(uint8 proposalTypeId, bytes24 scopeKey) external view returns (Scope memory) {
+    function assignedScopes(uint8 proposalTypeId, bytes24 scopeKey) external view returns (Scope[] memory) {
         return _assignedScopes[proposalTypeId][scopeKey];
     }
 
@@ -119,10 +119,9 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     ) external override onlyAdminOrTimelock {
         if (!_proposalTypes[proposalTypeId].exists) revert InvalidProposalType();
         if (parameters.length != comparators.length) revert InvalidParameterConditions();
-        if (_assignedScopes[proposalTypeId][key].exists) revert NoDuplicateTxTypes(); // Do not allow multiple scopes for a single transaction type
 
         Scope memory scope = Scope(key, selector, parameters, comparators, types, proposalTypeId, description, true);
-        _assignedScopes[proposalTypeId][key] = scope;
+        _assignedScopes[proposalTypeId][key].push(scope);
         _scopeExists[key] = true;
 
         emit ScopeCreated(proposalTypeId, key, selector, description);
@@ -160,6 +159,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         if (approvalThreshold > PERCENT_DIVISOR) revert InvalidApprovalThreshold();
 
         _proposalTypes[proposalTypeId] = ProposalType(quorum, approvalThreshold, name, description, module, true);
+
         emit ProposalTypeSet(proposalTypeId, quorum, approvalThreshold, name, description);
     }
 
@@ -175,10 +175,10 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     {
         if (!_proposalTypes[proposalTypeId].exists) revert InvalidProposalType();
         if (scope.parameters.length != scope.comparators.length) revert InvalidParameterConditions();
-        if (_assignedScopes[proposalTypeId][scope.key].exists) revert NoDuplicateTxTypes(); // Do not allow multiple scopes for a single transaction type
-
+        bytes24 scopeKey = scope.key;
+        
         _scopeExists[scope.key] = true;
-        _assignedScopes[proposalTypeId][scope.key] = scope;
+        _assignedScopes[proposalTypeId][scope.key].push(scope);
 
         emit ScopeCreated(proposalTypeId, scope.key, scope.selector, scope.description);
     }
@@ -216,18 +216,31 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param proposalTypeId Id of the proposal type
      * @param key A type signature of a function and contract address that has a limit specified in a scope
      */
-    function validateProposedTx(bytes calldata proposedTx, uint8 proposalTypeId, bytes24 key) public view {
-        Scope memory validScope = _assignedScopes[proposalTypeId][key];
-        if (validScope.selector != bytes4(proposedTx[:4])) revert Invalid4ByteSelector();
+     function validateProposedTx(bytes calldata proposedTx, uint8 proposalTypeId, bytes24 key) public view {
+        Scope[] memory scopes = _assignedScopes[proposalTypeId][key];
 
-        uint256 startIdx = 4;
-        uint256 endIdx = startIdx;
-        for (uint8 i = 0; i < validScope.parameters.length; i++) {
-            endIdx = endIdx + validScope.parameters[i].length;
-            Validator.determineValidation(
-                proposedTx[startIdx:endIdx], validScope.parameters[i], validScope.types[i], validScope.comparators[i]
-            );
-            startIdx = endIdx;
+        if (_scopeExists[key]) {
+            for (uint8 i = 0; i < scopes.length; i++) {
+                Scope memory validScope = scopes[i];
+                bytes memory scopeLimit = validScope.encodedLimits;
+                bytes4 selector = bytes4(scopeLimit);
+                if (selector != bytes4(proposedTx[:4])) revert Invalid4ByteSelector();
+
+                uint256 startIdx = 4;
+                uint256 endIdx = startIdx;
+                for (uint8 j = 0; j < validScope.parameters.length; j++) {
+                    endIdx = endIdx + validScope.parameters[j].length;
+
+                    Validator.determineValidation(
+                        proposedTx[startIdx:endIdx],
+                        validScope.parameters[j],
+                        validScope.types[j],
+                        validScope.comparators[j]
+                    );
+
+                    startIdx = endIdx;
+                }
+            }
         }
     }
 
@@ -244,8 +257,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     {
         for (uint8 i = 0; i < calldatas.length; i++) {
             bytes24 scopeKey = _pack(targets[i], bytes4(calldatas[i]));
-
-            if (_assignedScopes[proposalTypeId][scopeKey].exists) {
+            if (_assignedScopes[proposalTypeId][scopeKey].length != 0) {
                 validateProposedTx(calldatas[i], proposalTypeId, scopeKey);
             } else {
                 if (_scopeExists[scopeKey]) {

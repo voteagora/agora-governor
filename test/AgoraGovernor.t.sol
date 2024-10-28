@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {Test, console2} from "forge-std/Test.sol";
+import "forge-std/Test.sol";
 import {TransparentUpgradeableProxy} from "@openzeppelin/contracts-v4/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IVotesUpgradeable} from "@openzeppelin/contracts-upgradeable-v4/governance/utils/IVotesUpgradeable.sol";
 import {IGovernorUpgradeable} from "@openzeppelin/contracts-upgradeable-v4/governance/IGovernorUpgradeable.sol";
@@ -773,7 +773,7 @@ contract ProposeWithOptimisticModule is AgoraGovernorTest {
     ) public {
         vm.assume(_actor != proxyAdmin && _actorFor != proxyAdmin && _actorAgainst != proxyAdmin);
         vm.assume(_actor != address(0) && _actorFor != address(0) && _actorAgainst != address(0));
-        vm.assume(_actorFor != _actorAgainst);
+        vm.assume(_actor != _actorFor && _actorFor != _actorAgainst && _actorAgainst != _actor);
         _totalMintAmount = bound(_totalMintAmount, 1e4, type(uint208).max);
         _againstThresholdPercentage = bound(_againstThresholdPercentage, 1, optimisticModule.PERCENT_DIVISOR());
         uint256 _againstThreshold =
@@ -1249,7 +1249,7 @@ contract Execute is AgoraGovernorTest {
 
         vm.roll(block.number + 14);
 
-        vm.expectRevert("TimelockController: operation is not ready");
+        vm.expectRevert("Governor: proposal not queued");
         vm.prank(manager);
         governor.execute(targets, values, calldatas, keccak256("Test"));
     }
@@ -1310,7 +1310,7 @@ contract Execute is AgoraGovernorTest {
         assertEq(uint8(governor.state(proposalId)), uint8(ProposalState.Defeated));
 
         vm.prank(manager);
-        vm.expectRevert("Governor: proposal not successful");
+        vm.expectRevert("Governor: proposal not queued");
         governor.execute(targets, values, calldatas, keccak256("Test"));
     }
 
@@ -1349,7 +1349,7 @@ contract Execute is AgoraGovernorTest {
         vm.prank(manager);
         governor.execute(targets, values, calldatas, keccak256("Test"));
 
-        vm.expectRevert("Governor: proposal not successful");
+        vm.expectRevert("Governor: proposal not queued");
         vm.prank(manager);
         governor.execute(targets, values, calldatas, keccak256("Test"));
     }
@@ -1461,7 +1461,7 @@ contract ExecuteWithModule is AgoraGovernorTest {
 
         vm.roll(deadline + 1);
 
-        vm.expectRevert("TimelockController: operation is not ready");
+        vm.expectRevert("Governor: proposal not queued");
         vm.prank(manager);
         governor.executeWithModule(VotingModule(module), proposalData, keccak256(bytes(description)));
     }
@@ -1516,7 +1516,7 @@ contract ExecuteWithModule is AgoraGovernorTest {
         assertEq(uint8(governor.state(proposalId)), uint8(ProposalState.Defeated));
 
         vm.prank(manager);
-        vm.expectRevert("Governor: proposal not successful");
+        vm.expectRevert("Governor: proposal not queued");
         governor.executeWithModule(VotingModule(module), proposalData, keccak256(bytes(description)));
     }
 
@@ -1555,7 +1555,7 @@ contract ExecuteWithModule is AgoraGovernorTest {
         vm.prank(manager);
         governor.executeWithModule(VotingModule(module), proposalData, keccak256(bytes(description)));
 
-        vm.expectRevert("Governor: proposal not successful");
+        vm.expectRevert("Governor: proposal not queued");
         vm.prank(manager);
         governor.executeWithModule(VotingModule(module), proposalData, keccak256(bytes(description)));
     }

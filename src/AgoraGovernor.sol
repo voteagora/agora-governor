@@ -6,6 +6,7 @@ import {SafeCastUpgradeable} from "@openzeppelin/contracts-upgradeable-v4/utils/
 import {Initializable} from "@openzeppelin/contracts-upgradeable-v4/proxy/utils/Initializable.sol";
 import {TimelockControllerUpgradeable} from
     "@openzeppelin/contracts-upgradeable-v4/governance/TimelockControllerUpgradeable.sol";
+import {AddressUpgradeable} from "@openzeppelin/contracts-upgradeable-v4/utils/AddressUpgradeable.sol";
 import {GovernorCountingSimpleUpgradeableV2} from "src/lib/openzeppelin/v2/GovernorCountingSimpleUpgradeableV2.sol";
 import {IGovernorUpgradeable} from "src/lib/openzeppelin/v2/GovernorUpgradeableV2.sol";
 import {GovernorUpgradeableV2} from "src/lib/openzeppelin/v2/GovernorUpgradeableV2.sol";
@@ -71,6 +72,7 @@ contract AgoraGovernor is
     error InvalidEmptyProposal();
     error InvalidVotesBelowThreshold();
     error InvalidProposalExists();
+    error InvalidRelayTarget(address target);
     error NotAdminOrTimelock();
 
     /*//////////////////////////////////////////////////////////////
@@ -407,6 +409,21 @@ contract AgoraGovernor is
 
     /**
      * @inheritdoc GovernorUpgradeableV2
+     */
+    function relay(address target, uint256 value, bytes calldata data)
+        external
+        payable
+        virtual
+        override(GovernorUpgradeableV2)
+        onlyGovernance
+    {
+        if (approvedModules[target]) revert InvalidRelayTarget(target);
+        (bool success, bytes memory returndata) = target.call{value: value}(data);
+        AddressUpgradeable.verifyCallResult(success, returndata, "Governor: relay reverted without message");
+    }
+
+    /**
+     * @inheritdoc GovernorUpgradeableV2
      * @dev Updated version in which default `proposalType` is set to 0.
      */
     function propose(
@@ -554,7 +571,7 @@ contract AgoraGovernor is
     function editProposalType(uint256 proposalId, uint8 proposalTypeId) external onlyAdminOrTimelock {
         if (proposalSnapshot(proposalId) == 0) revert InvalidProposalId();
 
-        // Revert if `proposalType` is unset or the proposal has a different voting module
+        // Revert if `proposalTypeId` is unset or the proposal has a different voting module
         if (
             bytes(PROPOSAL_TYPES_CONFIGURATOR.proposalTypes(proposalTypeId).name).length == 0
                 || PROPOSAL_TYPES_CONFIGURATOR.proposalTypes(proposalTypeId).module != _proposals[proposalId].votingModule
@@ -616,8 +633,12 @@ contract AgoraGovernor is
         );
 
         ProposalState status = state(proposalId);
-        require(status != ProposalState.Canceled && status != ProposalState.Executed, "Governor: proposal not active");
 
+        require(
+            status != ProposalState.Canceled && status != ProposalState.Expired && status != ProposalState.Executed,
+            "Governor: proposal not active"
+        );
+        
         _proposals[proposalId].canceled = true;
 
         emit ProposalCanceled(proposalId);
@@ -674,7 +695,19 @@ contract AgoraGovernor is
         bytes[] memory calldatas,
         bytes32 descriptionHash
     ) public payable override(IGovernorUpgradeable, GovernorUpgradeableV2) returns (uint256) {
-        return super.execute(targets, values, calldatas, descriptionHash);
+        uint256 proposalId = hashProposal(targets, values, calldatas, descriptionHash);
+
+        ProposalState status = state(proposalId);
+        require(status == ProposalState.Queued, "Governor: proposal not queued");
+        _proposals[proposalId].executed = true;
+
+        emit ProposalExecuted(proposalId);
+
+        _beforeExecute(proposalId, targets, values, calldatas, descriptionHash);
+        _execute(proposalId, targets, values, calldatas, descriptionHash);
+        _afterExecute(proposalId, targets, values, calldatas, descriptionHash);
+
+        return proposalId;
     }
 
     function _execute(
@@ -703,9 +736,7 @@ contract AgoraGovernor is
         uint256 proposalId = hashProposalWithModule(address(module), proposalData, descriptionHash);
 
         ProposalState status = state(proposalId);
-        require(
-            status == ProposalState.Succeeded || status == ProposalState.Queued, "Governor: proposal not successful"
-        );
+        require(status == ProposalState.Queued, "Governor: proposal not queued");
         _proposals[proposalId].executed = true;
 
         emit ProposalExecuted(proposalId);
