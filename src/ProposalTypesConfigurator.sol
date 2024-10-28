@@ -208,7 +208,8 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         _assignedScopes[proposalTypeId][scopeKey].exists = false;
         emit ScopeDisabled(proposalTypeId, scopeKey);
     }
-    
+
+    /**
      * @notice Validates that a proposed transaction conforms to the scope defined in a given proposal type. Note: This
      *   version only supports functions that have for each parameter 32-byte abi encodings, please see the ABI
      *   specification to see which types are not supported. The types that are supported are as follows:
