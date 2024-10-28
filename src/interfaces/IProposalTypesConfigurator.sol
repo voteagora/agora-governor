@@ -90,5 +90,5 @@ interface IProposalTypesConfigurator {
     function getLimit(uint8 proposalTypeId, bytes24 key) external returns (bytes memory);
     function disableScope(uint8 proposalTypeId, bytes24 scopeKey) external;
     function validateProposedTx(bytes calldata proposedTx, uint8 proposalTypeId, bytes24 key) external;
-    function validateProposalData(address[] memory targets, bytes[] memory calldatas, uint8 proposalType) external;
+    function validateProposalData(address[] memory targets, bytes[] memory calldatas, uint8 proposalTypeId) external;
 }
