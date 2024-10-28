@@ -283,35 +283,6 @@ contract SetProposalType is ProposalTypesConfiguratorTest {
         );
         vm.stopPrank();
     }
-
-    function testRevert_setScopeForProposalType_NoDuplicateTxTypes() public {
-        vm.startPrank(admin);
-        bytes32 txTypeHash = keccak256("transfer(address,address,uint)");
-        bytes4 txEncoded = bytes4(abi.encode("transfer(address,address,uint)", 0xdeadbeef, 0xdeadbeef, 10));
-        address contractAddress = makeAddr("contract");
-        bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
-        proposalTypesConfigurator.setScopeForProposalType(
-            0,
-            scopeKey,
-            txEncoded,
-            new bytes[](1),
-            new IProposalTypesConfigurator.Comparators[](1),
-            new IProposalTypesConfigurator.SupportedTypes[](1),
-            "Lorem"
-        );
-
-        vm.expectRevert(IProposalTypesConfigurator.NoDuplicateTxTypes.selector);
-        proposalTypesConfigurator.setScopeForProposalType(
-            0,
-            scopeKey,
-            txEncoded,
-            new bytes[](1),
-            new IProposalTypesConfigurator.Comparators[](1),
-            new IProposalTypesConfigurator.SupportedTypes[](1),
-            "Lorem"
-        );
-        vm.stopPrank();
-    }
 }
 
 contract AddScopeForProposalType is ProposalTypesConfiguratorTest {
@@ -383,10 +354,6 @@ contract AddScopeForProposalType is ProposalTypesConfiguratorTest {
             true
         );
         proposalTypesConfigurator.addScopeForProposalType(3, scope);
-        vm.stopPrank();
-    }
-
-   
         vm.stopPrank();
     }
 
@@ -471,7 +438,7 @@ contract DisableScope is ProposalTypesConfiguratorTest {
 
         vm.expectEmit();
         emit ScopeDisabled(0, scopeKey);
-        proposalTypesConfigurator.disableScope(0, scopeKey);
+        proposalTypesConfigurator.disableScope(0, scopeKey, 0);
     }
 }
 
@@ -488,7 +455,8 @@ contract MultipleScopeValidation is ProposalTypesConfiguratorTest {
         bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
         address _from = makeAddr("from");
         address _to = makeAddr("to");
-        bytes memory txEncoded1 = abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(10));
+        bytes4 txEncoded1 =
+            bytes4(abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(10)));
 
         bytes[] memory parameters1 = new bytes[](3);
         parameters1[0] = abi.encode(uint256(uint160(_from)));
@@ -501,7 +469,15 @@ contract MultipleScopeValidation is ProposalTypesConfiguratorTest {
         comparators1[1] = IProposalTypesConfigurator.Comparators(1); // EQ
         comparators1[2] = IProposalTypesConfigurator.Comparators(3); // GREATER THAN
 
-        proposalTypesConfigurator.setScopeForProposalType(0, scopeKey, txEncoded1, parameters1, comparators1, "Lorem");
+        IProposalTypesConfigurator.SupportedTypes[] memory types = new IProposalTypesConfigurator.SupportedTypes[](3);
+
+        types[0] = IProposalTypesConfigurator.SupportedTypes(7); // address
+        types[1] = IProposalTypesConfigurator.SupportedTypes(7); // address
+        types[2] = IProposalTypesConfigurator.SupportedTypes(6); // uint256
+
+        proposalTypesConfigurator.setScopeForProposalType(
+            0, scopeKey, txEncoded1, parameters1, comparators1, types, "Lorem"
+        );
 
         bytes[] memory parameters2 = new bytes[](3);
         parameters2[0] = abi.encode(uint256(uint160(_from)));
@@ -514,8 +490,11 @@ contract MultipleScopeValidation is ProposalTypesConfiguratorTest {
         comparators2[1] = IProposalTypesConfigurator.Comparators(1); // EQ
         comparators2[2] = IProposalTypesConfigurator.Comparators(2); // LESS THAN
 
-        bytes memory txEncoded2 = abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(50));
-        proposalTypesConfigurator.setScopeForProposalType(0, scopeKey, txEncoded2, parameters2, comparators2, "Lorem");
+        bytes4 txEncoded2 =
+            bytes4(abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(50)));
+        proposalTypesConfigurator.setScopeForProposalType(
+            0, scopeKey, txEncoded2, parameters2, comparators2, types, "Lorem"
+        );
 
         vm.stopPrank();
         bytes memory proposedTx = abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(15));

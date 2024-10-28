@@ -176,7 +176,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         if (!_proposalTypes[proposalTypeId].exists) revert InvalidProposalType();
         if (scope.parameters.length != scope.comparators.length) revert InvalidParameterConditions();
         bytes24 scopeKey = scope.key;
-        
+
         _scopeExists[scope.key] = true;
         _assignedScopes[proposalTypeId][scope.key].push(scope);
 
@@ -190,8 +190,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      */
     function getSelector(uint8 proposalTypeId, bytes24 key) public view returns (bytes4 selector) {
         if (!_proposalTypes[proposalTypeId].exists) revert InvalidProposalType();
-        if (!_assignedScopes[proposalTypeId][key].exists) revert InvalidScope();
-        Scope memory validScope = _assignedScopes[proposalTypeId][key];
+        Scope memory validScope = _assignedScopes[proposalTypeId][key][0];
         return validScope.selector;
     }
 
@@ -199,9 +198,10 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @notice Disables a scopes for all contract + function signatures.
      * @param proposalTypeId the proposal type ID that has the assigned scope.
      * @param scopeKey the contract and function signature representing the scope key
+     * @param idx the index of the assigned scope.
      */
-    function disableScope(uint8 proposalTypeId, bytes24 scopeKey) external override onlyAdminOrTimelock {
-        _assignedScopes[proposalTypeId][scopeKey].exists = false;
+    function disableScope(uint8 proposalTypeId, bytes24 scopeKey, uint8 idx) external override onlyAdminOrTimelock {
+        _assignedScopes[proposalTypeId][scopeKey][idx].exists = false;
         emit ScopeDisabled(proposalTypeId, scopeKey);
     }
 
@@ -216,15 +216,13 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param proposalTypeId Id of the proposal type
      * @param key A type signature of a function and contract address that has a limit specified in a scope
      */
-     function validateProposedTx(bytes calldata proposedTx, uint8 proposalTypeId, bytes24 key) public view {
+    function validateProposedTx(bytes calldata proposedTx, uint8 proposalTypeId, bytes24 key) public view {
         Scope[] memory scopes = _assignedScopes[proposalTypeId][key];
 
         if (_scopeExists[key]) {
             for (uint8 i = 0; i < scopes.length; i++) {
                 Scope memory validScope = scopes[i];
-                bytes memory scopeLimit = validScope.encodedLimits;
-                bytes4 selector = bytes4(scopeLimit);
-                if (selector != bytes4(proposedTx[:4])) revert Invalid4ByteSelector();
+                if (validScope.selector != bytes4(proposedTx[:4])) revert Invalid4ByteSelector();
 
                 uint256 startIdx = 4;
                 uint256 endIdx = startIdx;

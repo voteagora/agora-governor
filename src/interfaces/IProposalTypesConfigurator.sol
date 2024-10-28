@@ -102,7 +102,7 @@ interface IProposalTypesConfigurator {
 
     function getSelector(uint8 proposalTypeId, bytes24 key) external returns (bytes4);
     function addScopeForProposalType(uint8 proposalTypeId, Scope calldata scope) external;
-    function disableScope(uint8 proposalTypeId, bytes24 scopeKey) external;
+    function disableScope(uint8 proposalTypeId, bytes24 scopeKey, uint8 idx) external;
     function validateProposedTx(bytes calldata proposedTx, uint8 proposalTypeId, bytes24 key) external;
     function validateProposalData(address[] memory targets, bytes[] memory calldatas, uint8 proposalTypeId) external;
 }
