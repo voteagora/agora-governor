@@ -49,11 +49,24 @@ interface IProposalTypesConfigurator {
         GREATER_THAN
     }
 
+    enum SupportedTypes {
+        NONE,
+        UINT8,
+        UINT16,
+        UINT32,
+        UINT64,
+        UINT128,
+        UINT256,
+        ADDRESS,
+        BYTES32
+    }
+
     struct Scope {
         bytes24 key;
         bytes4 selector;
         bytes[] parameters;
         Comparators[] comparators;
+        SupportedTypes[] types;
         uint8 proposalTypeId;
         string description;
         bool exists;
@@ -84,6 +97,7 @@ interface IProposalTypesConfigurator {
         bytes4 selector,
         bytes[] memory parameters,
         Comparators[] memory comparators,
+        SupportedTypes[] memory types,
         string memory description
     ) external;
 
