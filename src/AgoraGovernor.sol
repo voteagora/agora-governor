@@ -517,8 +517,9 @@ contract AgoraGovernor is
         string memory description,
         uint8 proposalType
     ) public virtual returns (uint256 proposalId) {
-        if (_msgSender() != manager) {
-            if (getVotes(_msgSender(), block.number - 1) < proposalThreshold()) revert InvalidVotesBelowThreshold();
+        address proposer = _msgSender();
+        if (proposer != manager) {
+            if (getVotes(proposer, block.number - 1) < proposalThreshold()) revert InvalidVotesBelowThreshold();
         }
 
         require(approvedModules[address(module)], "Governor: module not approved");
@@ -545,11 +546,12 @@ contract AgoraGovernor is
         proposal.voteEnd.setDeadline(deadline);
         proposal.votingModule = address(module);
         proposal.proposalType = proposalType;
+        proposal.proposer = proposer;
 
         module.propose(proposalId, proposalData, descriptionHash);
 
         emit ProposalCreated(
-            proposalId, _msgSender(), address(module), proposalData, snapshot, deadline, description, proposalType
+            proposalId, proposer, address(module), proposalData, snapshot, deadline, description, proposalType
         );
     }
 
@@ -620,8 +622,8 @@ contract AgoraGovernor is
         );
 
         ProposalState status = state(proposalId);
-
         require(status != ProposalState.Canceled && status != ProposalState.Executed, "Governor: proposal not active");
+
         _proposals[proposalId].canceled = true;
 
         emit ProposalCanceled(proposalId);
