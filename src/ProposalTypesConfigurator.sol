@@ -58,7 +58,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         if (_governor == address(0)) revert InvalidGovernor();
 
         governor = IAgoraGovernor(_governor);
-        
+
         for (uint8 i = 0; i < _proposalTypesInit.length; i++) {
             _setProposalType(
                 i,
@@ -273,8 +273,8 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param proposalTypeId The type of the proposal.
      */
     function validateProposalData(address[] memory targets, bytes[] calldata calldatas, uint8 proposalTypeId)
-        view
         external
+        view
     {
         for (uint8 i = 0; i < calldatas.length; i++) {
             bytes24 scopeKey = _pack(targets[i], bytes4(calldatas[i]));

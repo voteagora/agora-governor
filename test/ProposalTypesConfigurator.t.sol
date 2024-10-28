@@ -304,7 +304,7 @@ contract AddScopeForProposalType is ProposalTypesConfiguratorTest {
         );
 
         emit ScopeCreated(0, scope.key, scope.encodedLimits, "Lorem");
-        proposalTypesConfigurator.updateScopeForProposalType(0, scope);
+        proposalTypesConfigurator.addScopeForProposalType(0, scope);
         vm.stopPrank();
 
         bytes memory limit1 = proposalTypesConfigurator.getLimit(0, scopeKey1);
