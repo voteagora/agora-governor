@@ -86,7 +86,7 @@ contract AgoraGovernor is
 
     uint256 private constant GOVERNOR_VERSION = 1;
 
-    // Max value of `quorum` and `approvalThreshold` in `ProposalType`
+    /// @notice Max value of `quorum` and `approvalThreshold` in `ProposalType`
     uint16 public constant PERCENT_DIVISOR = 10_000;
 
     IProposalTypesConfigurator public PROPOSAL_TYPES_CONFIGURATOR;

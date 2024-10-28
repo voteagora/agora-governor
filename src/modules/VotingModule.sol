@@ -56,9 +56,12 @@ abstract contract VotingModule {
         return true;
     }
 
+    /// @notice See {IGovernor-COUNTING_MODE}.
     function COUNTING_MODE() external pure virtual returns (string memory);
 
+    /// @notice Defines the encoding for the expected `proposalData` in `propose`.
     function PROPOSAL_DATA_ENCODING() external pure virtual returns (string memory);
 
+    /// @notice Defines the encoding for the expected `params` in `_countVote`.
     function VOTE_PARAMS_ENCODING() external pure virtual returns (string memory);
 }
