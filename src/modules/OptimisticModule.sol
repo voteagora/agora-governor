@@ -23,7 +23,8 @@ struct Proposal {
     ProposalSettings settings;
 }
 
-contract OptimisticModule_SocialSignalling is VotingModule {
+/// @custom:security-contact security@voteagora.com
+contract OptimisticModule is VotingModule {
     /*//////////////////////////////////////////////////////////////
                                  ERRORS
     //////////////////////////////////////////////////////////////*/
