@@ -2398,7 +2398,7 @@ contract AssignedScopes is AgoraGovernorTest {
         bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
         address _from = makeAddr("from");
         address _to = makeAddr("to");
-        bytes memory txEncoded = abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(10));
+        bytes4 txEncoded = bytes4(abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(10)));
 
         bytes[] memory parameters = new bytes[](3);
         parameters[0] = abi.encode(uint256(uint160(_from)));
