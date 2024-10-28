@@ -84,7 +84,11 @@ library Validator {
         bytes calldata scopedParam,
         IProposalTypesConfigurator.Comparators comparison
     ) internal pure {
-        compare(bytes32(bytes1(param[0:1])), bytes32(bytes1(scopedParam[0:1])), comparison);
+        compare(
+            bytes32(bytes1(param[param.length - 1:param.length])),
+            bytes32(bytes1(scopedParam[scopedParam.length - 1:scopedParam.length])),
+            comparison
+        );
     }
 
     /**
@@ -95,7 +99,11 @@ library Validator {
         bytes calldata scopedParam,
         IProposalTypesConfigurator.Comparators comparison
     ) internal pure {
-        compare(bytes32(bytes2(param[0:2])), bytes32(bytes2(scopedParam[0:2])), comparison);
+        compare(
+            bytes32(bytes2(param[param.length - 2:param.length])),
+            bytes32(bytes2(scopedParam[scopedParam.length - 2:scopedParam.length])),
+            comparison
+        );
     }
 
     /**
@@ -106,7 +114,11 @@ library Validator {
         bytes calldata scopedParam,
         IProposalTypesConfigurator.Comparators comparison
     ) internal pure {
-        compare(bytes32(bytes4(param[0:4])), bytes32(bytes4(scopedParam[0:4])), comparison);
+        compare(
+            bytes32(bytes4(param[param.length - 4:param.length])),
+            bytes32(bytes4(scopedParam[scopedParam.length - 4:scopedParam.length])),
+            comparison
+        );
     }
 
     /**
@@ -117,7 +129,11 @@ library Validator {
         bytes calldata scopedParam,
         IProposalTypesConfigurator.Comparators comparison
     ) internal pure {
-        compare(bytes32(bytes8(param[0:8])), bytes32(bytes8(scopedParam[0:8])), comparison);
+        compare(
+            bytes32(bytes8(param[param.length - 8:param.length])),
+            bytes32(bytes8(scopedParam[scopedParam.length - 8:scopedParam.length])),
+            comparison
+        );
     }
 
     /**
@@ -128,7 +144,11 @@ library Validator {
         bytes calldata scopedParam,
         IProposalTypesConfigurator.Comparators comparison
     ) internal pure {
-        compare(bytes32(bytes16(param[0:16])), bytes32(bytes16(scopedParam[0:16])), comparison);
+        compare(
+            bytes32(bytes16(param[param.length - 16:param.length])),
+            bytes32(bytes16(scopedParam[scopedParam.length - 16:scopedParam.length])),
+            comparison
+        );
     }
 
     /**
@@ -139,7 +159,11 @@ library Validator {
         bytes calldata scopedParam,
         IProposalTypesConfigurator.Comparators comparison
     ) internal pure {
-        compare(bytes32(param[0:32]), bytes32(scopedParam[0:32]), comparison);
+        compare(
+            bytes32(param[param.length - 32:param.length]),
+            bytes32(scopedParam[scopedParam.length - 32:scopedParam.length]),
+            comparison
+        );
     }
 
     /**
