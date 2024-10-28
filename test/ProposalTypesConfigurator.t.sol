@@ -278,8 +278,8 @@ contract SetProposalType is ProposalTypesConfiguratorTest {
     }
 }
 
-contract UpdateScopeForProposalType is ProposalTypesConfiguratorTest {
-    function testFuzz_UpdateScopeForProposalType(uint256 _actorSeed) public {
+contract AddScopeForProposalType is ProposalTypesConfiguratorTest {
+    function testFuzz_AddScopeForProposalType(uint256 _actorSeed) public {
         vm.prank(_adminOrTimelock(_actorSeed));
         vm.expectEmit();
         emit ProposalTypeSet(0, 4_000, 6_000, "New Default", "Lorem Ipsum");
@@ -304,7 +304,7 @@ contract UpdateScopeForProposalType is ProposalTypesConfiguratorTest {
         );
 
         emit ScopeCreated(0, scope.key, scope.encodedLimits, "Lorem");
-        proposalTypesConfigurator.updateScopeForProposalType(0, scope);
+        proposalTypesConfigurator.addScopeForProposalType(0, scope);
         vm.stopPrank();
 
         bytes memory limit1 = proposalTypesConfigurator.getLimit(0, scopeKey1);
@@ -313,7 +313,7 @@ contract UpdateScopeForProposalType is ProposalTypesConfiguratorTest {
         assertEq(limit2, txEncoded2);
     }
 
-    function testRevert_updateScopeForProposalType_InvalidProposalType() public {
+    function testRevert_addScopeForProposalType_InvalidProposalType() public {
         vm.startPrank(admin);
         bytes32 txTypeHash = keccak256("transfer(address,address,uint)");
         address contractAddress = makeAddr("contract");
@@ -324,11 +324,11 @@ contract UpdateScopeForProposalType is ProposalTypesConfiguratorTest {
         IProposalTypesConfigurator.Scope memory scope = IProposalTypesConfigurator.Scope(
             scopeKey, txEncoded, new bytes[](1), new IProposalTypesConfigurator.Comparators[](1), 3, "Lorem", true
         );
-        proposalTypesConfigurator.updateScopeForProposalType(3, scope);
+        proposalTypesConfigurator.addScopeForProposalType(3, scope);
         vm.stopPrank();
     }
 
-    function testRevert_updateScopeForProposalType_NoDuplicateTxTypes() public {
+    function testRevert_addScopeForProposalType_NoDuplicateTxTypes() public {
         vm.startPrank(admin);
         bytes32 txTypeHash = keccak256("transfer(address,address,uint)");
         address contractAddress = makeAddr("contract");
@@ -343,11 +343,11 @@ contract UpdateScopeForProposalType is ProposalTypesConfiguratorTest {
         IProposalTypesConfigurator.Scope memory scope = IProposalTypesConfigurator.Scope(
             scopeKey, txEncoded, new bytes[](1), new IProposalTypesConfigurator.Comparators[](1), 0, "Lorem", true
         );
-        proposalTypesConfigurator.updateScopeForProposalType(0, scope);
+        proposalTypesConfigurator.addScopeForProposalType(0, scope);
         vm.stopPrank();
     }
 
-    function testRevert_updateScopeForProposalType_InvalidParametersCondition() public {
+    function testRevert_addScopeForProposalType_InvalidParametersCondition() public {
         vm.startPrank(admin);
         bytes32 txTypeHash = keccak256("transfer(address,address,uint)");
         address contractAddress = makeAddr("contract");
@@ -358,7 +358,7 @@ contract UpdateScopeForProposalType is ProposalTypesConfiguratorTest {
             scopeKey, txEncoded, new bytes[](1), new IProposalTypesConfigurator.Comparators[](2), 0, "Lorem", true
         );
         vm.expectRevert(IProposalTypesConfigurator.InvalidParameterConditions.selector);
-        proposalTypesConfigurator.updateScopeForProposalType(0, scope);
+        proposalTypesConfigurator.addScopeForProposalType(0, scope);
         vm.stopPrank();
     }
 }

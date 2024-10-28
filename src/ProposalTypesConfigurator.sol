@@ -58,7 +58,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         if (_governor == address(0)) revert InvalidGovernor();
 
         governor = IAgoraGovernor(_governor);
-        
+
         for (uint8 i = 0; i < _proposalTypesInit.length; i++) {
             _setProposalType(
                 i,
@@ -172,7 +172,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param proposalTypeId Id of the proposal type
      * @param scope An object that contains the scope for a transaction type hash
      */
-    function updateScopeForProposalType(uint8 proposalTypeId, Scope calldata scope)
+    function addScopeForProposalType(uint8 proposalTypeId, Scope calldata scope)
         external
         override
         onlyAdminOrTimelock
@@ -183,6 +183,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
 
         _scopeExists[scope.key] = true;
         _assignedScopes[proposalTypeId][scope.key] = scope;
+
         emit ScopeCreated(proposalTypeId, scope.key, scope.encodedLimits, scope.description);
     }
 
@@ -272,8 +273,8 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param proposalTypeId The type of the proposal.
      */
     function validateProposalData(address[] memory targets, bytes[] calldata calldatas, uint8 proposalTypeId)
-        view
         external
+        view
     {
         for (uint8 i = 0; i < calldatas.length; i++) {
             bytes24 scopeKey = _pack(targets[i], bytes4(calldatas[i]));
