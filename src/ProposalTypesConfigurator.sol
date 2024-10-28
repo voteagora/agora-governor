@@ -278,7 +278,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         for (uint8 i = 0; i < calldatas.length; i++) {
             bytes24 scopeKey = _pack(targets[i], bytes4(calldatas[i]));
 
-            if (_assignedScopes[proposalTypeId][scopeKey].length != 0) {
+            if (_assignedScopes[proposalTypeId][scopeKey].exists) {
                 validateProposedTx(calldatas[i], proposalTypeId, scopeKey);
             } else {
                 if (_scopeExists[scopeKey]) {
