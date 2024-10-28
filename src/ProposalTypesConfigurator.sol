@@ -6,6 +6,7 @@ import {IAgoraGovernor} from "src/interfaces/IAgoraGovernor.sol";
 
 /**
  * Contract that stores proposalTypes for the Agora Governor.
+ * @custom:security-contact security@voteagora.com
  */
 contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     /*//////////////////////////////////////////////////////////////
