@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
+/// @custom:security-contact security@voteagora.com
 abstract contract VotingModule {
     /*//////////////////////////////////////////////////////////////
                             IMMUTABLE STORAGE
     //////////////////////////////////////////////////////////////*/
 
-    address immutable governor;
+    address public immutable governor;
 
     /*//////////////////////////////////////////////////////////////
                                  ERRORS
@@ -15,7 +16,6 @@ abstract contract VotingModule {
     error NotGovernor();
     error ExistingProposal();
     error InvalidParams();
-    error AlreadyVoted();
 
     /*//////////////////////////////////////////////////////////////
                                MODIFIERS
