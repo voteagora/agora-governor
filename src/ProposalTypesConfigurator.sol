@@ -13,6 +13,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     //////////////////////////////////////////////////////////////*/
 
     event ScopeCreated(uint8 indexed proposalTypeId, bytes24 indexed scopeKey, bytes encodedLimit, string description);
+    event ScopeDisabled(uint8 indexed proposalTypeId, bytes24 indexed scopeKey);
 
     /*//////////////////////////////////////////////////////////////
                            IMMUTABLE STORAGE
@@ -189,6 +190,16 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         if (!_assignedScopes[proposalTypeId][key].exists) revert InvalidScope();
         Scope memory validScope = _assignedScopes[proposalTypeId][key];
         return validScope.encodedLimits;
+    }
+
+    /**
+     * @notice Disables a scopes for all contract + function signatures.
+     * @param proposalTypeId the proposal type ID that has the assigned scope.
+     * @param scopeKey the contract and function signature representing the scope key
+     */
+    function disableScope(uint8 proposalTypeId, bytes24 scopeKey) external override onlyAdminOrTimelock {
+        _assignedScopes[proposalTypeId][scopeKey].exists = false;
+        emit ScopeDisabled(proposalTypeId, scopeKey);
     }
 
     /**
