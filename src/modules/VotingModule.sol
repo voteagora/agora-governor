@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
+/// @custom:security-contact security@voteagora.com
 abstract contract VotingModule {
     /*//////////////////////////////////////////////////////////////
                             IMMUTABLE STORAGE

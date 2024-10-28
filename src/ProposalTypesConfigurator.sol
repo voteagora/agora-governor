@@ -3,18 +3,19 @@ pragma solidity ^0.8.19;
 
 import {IProposalTypesConfigurator} from "src/interfaces/IProposalTypesConfigurator.sol";
 import {IAgoraGovernor} from "src/interfaces/IAgoraGovernor.sol";
+import {Validator} from "src/Validator.sol";
 
 /**
  * Contract that stores proposalTypes for the Agora Governor.
+ * @custom:security-contact security@voteagora.com
  */
 contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
 
-    event ScopeCreated(uint8 indexed proposalTypeId, bytes24 indexed scopeKey, bytes encodedLimit, string description);
-    event ScopeCreated(uint8 indexed proposalTypeId, bytes24 indexed scopeKey, bytes encodedLimit);
-    event ScopeDisabled(bytes24 indexed scopeKey);
+    event ScopeCreated(uint8 indexed proposalTypeId, bytes24 indexed scopeKey, bytes4 selector, string description);
+    event ScopeDisabled(uint8 indexed proposalTypeId, bytes24 indexed scopeKey);
 
     /*//////////////////////////////////////////////////////////////
                            IMMUTABLE STORAGE
@@ -101,28 +102,29 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @notice Sets the scope for a given proposal type.
      * @param proposalTypeId Id of the proposal type.
      * @param key A function selector and contract address that represent the type hash, i.e. 4byte(keccak256("foobar(uint,address)")) + bytes20(contractAddress).
-     * @param encodedLimit An ABI encoded string containing the function selector and relevant parameter values.
-     * @param parameters The list of byte represented values to be compared against the encoded limits.
+     * @param selector A 4 byte function selector.
+     * @param parameters The list of byte represented values to be compared.
      * @param comparators List of enumuerated values represent which comparison to use when enforcing limit checks on parameters.
+     * @param types List of enumuerated types that map onto each of the supplied parameters.
      * @param description String that's the describes the scope
      */
     function setScopeForProposalType(
         uint8 proposalTypeId,
         bytes24 key,
-        bytes calldata encodedLimit,
+        bytes4 selector,
         bytes[] memory parameters,
         Comparators[] memory comparators,
+        SupportedTypes[] memory types,
         string calldata description
     ) external override onlyAdminOrTimelock {
         if (!_proposalTypes[proposalTypeId].exists) revert InvalidProposalType();
         if (parameters.length != comparators.length) revert InvalidParameterConditions();
 
-        Scope memory scope = Scope(key, encodedLimit, parameters, comparators, proposalTypeId, description);
-
+        Scope memory scope = Scope(key, selector, parameters, comparators, types, proposalTypeId, description, true);
         _assignedScopes[proposalTypeId][key].push(scope);
         _scopeExists[key] = true;
 
-        emit ScopeCreated(proposalTypeId, key, encodedLimit, description);
+        emit ScopeCreated(proposalTypeId, key, selector, description);
     }
 
     /**
@@ -175,18 +177,32 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         if (scope.parameters.length != scope.comparators.length) revert InvalidParameterConditions();
         bytes24 scopeKey = scope.key;
 
-        _scopeExists[scopeKey] = true;
-        _assignedScopes[proposalTypeId][scopeKey].push(scope);
-        emit ScopeCreated(proposalTypeId, scopeKey, scope.encodedLimits, scope.description);
+        _scopeExists[scope.key] = true;
+        _assignedScopes[proposalTypeId][scope.key].push(scope);
+
+        emit ScopeCreated(proposalTypeId, scope.key, scope.selector, scope.description);
+    }
+
+    /**
+     * @notice Retrives the function selector of a transaction for a given proposal type.
+     * @param proposalTypeId Id of the proposal type
+     * @param key A type signature of a function and contract address that has a limit specified in a scope
+     */
+    function getSelector(uint8 proposalTypeId, bytes24 key) public view returns (bytes4 selector) {
+        if (!_proposalTypes[proposalTypeId].exists) revert InvalidProposalType();
+        Scope memory validScope = _assignedScopes[proposalTypeId][key][0];
+        return validScope.selector;
     }
 
     /**
      * @notice Disables a scopes for all contract + function signatures.
+     * @param proposalTypeId the proposal type ID that has the assigned scope.
      * @param scopeKey the contract and function signature representing the scope key
+     * @param idx the index of the assigned scope.
      */
-    function disableScope(bytes24 scopeKey) external override onlyAdminOrTimelock {
-        _scopeExists[scopeKey] = false;
-        emit ScopeDisabled(scopeKey);
+    function disableScope(uint8 proposalTypeId, bytes24 scopeKey, uint8 idx) external override onlyAdminOrTimelock {
+        _assignedScopes[proposalTypeId][scopeKey][idx].exists = false;
+        emit ScopeDisabled(proposalTypeId, scopeKey);
     }
 
     /**
@@ -206,32 +222,19 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         if (_scopeExists[key]) {
             for (uint8 i = 0; i < scopes.length; i++) {
                 Scope memory validScope = scopes[i];
-                bytes memory scopeLimit = validScope.encodedLimits;
-                bytes4 selector = bytes4(scopeLimit);
-                if (selector != bytes4(proposedTx[:4])) revert Invalid4ByteSelector();
+                if (validScope.selector != bytes4(proposedTx[:4])) revert Invalid4ByteSelector();
 
                 uint256 startIdx = 4;
                 uint256 endIdx = startIdx;
                 for (uint8 j = 0; j < validScope.parameters.length; j++) {
                     endIdx = endIdx + validScope.parameters[j].length;
 
-                    bytes32 param = bytes32(proposedTx[startIdx:endIdx]);
-                    if (validScope.comparators[j] == Comparators.EQUAL) {
-                        bytes32 scopedParam = bytes32(validScope.parameters[j]);
-                        if (scopedParam != param) revert InvalidParamNotEqual();
-                    }
-
-                    if (validScope.comparators[j] == Comparators.LESS_THAN) {
-                        if (param >= bytes32(validScope.parameters[j])) {
-                            revert InvalidParamRange();
-                        }
-                    }
-
-                    if (validScope.comparators[j] == Comparators.GREATER_THAN) {
-                        if (param <= bytes32(validScope.parameters[j])) {
-                            revert InvalidParamRange();
-                        }
-                    }
+                    Validator.determineValidation(
+                        proposedTx[startIdx:endIdx],
+                        validScope.parameters[j],
+                        validScope.types[j],
+                        validScope.comparators[j]
+                    );
 
                     startIdx = endIdx;
                 }
@@ -247,12 +250,11 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param proposalTypeId The type of the proposal.
      */
     function validateProposalData(address[] memory targets, bytes[] calldata calldatas, uint8 proposalTypeId)
-        public
+        external
         view
     {
         for (uint8 i = 0; i < calldatas.length; i++) {
             bytes24 scopeKey = _pack(targets[i], bytes4(calldatas[i]));
-
             if (_assignedScopes[proposalTypeId][scopeKey].length != 0) {
                 validateProposedTx(calldatas[i], proposalTypeId, scopeKey);
             } else {

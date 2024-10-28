@@ -48,13 +48,27 @@ interface IProposalTypesConfigurator {
         GREATER_THAN
     }
 
+    enum SupportedTypes {
+        NONE,
+        UINT8,
+        UINT16,
+        UINT32,
+        UINT64,
+        UINT128,
+        UINT256,
+        ADDRESS,
+        BYTES32
+    }
+
     struct Scope {
         bytes24 key;
-        bytes encodedLimits;
+        bytes4 selector;
         bytes[] parameters;
         Comparators[] comparators;
+        SupportedTypes[] types;
         uint8 proposalTypeId;
         string description;
+        bool exists;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -79,14 +93,16 @@ interface IProposalTypesConfigurator {
     function setScopeForProposalType(
         uint8 proposalTypeId,
         bytes24 key,
-        bytes calldata encodedLimit,
+        bytes4 selector,
         bytes[] memory parameters,
         Comparators[] memory comparators,
+        SupportedTypes[] memory types,
         string memory description
     ) external;
 
+    function getSelector(uint8 proposalTypeId, bytes24 key) external returns (bytes4);
     function addScopeForProposalType(uint8 proposalTypeId, Scope calldata scope) external;
-    function disableScope(bytes24 scopeKey) external;
+    function disableScope(uint8 proposalTypeId, bytes24 scopeKey, uint8 idx) external;
     function validateProposedTx(bytes calldata proposedTx, uint8 proposalTypeId, bytes24 key) external;
     function validateProposalData(address[] memory targets, bytes[] memory calldatas, uint8 proposalTypeId) external;
 }
