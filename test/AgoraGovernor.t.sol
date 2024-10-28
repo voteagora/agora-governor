@@ -2418,7 +2418,9 @@ contract AssignedScopes is AgoraGovernorTest {
         types[2] = IProposalTypesConfigurator.SupportedTypes(6); // uint256
 
         proposalTypesConfigurator.setProposalType(0, 3_000, 9_910, "Default", "Lorem Ipsum", address(0));
-        proposalTypesConfigurator.setScopeForProposalType(0, scopeKey, txEncoded, parameters, comparators, types);
+        proposalTypesConfigurator.setScopeForProposalType(
+            0, scopeKey, txEncoded, parameters, comparators, types, "Lorem"
+        );
     }
 
     function test_CreateScopedProposal() public virtual {

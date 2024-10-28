@@ -68,8 +68,9 @@ contract ProposalTypesConfiguratorTest is Test {
         types[1] = IProposalTypesConfigurator.SupportedTypes(7); // address
         types[2] = IProposalTypesConfigurator.SupportedTypes(6); // uint256
 
-        proposalTypesConfigurator.setScopeForProposalType(0, scopeKey, txEncoded, parameters, comparators, types);
-        
+        proposalTypesConfigurator.setScopeForProposalType(
+            0, scopeKey, txEncoded, parameters, comparators, types, "lorem"
+        );
         vm.stopPrank();
     }
 
@@ -200,7 +201,9 @@ contract SetProposalType is ProposalTypesConfiguratorTest {
         vm.expectEmit();
         emit ScopeCreated(0, scopeKey, txEncoded, "Lorem Ipsum");
         IProposalTypesConfigurator.SupportedTypes[] memory types = new IProposalTypesConfigurator.SupportedTypes[](1);
-        proposalTypesConfigurator.setScopeForProposalType(0, scopeKey, txEncoded, parameters, comparators, types);
+        proposalTypesConfigurator.setScopeForProposalType(
+            0, scopeKey, txEncoded, parameters, comparators, types, "Lorem Ipsum"
+        );
         vm.stopPrank();
 
         bytes4 selector = proposalTypesConfigurator.getSelector(0, scopeKey);
@@ -238,7 +241,8 @@ contract SetProposalType is ProposalTypesConfiguratorTest {
             txEncoded,
             new bytes[](1),
             new IProposalTypesConfigurator.Comparators[](1),
-            new IProposalTypesConfigurator.SupportedTypes[](1)
+            new IProposalTypesConfigurator.SupportedTypes[](1),
+            "lorem"
         );
     }
 
@@ -255,7 +259,8 @@ contract SetProposalType is ProposalTypesConfiguratorTest {
             txEncoded,
             new bytes[](1),
             new IProposalTypesConfigurator.Comparators[](1),
-            new IProposalTypesConfigurator.SupportedTypes[](1)
+            new IProposalTypesConfigurator.SupportedTypes[](1),
+            "lorem"
         );
         vm.stopPrank();
     }
@@ -273,7 +278,8 @@ contract SetProposalType is ProposalTypesConfiguratorTest {
             txEncoded,
             new bytes[](2),
             new IProposalTypesConfigurator.Comparators[](1),
-            new IProposalTypesConfigurator.SupportedTypes[](1)
+            new IProposalTypesConfigurator.SupportedTypes[](1),
+            "Lorem"
         );
         vm.stopPrank();
     }
@@ -290,7 +296,8 @@ contract SetProposalType is ProposalTypesConfiguratorTest {
             txEncoded,
             new bytes[](1),
             new IProposalTypesConfigurator.Comparators[](1),
-            new IProposalTypesConfigurator.SupportedTypes[](1)
+            new IProposalTypesConfigurator.SupportedTypes[](1),
+            "Lorem"
         );
 
         vm.expectRevert(IProposalTypesConfigurator.NoDuplicateTxTypes.selector);
@@ -300,7 +307,8 @@ contract SetProposalType is ProposalTypesConfiguratorTest {
             txEncoded,
             new bytes[](1),
             new IProposalTypesConfigurator.Comparators[](1),
-            new IProposalTypesConfigurator.SupportedTypes[](1)
+            new IProposalTypesConfigurator.SupportedTypes[](1),
+            "Lorem"
         );
         vm.stopPrank();
     }
@@ -326,7 +334,13 @@ contract AddScopeForProposalType is ProposalTypesConfiguratorTest {
         IProposalTypesConfigurator.Comparators[] memory comparators = new IProposalTypesConfigurator.Comparators[](1);
 
         proposalTypesConfigurator.setScopeForProposalType(
-            0, scopeKey1, txEncoded1, parameters, comparators, new IProposalTypesConfigurator.SupportedTypes[](1)
+            0,
+            scopeKey1,
+            txEncoded1,
+            parameters,
+            comparators,
+            new IProposalTypesConfigurator.SupportedTypes[](1),
+            "Lorem"
         );
 
         IProposalTypesConfigurator.Scope memory scope = IProposalTypesConfigurator.Scope(
@@ -336,6 +350,7 @@ contract AddScopeForProposalType is ProposalTypesConfiguratorTest {
             new IProposalTypesConfigurator.Comparators[](1),
             new IProposalTypesConfigurator.SupportedTypes[](1),
             0,
+            "Lorem",
             true
         );
 
@@ -364,6 +379,7 @@ contract AddScopeForProposalType is ProposalTypesConfiguratorTest {
             new IProposalTypesConfigurator.Comparators[](1),
             new IProposalTypesConfigurator.SupportedTypes[](1),
             3,
+            "Lorem",
             true
         );
         proposalTypesConfigurator.addScopeForProposalType(3, scope);
@@ -383,7 +399,8 @@ contract AddScopeForProposalType is ProposalTypesConfiguratorTest {
             txEncoded,
             new bytes[](1),
             new IProposalTypesConfigurator.Comparators[](1),
-            new IProposalTypesConfigurator.SupportedTypes[](1)
+            new IProposalTypesConfigurator.SupportedTypes[](1),
+            "Lorem"
         );
 
         vm.expectRevert(IProposalTypesConfigurator.NoDuplicateTxTypes.selector);
@@ -394,6 +411,7 @@ contract AddScopeForProposalType is ProposalTypesConfiguratorTest {
             new IProposalTypesConfigurator.Comparators[](1),
             new IProposalTypesConfigurator.SupportedTypes[](1),
             0,
+            "Lorem",
             true
         );
         proposalTypesConfigurator.addScopeForProposalType(0, scope);
@@ -414,6 +432,7 @@ contract AddScopeForProposalType is ProposalTypesConfiguratorTest {
             new IProposalTypesConfigurator.Comparators[](2),
             new IProposalTypesConfigurator.SupportedTypes[](1),
             0,
+            "Lorem",
             true
         );
         vm.expectRevert(IProposalTypesConfigurator.InvalidParameterConditions.selector);
@@ -441,7 +460,8 @@ contract getLimit is ProposalTypesConfiguratorTest {
             txEncoded,
             new bytes[](1),
             new IProposalTypesConfigurator.Comparators[](1),
-            new IProposalTypesConfigurator.SupportedTypes[](1)
+            new IProposalTypesConfigurator.SupportedTypes[](1),
+            "Lorem"
         );
         vm.stopPrank();
 

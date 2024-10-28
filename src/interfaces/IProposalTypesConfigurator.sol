@@ -97,7 +97,7 @@ interface IProposalTypesConfigurator {
         bytes4 selector,
         bytes[] memory parameters,
         Comparators[] memory comparators,
-        SupportedTypes[] memory types
+        SupportedTypes[] memory types,
         string memory description
     ) external;
 

@@ -114,14 +114,14 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         bytes4 selector,
         bytes[] memory parameters,
         Comparators[] memory comparators,
-        SupportedTypes[] memory types
+        SupportedTypes[] memory types,
         string calldata description
     ) external override onlyAdminOrTimelock {
         if (!_proposalTypes[proposalTypeId].exists) revert InvalidProposalType();
         if (parameters.length != comparators.length) revert InvalidParameterConditions();
         if (_assignedScopes[proposalTypeId][key].exists) revert NoDuplicateTxTypes(); // Do not allow multiple scopes for a single transaction type
 
-        Scope memory scope = Scope(key, selector, parameters, comparators, proposalTypeId, description, true);
+        Scope memory scope = Scope(key, selector, parameters, comparators, types, proposalTypeId, description, true);
         _assignedScopes[proposalTypeId][key] = scope;
         _scopeExists[key] = true;
 
