@@ -16,7 +16,7 @@ contract ProposalTypesConfiguratorTest is Test {
 
     event ScopeCreated(uint8 indexed proposalTypeId, bytes24 indexed scopeKey, bytes4 selector, string description);
     event ScopeDisabled(uint8 indexed proposalTypeId, bytes24 indexed scopeKey);
-    
+
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
     //////////////////////////////////////////////////////////////*/
@@ -303,7 +303,7 @@ contract AddScopeForProposalType is ProposalTypesConfiguratorTest {
             scopeKey2, txEncoded2, new bytes[](1), new IProposalTypesConfigurator.Comparators[](1), 0, "Lorem", true
         );
 
-        emit ScopeCreated(0, scope.key, scope.encodedLimits, "Lorem");
+        emit ScopeCreated(0, scope.key, scope.selector, "Lorem");
         proposalTypesConfigurator.addScopeForProposalType(0, scope);
         vm.stopPrank();
 

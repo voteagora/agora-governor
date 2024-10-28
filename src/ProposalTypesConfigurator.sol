@@ -118,7 +118,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         if (parameters.length != comparators.length) revert InvalidParameterConditions();
         if (_assignedScopes[proposalTypeId][key].exists) revert NoDuplicateTxTypes(); // Do not allow multiple scopes for a single transaction type
 
-        Scope memory scope = Scope(key, encodedLimit, parameters, comparators, proposalTypeId, description, true);
+        Scope memory scope = Scope(key, selector, parameters, comparators, proposalTypeId, description, true);
 
         _assignedScopes[proposalTypeId][key] = scope;
         _scopeExists[key] = true;
@@ -178,7 +178,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         _scopeExists[scope.key] = true;
         _assignedScopes[proposalTypeId][scope.key] = scope;
 
-        emit ScopeCreated(proposalTypeId, scope.key, scope.encodedLimits, scope.description);
+        emit ScopeCreated(proposalTypeId, scope.key, scope.selector, scope.description);
     }
 
     /**
