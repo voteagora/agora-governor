@@ -178,7 +178,6 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         if (scope.parameters.length != scope.comparators.length) revert InvalidParameterConditions();
         if (_assignedScopes[proposalTypeId][scope.key].exists) revert NoDuplicateTxTypes(); // Do not allow multiple scopes for a single transaction type
 
-        _proposalTypes[proposalTypeId].validScopes.push(scope.key);
         _scopeExists[scope.key] = true;
         _assignedScopes[proposalTypeId][scope.key] = scope;
 
