@@ -49,6 +49,7 @@ struct Proposal {
     ProposalSettings settings;
 }
 
+/// @custom:security-contact security@voteagora.com
 contract ApprovalVotingModule is VotingModule {
     /*//////////////////////////////////////////////////////////////
                                  ERRORS
@@ -198,11 +199,11 @@ contract ApprovalVotingModule is VotingModule {
 
         ExecuteParams[] memory executeParams = new ExecuteParams[](executeParamsLength);
         executeParamsLength = 0;
-        uint256 n;
         uint256 totalValue;
-        ProposalOption memory option;
 
         {
+            uint256 n;
+            ProposalOption memory option;
             bool budgetExceeded = false;
 
             // Flatten `options` by filling `executeParams` until budgetAmount is exceeded
@@ -210,17 +211,13 @@ contract ApprovalVotingModule is VotingModule {
                 option = sortedOptions[i];
 
                 for (n = 0; n < option.targets.length;) {
-                    if (settings.budgetAmount != 0) {
-                        // If `budgetToken` is ETH and value is not zero, add transaction value to `totalValue`
-                        if (settings.budgetToken == address(0)) {
-                            if (option.values[n] != 0) {
-                                if (totalValue + option.values[n] > settings.budgetAmount) {
-                                    budgetExceeded = true;
-                                    break; // break inner loop
-                                }
-                                totalValue += option.values[n];
-                            }
+                    // If `budgetToken` is ETH and value is not zero, add transaction value to `totalValue`
+                    if (settings.budgetToken == address(0) && option.values[n] != 0) {
+                        if (totalValue + option.values[n] > settings.budgetAmount) {
+                            budgetExceeded = true;
+                            break; // break inner loop
                         }
+                        totalValue += option.values[n];
                     }
 
                     unchecked {
@@ -275,8 +272,7 @@ contract ApprovalVotingModule is VotingModule {
         // Set `_afterExecute` as last call
         targets[executeParamsLength] = address(this);
         values[executeParamsLength] = 0;
-        calldatas[executeParamsLength] =
-            abi.encodeWithSelector(this._afterExecute.selector, proposalId, proposalData, totalValue);
+        calldatas[executeParamsLength] = abi.encodeCall(this._afterExecute, (proposalId, proposalData, totalValue));
     }
 
     /**
