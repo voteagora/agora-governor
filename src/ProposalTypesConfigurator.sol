@@ -157,7 +157,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         if (quorum > PERCENT_DIVISOR) revert InvalidQuorum();
         if (approvalThreshold > PERCENT_DIVISOR) revert InvalidApprovalThreshold();
 
-        _proposalTypes[proposalTypeId] = ProposalType(quorum, approvalThreshold, name, description, module);
+        _proposalTypes[proposalTypeId] = ProposalType(quorum, approvalThreshold, name, description, module, true);
         emit ProposalTypeSet(proposalTypeId, quorum, approvalThreshold, name, description);
     }
 
