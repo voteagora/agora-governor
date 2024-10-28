@@ -17,7 +17,7 @@ import {
     PassingCriteria
 } from "src/modules/ApprovalVotingModule.sol";
 import {
-    OptimisticModule_SocialSignalling as OptimisticModule,
+    OptimisticModule,
     ProposalSettings as OptimisticProposalSettings
 } from "src/modules/OptimisticModule.sol";
 import {AgoraGovernorMock, AgoraGovernor} from "test/mocks/AgoraGovernorMock.sol";
