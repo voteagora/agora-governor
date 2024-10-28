@@ -105,6 +105,7 @@ contract ProposalTypesConfiguratorTest is Test {
 
 contract Initialize is ProposalTypesConfiguratorTest {
     function test_SetsGovernor(address _actor, address _governor) public {
+        vm.assume(_governor != address(0));
         ProposalTypesConfigurator proposalTypesConfigurator = new ProposalTypesConfigurator();
         vm.prank(_actor);
         proposalTypesConfigurator.initialize(address(_governor), new ProposalTypesConfigurator.ProposalType[](0));
