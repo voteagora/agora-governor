@@ -25,6 +25,8 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
 
     /// @notice Max value of `quorum` and `approvalThreshold` in `ProposalType`
     uint16 public constant PERCENT_DIVISOR = 10_000;
+    // @notice Max length of the `assignedScopes` array
+    uint8 public constant MAX_SCOPE_LENGTH = 5;
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
@@ -119,6 +121,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     ) external override onlyAdminOrTimelock {
         if (!_proposalTypes[proposalTypeId].exists) revert InvalidProposalType();
         if (parameters.length != comparators.length) revert InvalidParameterConditions();
+        if (_assignedScopes[proposalTypeId][key].length == MAX_SCOPE_LENGTH) revert MaxScopeLengthReached();
 
         Scope memory scope = Scope(key, selector, parameters, comparators, types, proposalTypeId, description, true);
         _assignedScopes[proposalTypeId][key].push(scope);
@@ -175,6 +178,8 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     {
         if (!_proposalTypes[proposalTypeId].exists) revert InvalidProposalType();
         if (scope.parameters.length != scope.comparators.length) revert InvalidParameterConditions();
+        if (_assignedScopes[proposalTypeId][scope.key].length == MAX_SCOPE_LENGTH) revert MaxScopeLengthReached();
+
         bytes24 scopeKey = scope.key;
 
         _scopeExists[scope.key] = true;

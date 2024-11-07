@@ -19,6 +19,7 @@ interface IProposalTypesConfigurator {
     error InvalidParamNotEqual();
     error InvalidParamRange();
     error InvalidProposedTxForType();
+    error MaxScopeLengthReached();
 
     /*//////////////////////////////////////////////////////////////
                                  EVENTS

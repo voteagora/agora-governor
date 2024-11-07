@@ -283,6 +283,30 @@ contract SetProposalType is ProposalTypesConfiguratorTest {
         );
         vm.stopPrank();
     }
+
+    function testRevert_setScopeForProposalType_MaxScopeLengthReached() public {
+        vm.startPrank(admin);
+
+        bytes32 txTypeHash = keccak256("transfer(address,address,uint)");
+        address contractAddress = makeAddr("contract");
+        bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
+        bytes4 txEncoded = bytes4(abi.encode("transfer(address,address,uint)", 0xdeadbeef, 0xdeadbeef, 10));
+        bytes[] memory parameters = new bytes[](1);
+        IProposalTypesConfigurator.Comparators[] memory comparators = new IProposalTypesConfigurator.Comparators[](1);
+        IProposalTypesConfigurator.SupportedTypes[] memory types = new IProposalTypesConfigurator.SupportedTypes[](1);
+
+        for (uint8 i = 0; i < proposalTypesConfigurator.MAX_SCOPE_LENGTH(); i++) {
+            proposalTypesConfigurator.setScopeForProposalType(
+                0, scopeKey, txEncoded, parameters, comparators, types, "Lorem Ipsum"
+            );
+        }
+
+        vm.expectRevert(IProposalTypesConfigurator.MaxScopeLengthReached.selector);
+        proposalTypesConfigurator.setScopeForProposalType(
+            0, scopeKey, txEncoded, parameters, comparators, types, "Lorem Ipsum"
+        );
+        vm.stopPrank();
+    }
 }
 
 contract AddScopeForProposalType is ProposalTypesConfiguratorTest {
@@ -375,6 +399,28 @@ contract AddScopeForProposalType is ProposalTypesConfiguratorTest {
             true
         );
         vm.expectRevert(IProposalTypesConfigurator.InvalidParameterConditions.selector);
+        proposalTypesConfigurator.addScopeForProposalType(0, scope);
+        vm.stopPrank();
+    }
+
+    function testRevert_addScopeForProposalType_MaxScopeLengthReached() public {
+        vm.startPrank(admin);
+        bytes32 txTypeHash = keccak256("transfer(address,address,uint)");
+        address contractAddress = makeAddr("contract");
+        bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
+        bytes4 txEncoded = bytes4(abi.encode("transfer(address,address,uint)", 0xdeadbeef, 0xdeadbeef, 10));
+        bytes[] memory parameters = new bytes[](1);
+        IProposalTypesConfigurator.Comparators[] memory comparators = new IProposalTypesConfigurator.Comparators[](1);
+        IProposalTypesConfigurator.SupportedTypes[] memory types = new IProposalTypesConfigurator.SupportedTypes[](1);
+
+        IProposalTypesConfigurator.Scope memory scope =
+            IProposalTypesConfigurator.Scope(scopeKey, txEncoded, parameters, comparators, types, 0, "Lorem", true);
+
+        for (uint8 i = 0; i < proposalTypesConfigurator.MAX_SCOPE_LENGTH(); i++) {
+            proposalTypesConfigurator.addScopeForProposalType(0, scope);
+        }
+
+        vm.expectRevert(IProposalTypesConfigurator.MaxScopeLengthReached.selector);
         proposalTypesConfigurator.addScopeForProposalType(0, scope);
         vm.stopPrank();
     }
