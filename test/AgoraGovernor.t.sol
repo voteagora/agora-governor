@@ -2409,7 +2409,7 @@ contract AssignedScopes is AgoraGovernorTest {
 
         comparators[0] = IProposalTypesConfigurator.Comparators(0); // EQ
         comparators[1] = IProposalTypesConfigurator.Comparators(0); // EQ
-        comparators[2] = IProposalTypesConfigurator.Comparators(1); // GREATER THAN
+        comparators[2] = IProposalTypesConfigurator.Comparators(2); // GREATER THAN
 
         IProposalTypesConfigurator.SupportedTypes[] memory types = new IProposalTypesConfigurator.SupportedTypes[](3);
 
