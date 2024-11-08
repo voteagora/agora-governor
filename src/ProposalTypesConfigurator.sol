@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import {IProposalTypesConfigurator} from "src/interfaces/IProposalTypesConfigurator.sol";
 import {IAgoraGovernor} from "src/interfaces/IAgoraGovernor.sol";
-import {Validator} from "./Validator.sol";
+import {Validator} from "src/lib/Validator.sol";
 
 /**
  * Contract that stores proposalTypes for the Agora Governor.
