@@ -14,6 +14,7 @@ import {GovernorVotesUpgradeableV2} from "src/lib/openzeppelin/v2/GovernorVotesU
 import {GovernorSettingsUpgradeableV2} from "src/lib/openzeppelin/v2/GovernorSettingsUpgradeableV2.sol";
 import {GovernorTimelockControlUpgradeableV2} from "src/lib/openzeppelin/v2/GovernorTimelockControlUpgradeableV2.sol";
 import {IProposalTypesConfigurator} from "src/interfaces/IProposalTypesConfigurator.sol";
+import {ProposalTypesConfigurator} from "src/ProposalTypesConfigurator.sol";
 import {VotingModule} from "src/modules/VotingModule.sol";
 import {IVotingToken} from "src/interfaces/IVotingToken.sol";
 
@@ -125,7 +126,6 @@ contract AgoraGovernor is
      * @param _admin Admin address for the governor.
      * @param _manager Manager address.
      * @param _timelock The governance timelock.
-     * @param _proposalTypesConfigurator Proposal types configurator contract.
      * @param _proposalTypes Initial proposal types to set.
      */
     function initialize(
@@ -134,9 +134,9 @@ contract AgoraGovernor is
         address _admin,
         address _manager,
         TimelockControllerUpgradeable _timelock,
-        IProposalTypesConfigurator _proposalTypesConfigurator,
         IProposalTypesConfigurator.ProposalType[] calldata _proposalTypes
     ) public initializer {
+        IProposalTypesConfigurator _proposalTypesConfigurator = new ProposalTypesConfigurator();
         PROPOSAL_TYPES_CONFIGURATOR = _proposalTypesConfigurator;
         SUPPLY_TYPE = _supplyType;
 

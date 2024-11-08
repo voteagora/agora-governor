@@ -100,7 +100,7 @@ contract AgoraGovernorTest is Test {
     //////////////////////////////////////////////////////////////*/
 
     address deployer = makeAddr("deployer");
-    ProposalTypesConfigurator public proposalTypesConfigurator;
+    IProposalTypesConfigurator public proposalTypesConfigurator;
     Timelock public timelock;
     ExecutionTargetFake public targetFake;
     address internal admin = makeAddr("admin");
@@ -135,9 +135,6 @@ contract AgoraGovernorTest is Test {
             )
         );
 
-        // Deploy Proposal Types Configurator
-        proposalTypesConfigurator = new ProposalTypesConfigurator();
-
         // Deploy timelock
         timelock = Timelock(payable(new TransparentUpgradeableProxy(address(new Timelock()), proxyAdmin, "")));
 
@@ -157,7 +154,6 @@ contract AgoraGovernorTest is Test {
                         admin,
                         manager,
                         timelock,
-                        IProposalTypesConfigurator(proposalTypesConfigurator),
                         new IProposalTypesConfigurator.ProposalType[](0)
                     )
                 )
@@ -176,6 +172,8 @@ contract AgoraGovernorTest is Test {
 
         // do admin stuff
         vm.startPrank(admin);
+        // Deploy Proposal Types Configurator
+        proposalTypesConfigurator = governor.PROPOSAL_TYPES_CONFIGURATOR();
         govToken.grantRole(govToken.MINTER_ROLE(), minter);
         governor.setModuleApproval(address(module), true);
         governor.setModuleApproval(address(optimisticModule), true);
@@ -278,7 +276,6 @@ contract Initialize is AgoraGovernorTest {
         public
         virtual
     {
-        ProposalTypesConfigurator _proposalTypesConfigurator = new ProposalTypesConfigurator();
         IProposalTypesConfigurator.ProposalType[] memory _proposalTypes =
             new IProposalTypesConfigurator.ProposalType[](4);
         _proposalTypes[0] =
@@ -302,13 +299,15 @@ contract Initialize is AgoraGovernorTest {
                             _admin,
                             _manager,
                             TimelockControllerUpgradeable(payable(_timelock)),
-                            IProposalTypesConfigurator(_proposalTypesConfigurator),
                             _proposalTypes
                         )
                     )
                 )
             )
         );
+
+        IProposalTypesConfigurator _proposalTypesConfigurator = _governor.PROPOSAL_TYPES_CONFIGURATOR();
+
         assertEq(address(_governor.token()), _token);
         assertEq(_governor.admin(), _admin);
         assertEq(_governor.manager(), _manager);
