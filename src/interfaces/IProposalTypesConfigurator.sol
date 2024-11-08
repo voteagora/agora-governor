@@ -42,7 +42,6 @@ interface IProposalTypesConfigurator {
     }
 
     enum Comparators {
-        EMPTY,
         EQUAL,
         LESS_THAN,
         GREATER_THAN

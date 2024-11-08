@@ -58,9 +58,9 @@ contract ProposalTypesConfiguratorTest is Test {
 
         IProposalTypesConfigurator.Comparators[] memory comparators = new IProposalTypesConfigurator.Comparators[](3);
 
-        comparators[0] = IProposalTypesConfigurator.Comparators(1); // EQ
-        comparators[1] = IProposalTypesConfigurator.Comparators(1); // EQ
-        comparators[2] = IProposalTypesConfigurator.Comparators(3); // GREATER THAN
+        comparators[0] = IProposalTypesConfigurator.Comparators(0); // EQ
+        comparators[1] = IProposalTypesConfigurator.Comparators(0); // EQ
+        comparators[2] = IProposalTypesConfigurator.Comparators(1); // GREATER THAN
 
         IProposalTypesConfigurator.SupportedTypes[] memory types = new IProposalTypesConfigurator.SupportedTypes[](3);
 
@@ -465,9 +465,9 @@ contract MultipleScopeValidation is ProposalTypesConfiguratorTest {
 
         IProposalTypesConfigurator.Comparators[] memory comparators1 = new IProposalTypesConfigurator.Comparators[](3);
 
-        comparators1[0] = IProposalTypesConfigurator.Comparators(1); // EQ
-        comparators1[1] = IProposalTypesConfigurator.Comparators(1); // EQ
-        comparators1[2] = IProposalTypesConfigurator.Comparators(3); // GREATER THAN
+        comparators1[0] = IProposalTypesConfigurator.Comparators(0); // EQ
+        comparators1[1] = IProposalTypesConfigurator.Comparators(0); // EQ
+        comparators1[2] = IProposalTypesConfigurator.Comparators(1); // GREATER THAN
 
         IProposalTypesConfigurator.SupportedTypes[] memory types = new IProposalTypesConfigurator.SupportedTypes[](3);
 
@@ -486,9 +486,9 @@ contract MultipleScopeValidation is ProposalTypesConfiguratorTest {
 
         IProposalTypesConfigurator.Comparators[] memory comparators2 = new IProposalTypesConfigurator.Comparators[](3);
 
-        comparators2[0] = IProposalTypesConfigurator.Comparators(1); // EQ
-        comparators2[1] = IProposalTypesConfigurator.Comparators(1); // EQ
-        comparators2[2] = IProposalTypesConfigurator.Comparators(2); // LESS THAN
+        comparators2[0] = IProposalTypesConfigurator.Comparators(0); // EQ
+        comparators2[1] = IProposalTypesConfigurator.Comparators(0); // EQ
+        comparators2[2] = IProposalTypesConfigurator.Comparators(1); // LESS THAN
 
         bytes4 txEncoded2 =
             bytes4(abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(50)));
