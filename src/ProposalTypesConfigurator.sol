@@ -4,12 +4,14 @@ pragma solidity ^0.8.19;
 import {IProposalTypesConfigurator} from "src/interfaces/IProposalTypesConfigurator.sol";
 import {IAgoraGovernor} from "src/interfaces/IAgoraGovernor.sol";
 import {Validator} from "src/Validator.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 /**
  * Contract that stores proposalTypes for the Agora Governor.
  * @custom:security-contact security@voteagora.com
  */
 contract ProposalTypesConfigurator is IProposalTypesConfigurator {
+    using EnumerableSet for EnumerableSet.Bytes32Set;
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
@@ -31,7 +33,8 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     //////////////////////////////////////////////////////////////*/
 
     mapping(uint8 proposalTypeId => ProposalType) internal _proposalTypes;
-    mapping(uint8 proposalTypeId => mapping(bytes24 key => Scope[])) internal _assignedScopes;
+    mapping(uint8 proposalTypeId => mapping(bytes24 key => EnumerableSet.Bytes32Set)) internal _assignedScopes;
+    mapping(bytes32 => bytes) internal scopeObjs;
     mapping(bytes24 key => bool) internal _scopeExists;
 
     /*//////////////////////////////////////////////////////////////
@@ -80,16 +83,6 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     }
 
     /**
-     * @notice Get the scope that is assigned to a given proposal type.
-     * @param proposalTypeId Id of the proposal type.
-     * @param scopeKey The function selector + contract address that is the key for a scope.
-     * @return Scope struct of the scope.
-     */
-    function assignedScopes(uint8 proposalTypeId, bytes24 scopeKey) external view returns (Scope[] memory) {
-        return _assignedScopes[proposalTypeId][scopeKey];
-    }
-
-    /**
      * @notice Returns a boolean if a scope exists.
      * @param key A function selector and contract address that represent the type hash, i.e. 4byte(keccak256("foobar(uint,address)")) + bytes20(contractAddress).
      * @return boolean returns true if the scope is defined.
@@ -121,7 +114,8 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         if (parameters.length != comparators.length) revert InvalidParameterConditions();
 
         Scope memory scope = Scope(key, selector, parameters, comparators, types, proposalTypeId, description, true);
-        _assignedScopes[proposalTypeId][key].push(scope);
+        EnumerableSet.Bytes32Set storage set = _assignedScopes[proposalTypeId][key];
+        _storeScope(set, scope);
         _scopeExists[key] = true;
 
         emit ScopeCreated(proposalTypeId, key, selector, description);
@@ -177,8 +171,9 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         if (scope.parameters.length != scope.comparators.length) revert InvalidParameterConditions();
         bytes24 scopeKey = scope.key;
 
+        EnumerableSet.Bytes32Set storage set = _assignedScopes[proposalTypeId][scopeKey];
+        _storeScope(set, scope);
         _scopeExists[scope.key] = true;
-        _assignedScopes[proposalTypeId][scope.key].push(scope);
 
         emit ScopeCreated(proposalTypeId, scope.key, scope.selector, scope.description);
     }
@@ -190,7 +185,11 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      */
     function getSelector(uint8 proposalTypeId, bytes24 key) public view returns (bytes4 selector) {
         if (!_proposalTypes[proposalTypeId].exists) revert InvalidProposalType();
-        Scope memory validScope = _assignedScopes[proposalTypeId][key][0];
+
+        bytes32 setValue = _assignedScopes[proposalTypeId][key].at(0);
+        bytes memory scopeData = scopeObjs[setValue];
+
+        (Scope memory validScope) = abi.decode(scopeData, (Scope));
         return validScope.selector;
     }
 
@@ -201,7 +200,12 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param idx the index of the assigned scope.
      */
     function disableScope(uint8 proposalTypeId, bytes24 scopeKey, uint8 idx) external override onlyAdminOrTimelock {
-        _assignedScopes[proposalTypeId][scopeKey][idx].exists = false;
+        bytes32 setValue = _assignedScopes[proposalTypeId][scopeKey].at(idx);
+        bytes memory scopeData = scopeObjs[setValue];
+        (Scope memory scope) = abi.decode(scopeData, (Scope));
+
+        scope.exists = false;
+        scopeObjs[setValue] = abi.encode(scope);
         emit ScopeDisabled(proposalTypeId, scopeKey);
     }
 
@@ -217,11 +221,10 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param key A type signature of a function and contract address that has a limit specified in a scope
      */
     function validateProposedTx(bytes calldata proposedTx, uint8 proposalTypeId, bytes24 key) public view {
-        Scope[] memory scopes = _assignedScopes[proposalTypeId][key];
-
         if (_scopeExists[key]) {
-            for (uint8 i = 0; i < scopes.length; i++) {
-                Scope memory validScope = scopes[i];
+            for (uint8 i = 0; i < _assignedScopes[proposalTypeId][key].length(); i++) {
+                Scope memory validScope = _retrieveScope(_assignedScopes[proposalTypeId][key], i);
+
                 if (validScope.selector != bytes4(proposedTx[:4])) revert Invalid4ByteSelector();
 
                 uint256 startIdx = 4;
@@ -255,7 +258,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     {
         for (uint8 i = 0; i < calldatas.length; i++) {
             bytes24 scopeKey = _pack(targets[i], bytes4(calldatas[i]));
-            if (_assignedScopes[proposalTypeId][scopeKey].length != 0) {
+            if (_assignedScopes[proposalTypeId][scopeKey].length() != 0) {
                 validateProposedTx(calldatas[i], proposalTypeId, scopeKey);
             } else {
                 if (_scopeExists[scopeKey]) {
@@ -277,5 +280,19 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
             selector := and(selector, shl(224, not(0)))
             result := or(left, shr(160, selector))
         }
+    }
+
+    function _storeScope(EnumerableSet.Bytes32Set storage set, Scope memory scope) internal {
+        bytes memory scopeData = abi.encode(scope);
+        bytes32 setValue = keccak256(scopeData);
+        set.add(setValue);
+        scopeObjs[setValue] = scopeData;
+    }
+
+    function _retrieveScope(EnumerableSet.Bytes32Set storage set, uint8 idx) internal view returns (Scope memory) {
+        bytes32 setValue = set.at(idx);
+        bytes memory scopeData = scopeObjs[setValue];
+        (Scope memory validScope) = abi.decode(scopeData, (Scope));
+        return validScope;
     }
 }

@@ -76,9 +76,7 @@ interface IProposalTypesConfigurator {
     //////////////////////////////////////////////////////////////*/
 
     function initialize(address _governor, ProposalType[] calldata _proposalTypes) external;
-
     function proposalTypes(uint8 proposalTypeId) external view returns (ProposalType memory);
-    function assignedScopes(uint8 proposalTypeId, bytes24 scopeKey) external view returns (Scope[] memory);
     function scopeExists(bytes24 key) external view returns (bool);
 
     function setProposalType(
