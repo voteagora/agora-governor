@@ -154,8 +154,8 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         uint8 proposalTypeId,
         uint16 quorum,
         uint16 approvalThreshold,
-        string calldata name,
-        string calldata description,
+        string memory name,
+        string memory description,
         address module
     ) internal {
         if (quorum > PERCENT_DIVISOR) revert InvalidQuorum();

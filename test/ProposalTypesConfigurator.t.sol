@@ -35,8 +35,8 @@ contract ProposalTypesConfiguratorTest is Test {
         governor = new GovernorMock(admin, timelock);
 
         vm.startPrank(deployer);
-        proposalTypesConfigurator = new ProposalTypesConfigurator();
-        proposalTypesConfigurator.initialize(address(governor), new ProposalTypesConfigurator.ProposalType[](0));
+        proposalTypesConfigurator =
+            new ProposalTypesConfigurator(address(governor), new ProposalTypesConfigurator.ProposalType[](0));
         vm.stopPrank();
 
         vm.startPrank(admin);
@@ -113,29 +113,22 @@ contract ProposalTypesConfiguratorTest is Test {
 contract Initialize is ProposalTypesConfiguratorTest {
     function test_SetsGovernor(address _actor, address _governor) public {
         vm.assume(_governor != address(0));
-        ProposalTypesConfigurator proposalTypesConfigurator = new ProposalTypesConfigurator();
-        vm.prank(_actor);
-        proposalTypesConfigurator.initialize(address(_governor), new ProposalTypesConfigurator.ProposalType[](0));
-        assertEq(_governor, address(proposalTypesConfigurator.governor()));
+        ProposalTypesConfigurator proposalTypesConfigurator =
+            new ProposalTypesConfigurator(address(_governor), new ProposalTypesConfigurator.ProposalType[](0));
+        assertEq(_governor, address(proposalTypesConfigurator.GOVERNOR()));
     }
 
     function test_SetsProposalTypes(address _actor, uint8 _proposalTypes) public {
-        ProposalTypesConfigurator proposalTypesConfigurator = new ProposalTypesConfigurator();
         ProposalTypesConfigurator.ProposalType[] memory proposalTypes =
             new ProposalTypesConfigurator.ProposalType[](_proposalTypes);
-        vm.prank(_actor);
-        proposalTypesConfigurator.initialize(address(governor), proposalTypes);
+        ProposalTypesConfigurator proposalTypesConfigurator =
+            new ProposalTypesConfigurator(address(governor), proposalTypes);
         for (uint8 i = 0; i < _proposalTypes; i++) {
             IProposalTypesConfigurator.ProposalType memory propType = proposalTypesConfigurator.proposalTypes(i);
             assertEq(propType.quorum, 0);
             assertEq(propType.approvalThreshold, 0);
             assertEq(propType.name, "");
         }
-    }
-
-    function test_RevertIf_AlreadyInit() public {
-        vm.expectRevert(IProposalTypesConfigurator.AlreadyInit.selector);
-        proposalTypesConfigurator.initialize(address(governor), new ProposalTypesConfigurator.ProposalType[](0));
     }
 }
 
