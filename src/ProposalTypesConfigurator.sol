@@ -21,7 +21,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
                            IMMUTABLE STORAGE
     //////////////////////////////////////////////////////////////*/
 
-    IAgoraGovernor public governor;
+    IAgoraGovernor public immutable GOVERNOR;
 
     /// @notice Max value of `quorum` and `approvalThreshold` in `ProposalType`
     uint16 public constant PERCENT_DIVISOR = 10_000;
@@ -39,12 +39,12 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     //////////////////////////////////////////////////////////////*/
 
     modifier onlyAdminOrTimelock() {
-        if (msg.sender != governor.admin() && msg.sender != governor.timelock()) revert NotAdminOrTimelock();
+        if (msg.sender != GOVERNOR.admin() && msg.sender != GOVERNOR.timelock()) revert NotAdminOrTimelock();
         _;
     }
 
     /*//////////////////////////////////////////////////////////////
-                               FUNCTIONS
+                              CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
     /**
@@ -52,11 +52,10 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param _governor Address of the governor contract.
      * @param _proposalTypesInit Array of ProposalType structs to initialize the contract with.
      */
-    function initialize(address _governor, ProposalType[] calldata _proposalTypesInit) external {
-        if (address(governor) != address(0)) revert AlreadyInit();
+    constructor(address _governor, ProposalType[] memory _proposalTypesInit) {
         if (_governor == address(0)) revert InvalidGovernor();
 
-        governor = IAgoraGovernor(_governor);
+        GOVERNOR = IAgoraGovernor(_governor);
 
         for (uint8 i = 0; i < _proposalTypesInit.length; i++) {
             _setProposalType(
@@ -69,6 +68,10 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
             );
         }
     }
+
+    /*//////////////////////////////////////////////////////////////
+                               FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Get the parameters for a proposal type.
