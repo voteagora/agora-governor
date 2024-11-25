@@ -11,7 +11,12 @@ contract ProposalTypesConfiguratorTest is Test {
     //////////////////////////////////////////////////////////////*/
 
     event ProposalTypeSet(
-        uint8 indexed proposalTypeId, uint16 quorum, uint16 approvalThreshold, string name, string description
+        uint8 indexed proposalTypeId,
+        uint16 quorum,
+        uint16 approvalThreshold,
+        string name,
+        string description,
+        address indexed module
     );
 
     event ScopeCreated(uint8 indexed proposalTypeId, bytes24 indexed scopeKey, bytes4 selector, string description);
@@ -164,7 +169,7 @@ contract SetProposalType is ProposalTypesConfiguratorTest {
     function testFuzz_SetProposalType(uint256 _actorSeed) public {
         vm.prank(_adminOrTimelock(_actorSeed));
         vm.expectEmit();
-        emit ProposalTypeSet(0, 4_000, 6_000, "New Default", "Lorem Ipsum");
+        emit ProposalTypeSet(0, 4_000, 6_000, "New Default", "Lorem Ipsum", address(0));
         proposalTypesConfigurator.setProposalType(0, 4_000, 6_000, "New Default", "Lorem Ipsum", address(0));
 
         IProposalTypesConfigurator.ProposalType memory propType = proposalTypesConfigurator.proposalTypes(0);
@@ -186,7 +191,7 @@ contract SetProposalType is ProposalTypesConfiguratorTest {
     function testFuzz_SetScopeForProposalType(uint256 _actorSeed) public {
         vm.startPrank(_adminOrTimelock(_actorSeed));
         vm.expectEmit();
-        emit ProposalTypeSet(0, 4_000, 6_000, "New Default", "Lorem Ipsum");
+        emit ProposalTypeSet(0, 4_000, 6_000, "New Default", "Lorem Ipsum", address(0));
         proposalTypesConfigurator.setProposalType(0, 4_000, 6_000, "New Default", "Lorem Ipsum", address(0));
         vm.stopPrank();
 
@@ -289,7 +294,7 @@ contract AddScopeForProposalType is ProposalTypesConfiguratorTest {
     function testFuzz_AddScopeForProposalType(uint256 _actorSeed) public {
         vm.prank(_adminOrTimelock(_actorSeed));
         vm.expectEmit();
-        emit ProposalTypeSet(0, 4_000, 6_000, "New Default", "Lorem Ipsum");
+        emit ProposalTypeSet(0, 4_000, 6_000, "New Default", "Lorem Ipsum", address(0));
         proposalTypesConfigurator.setProposalType(0, 4_000, 6_000, "New Default", "Lorem Ipsum", address(0));
 
         vm.startPrank(admin);
@@ -446,7 +451,7 @@ contract MultipleScopeValidation is ProposalTypesConfiguratorTest {
     function testFuzz_MultipleScopeValidationRange(uint256 _actorSeed) public {
         vm.prank(_adminOrTimelock(_actorSeed));
         vm.expectEmit();
-        emit ProposalTypeSet(0, 4_000, 6_000, "New Default", "Lorem Ipsum");
+        emit ProposalTypeSet(0, 4_000, 6_000, "New Default", "Lorem Ipsum", address(0));
         proposalTypesConfigurator.setProposalType(0, 4_000, 6_000, "New Default", "Lorem Ipsum", address(0));
 
         vm.startPrank(admin);
