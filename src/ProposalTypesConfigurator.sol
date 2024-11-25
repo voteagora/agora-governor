@@ -221,11 +221,11 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     function validateProposedTx(bytes calldata proposedTx, uint8 proposalTypeId, bytes24 key) public view {
         Scope[] memory scopes = _assignedScopes[proposalTypeId][key];
 
-        if (_scopeExists[key]) {
-            for (uint8 i = 0; i < scopes.length; i++) {
-                Scope memory validScope = scopes[i];
-                if (validScope.selector != bytes4(proposedTx[:4])) revert Invalid4ByteSelector();
+        for (uint8 i = 0; i < scopes.length; i++) {
+            Scope memory validScope = scopes[i];
+            if (validScope.selector != bytes4(proposedTx[:4])) revert Invalid4ByteSelector();
 
+            if (validScope.exists) {
                 uint256 startIdx = 4;
                 uint256 endIdx = startIdx;
                 for (uint8 j = 0; j < validScope.parameters.length; j++) {
