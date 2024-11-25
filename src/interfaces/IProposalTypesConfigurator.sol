@@ -18,6 +18,8 @@ interface IProposalTypesConfigurator {
     error InvalidParamNotEqual();
     error InvalidParamRange();
     error InvalidProposedTxForType();
+    error InvalidCalldatasLength();
+    error InvalidCalldata();
 
     /*//////////////////////////////////////////////////////////////
                                  EVENTS

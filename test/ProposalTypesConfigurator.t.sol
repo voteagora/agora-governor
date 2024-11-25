@@ -427,6 +427,24 @@ contract ValidateProposedTx is ProposalTypesConfiguratorTest {
     }
 }
 
+contract ValidateProposalData is ProposalTypesConfiguratorTest {
+    function testRevert_ValidateProposalData_InvalidCalldatas() public {
+        address[] memory targets = new address[](1);
+        bytes[] memory calldatas = new bytes[](1);
+
+        vm.expectRevert(IProposalTypesConfigurator.InvalidCalldata.selector);
+        proposalTypesConfigurator.validateProposalData(targets, calldatas, 0);
+    }
+
+    function testRevert_ValidateProposalData_InvalidCalldatasLength() public {
+        address[] memory targets = new address[](0);
+        bytes[] memory calldatas = new bytes[](0);
+
+        vm.expectRevert(IProposalTypesConfigurator.InvalidCalldatasLength.selector);
+        proposalTypesConfigurator.validateProposalData(targets, calldatas, 0);
+    }
+}
+
 contract DisableScope is ProposalTypesConfiguratorTest {
     function testFuzz_DisableScope(uint256 _actorSeed) public {
         vm.prank(_adminOrTimelock(_actorSeed));
