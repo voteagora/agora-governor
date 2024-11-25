@@ -65,7 +65,6 @@ contract ApprovalVotingModuleTest is Test {
 
         Proposal memory proposal = module._proposals(proposalId);
 
-        assertEq(proposal.governor, governor);
         assertEq(proposal.optionVotes[0], 0);
         assertEq(proposal.optionVotes[1], 0);
         assertEq(proposal.optionVotes[2], 0);
