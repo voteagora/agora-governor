@@ -178,7 +178,6 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     {
         if (!_proposalTypes[proposalTypeId].exists) revert InvalidProposalType();
         if (scope.parameters.length != scope.comparators.length) revert InvalidParameterConditions();
-        bytes24 scopeKey = scope.key;
 
         _scopeExists[scope.key] = true;
         _assignedScopes[proposalTypeId][scope.key].push(scope);
