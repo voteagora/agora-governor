@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import {IProposalTypesConfigurator} from "src/interfaces/IProposalTypesConfigurator.sol";
 import {IAgoraGovernor} from "src/interfaces/IAgoraGovernor.sol";
-import {Validator} from "src/Validator.sol";
+import {Validator} from "src/lib/Validator.sol";
 
 /**
  * Contract that stores proposalTypes for the Agora Governor.
@@ -22,7 +22,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
                            IMMUTABLE STORAGE
     //////////////////////////////////////////////////////////////*/
 
-    IAgoraGovernor public governor;
+    IAgoraGovernor public immutable GOVERNOR;
 
     /// @notice Max value of `quorum` and `approvalThreshold` in `ProposalType`
     uint16 public constant PERCENT_DIVISOR = 10_000;
@@ -42,12 +42,12 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     //////////////////////////////////////////////////////////////*/
 
     modifier onlyAdminOrTimelock() {
-        if (msg.sender != governor.admin() && msg.sender != governor.timelock()) revert NotAdminOrTimelock();
+        if (msg.sender != GOVERNOR.admin() && msg.sender != GOVERNOR.timelock()) revert NotAdminOrTimelock();
         _;
     }
 
     /*//////////////////////////////////////////////////////////////
-                               FUNCTIONS
+                              CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
     /**
@@ -55,11 +55,10 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param _governor Address of the governor contract.
      * @param _proposalTypesInit Array of ProposalType structs to initialize the contract with.
      */
-    function initialize(address _governor, ProposalType[] calldata _proposalTypesInit) external {
-        if (address(governor) != address(0)) revert AlreadyInit();
+    constructor(address _governor, ProposalType[] memory _proposalTypesInit) {
         if (_governor == address(0)) revert InvalidGovernor();
 
-        governor = IAgoraGovernor(_governor);
+        GOVERNOR = IAgoraGovernor(_governor);
 
         for (uint8 i = 0; i < _proposalTypesInit.length; i++) {
             _setProposalType(
@@ -72,6 +71,10 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
             );
         }
     }
+
+    /*//////////////////////////////////////////////////////////////
+                               FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Get the parameters for a proposal type.
@@ -155,8 +158,8 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         uint8 proposalTypeId,
         uint16 quorum,
         uint16 approvalThreshold,
-        string calldata name,
-        string calldata description,
+        string memory name,
+        string memory description,
         address module
     ) internal {
         if (quorum > PERCENT_DIVISOR) revert InvalidQuorum();
@@ -164,7 +167,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
 
         _proposalTypes[proposalTypeId] = ProposalType(quorum, approvalThreshold, name, description, module, true);
 
-        emit ProposalTypeSet(proposalTypeId, quorum, approvalThreshold, name, description);
+        emit ProposalTypeSet(proposalTypeId, quorum, approvalThreshold, name, description, module);
     }
 
     /**
@@ -180,8 +183,6 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         if (!_proposalTypes[proposalTypeId].exists) revert InvalidProposalType();
         if (scope.parameters.length != scope.comparators.length) revert InvalidParameterConditions();
         if (_assignedScopes[proposalTypeId][scope.key].length == MAX_SCOPE_LENGTH) revert MaxScopeLengthReached();
-
-        bytes24 scopeKey = scope.key;
 
         _scopeExists[scope.key] = true;
         _assignedScopes[proposalTypeId][scope.key].push(scope);
@@ -236,11 +237,11 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     function validateProposedTx(bytes calldata proposedTx, uint8 proposalTypeId, bytes24 key) public view {
         Scope[] memory scopes = _assignedScopes[proposalTypeId][key];
 
-        if (_scopeExists[key]) {
-            for (uint8 i = 0; i < scopes.length; i++) {
-                Scope memory validScope = scopes[i];
-                if (validScope.selector != bytes4(proposedTx[:4])) revert Invalid4ByteSelector();
+        for (uint8 i = 0; i < scopes.length; i++) {
+            Scope memory validScope = scopes[i];
+            if (validScope.selector != bytes4(proposedTx[:4])) revert Invalid4ByteSelector();
 
+            if (validScope.exists) {
                 uint256 startIdx = 4;
                 uint256 endIdx = startIdx;
                 for (uint8 j = 0; j < validScope.parameters.length; j++) {
@@ -270,7 +271,11 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         external
         view
     {
+        if (calldatas.length == 0) revert InvalidCalldatasLength();
+
         for (uint8 i = 0; i < calldatas.length; i++) {
+            if (calldatas[i].length < 4) revert InvalidCalldata();
+
             bytes24 scopeKey = _pack(targets[i], bytes4(calldatas[i]));
             if (_assignedScopes[proposalTypeId][scopeKey].length != 0) {
                 validateProposedTx(calldatas[i], proposalTypeId, scopeKey);

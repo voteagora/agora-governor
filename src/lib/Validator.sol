@@ -18,15 +18,11 @@ library Validator {
         }
 
         if (comparison == IProposalTypesConfigurator.Comparators.LESS_THAN) {
-            if (paramA >= paramB) {
-                revert InvalidParamRange();
-            }
+            if (paramA >= paramB) revert InvalidParamRange();
         }
 
         if (comparison == IProposalTypesConfigurator.Comparators.GREATER_THAN) {
-            if (paramA <= paramB) {
-                revert InvalidParamRange();
-            }
+            if (paramA <= paramB) revert InvalidParamRange();
         }
     }
 

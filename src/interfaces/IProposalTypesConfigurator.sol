@@ -13,20 +13,26 @@ interface IProposalTypesConfigurator {
     error InvalidScope();
     error NotAdminOrTimelock();
     error NotAdmin();
-    error AlreadyInit();
     error InvalidGovernor();
     error Invalid4ByteSelector();
     error InvalidParamNotEqual();
     error InvalidParamRange();
     error InvalidProposedTxForType();
     error MaxScopeLengthReached();
+    error InvalidCalldatasLength();
+    error InvalidCalldata();
 
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
 
     event ProposalTypeSet(
-        uint8 indexed proposalTypeId, uint16 quorum, uint16 approvalThreshold, string name, string description
+        uint8 indexed proposalTypeId,
+        uint16 quorum,
+        uint16 approvalThreshold,
+        string name,
+        string description,
+        address indexed module
     );
 
     /*//////////////////////////////////////////////////////////////
@@ -75,8 +81,6 @@ interface IProposalTypesConfigurator {
     /*//////////////////////////////////////////////////////////////
                                FUNCTIONS
     //////////////////////////////////////////////////////////////*/
-
-    function initialize(address _governor, ProposalType[] calldata _proposalTypes) external;
 
     function proposalTypes(uint8 proposalTypeId) external view returns (ProposalType memory);
     function assignedScopes(uint8 proposalTypeId, bytes24 scopeKey) external view returns (Scope[] memory);
