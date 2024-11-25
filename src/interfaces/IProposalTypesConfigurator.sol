@@ -18,6 +18,7 @@ interface IProposalTypesConfigurator {
     error InvalidParamNotEqual();
     error InvalidParamRange();
     error InvalidProposedTxForType();
+    error MaxScopeLengthReached();
     error InvalidCalldatasLength();
     error InvalidCalldata();
 
@@ -107,6 +108,7 @@ interface IProposalTypesConfigurator {
     function getSelector(uint8 proposalTypeId, bytes24 key) external returns (bytes4);
     function addScopeForProposalType(uint8 proposalTypeId, Scope calldata scope) external;
     function disableScope(uint8 proposalTypeId, bytes24 scopeKey, uint8 idx) external;
+    function deleteScope(uint8 proposalTypeId, bytes24 scopeKey, uint8 idx) external;
     function validateProposedTx(bytes calldata proposedTx, uint8 proposalTypeId, bytes24 key) external;
     function validateProposalData(address[] memory targets, bytes[] memory calldatas, uint8 proposalTypeId) external;
 }

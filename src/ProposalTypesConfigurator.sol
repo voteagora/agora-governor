@@ -16,6 +16,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
 
     event ScopeCreated(uint8 indexed proposalTypeId, bytes24 indexed scopeKey, bytes4 selector, string description);
     event ScopeDisabled(uint8 indexed proposalTypeId, bytes24 indexed scopeKey);
+    event ScopeDeleted(uint8 indexed proposalTypeId, bytes24 indexed scopeKey);
 
     /*//////////////////////////////////////////////////////////////
                            IMMUTABLE STORAGE
@@ -25,6 +26,8 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
 
     /// @notice Max value of `quorum` and `approvalThreshold` in `ProposalType`
     uint16 public constant PERCENT_DIVISOR = 10_000;
+    // @notice Max length of the `assignedScopes` array
+    uint8 public constant MAX_SCOPE_LENGTH = 5;
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
@@ -122,6 +125,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     ) external override onlyAdminOrTimelock {
         if (!_proposalTypes[proposalTypeId].exists) revert InvalidProposalType();
         if (parameters.length != comparators.length) revert InvalidParameterConditions();
+        if (_assignedScopes[proposalTypeId][key].length == MAX_SCOPE_LENGTH) revert MaxScopeLengthReached();
 
         Scope memory scope = Scope(key, selector, parameters, comparators, types, proposalTypeId, description, true);
         _assignedScopes[proposalTypeId][key].push(scope);
@@ -178,6 +182,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     {
         if (!_proposalTypes[proposalTypeId].exists) revert InvalidProposalType();
         if (scope.parameters.length != scope.comparators.length) revert InvalidParameterConditions();
+        if (_assignedScopes[proposalTypeId][scope.key].length == MAX_SCOPE_LENGTH) revert MaxScopeLengthReached();
 
         _scopeExists[scope.key] = true;
         _assignedScopes[proposalTypeId][scope.key].push(scope);
@@ -205,6 +210,17 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     function disableScope(uint8 proposalTypeId, bytes24 scopeKey, uint8 idx) external override onlyAdminOrTimelock {
         _assignedScopes[proposalTypeId][scopeKey][idx].exists = false;
         emit ScopeDisabled(proposalTypeId, scopeKey);
+    }
+
+    /**
+     * @notice Deletes a scope inside assignedScopes for a proposal type.
+     * @param proposalTypeId the proposal type ID that has the assigned scope.
+     * @param scopeKey the contract and function signature representing the scope key
+     * @param idx the index of the assigned scope.
+     */
+    function deleteScope(uint8 proposalTypeId, bytes24 scopeKey, uint8 idx) external override onlyAdminOrTimelock {
+        delete _assignedScopes[proposalTypeId][scopeKey][idx];
+        emit ScopeDeleted(proposalTypeId, scopeKey);
     }
 
     /**
