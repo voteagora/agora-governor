@@ -160,7 +160,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
 
         _proposalTypes[proposalTypeId] = ProposalType(quorum, approvalThreshold, name, description, module, true);
 
-        emit ProposalTypeSet(proposalTypeId, quorum, approvalThreshold, name, description);
+        emit ProposalTypeSet(proposalTypeId, quorum, approvalThreshold, name, description, module);
     }
 
     /**

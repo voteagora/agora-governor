@@ -25,7 +25,12 @@ interface IProposalTypesConfigurator {
     //////////////////////////////////////////////////////////////*/
 
     event ProposalTypeSet(
-        uint8 indexed proposalTypeId, uint16 quorum, uint16 approvalThreshold, string name, string description
+        uint8 indexed proposalTypeId,
+        uint16 quorum,
+        uint16 approvalThreshold,
+        string name,
+        string description,
+        address indexed module
     );
 
     /*//////////////////////////////////////////////////////////////
