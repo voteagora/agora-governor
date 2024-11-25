@@ -60,8 +60,11 @@ contract OptimisticModule is VotingModule {
      * @param proposalId The id of the proposal.
      * @param proposalData The proposal data encoded as `PROPOSAL_DATA_ENCODING`.
      */
-    function propose(uint256 proposalId, bytes memory proposalData, bytes32 descriptionHash) external override {
-        _onlyGovernor();
+    function propose(uint256 proposalId, bytes memory proposalData, bytes32 descriptionHash)
+        external
+        override
+        onlyGovernor
+    {
         if (proposalId != uint256(keccak256(abi.encode(msg.sender, address(this), proposalData, descriptionHash)))) {
             revert WrongProposalId();
         }

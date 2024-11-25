@@ -21,8 +21,9 @@ abstract contract VotingModule {
                                MODIFIERS
     //////////////////////////////////////////////////////////////*/
 
-    function _onlyGovernor() internal view {
+    modifier onlyGovernor() {
         if (msg.sender != governor) revert NotGovernor();
+        _;
     }
 
     /*//////////////////////////////////////////////////////////////

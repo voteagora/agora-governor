@@ -92,8 +92,11 @@ contract ApprovalVotingModule is VotingModule {
      * @param proposalId The id of the proposal.
      * @param proposalData The proposal data encoded as `PROPOSAL_DATA_ENCODING`.
      */
-    function propose(uint256 proposalId, bytes memory proposalData, bytes32 descriptionHash) external override {
-        _onlyGovernor();
+    function propose(uint256 proposalId, bytes memory proposalData, bytes32 descriptionHash)
+        external
+        override
+        onlyGovernor
+    {
         if (proposalId != uint256(keccak256(abi.encode(msg.sender, address(this), proposalData, descriptionHash)))) {
             revert WrongProposalId();
         }
@@ -146,8 +149,8 @@ contract ApprovalVotingModule is VotingModule {
         external
         virtual
         override
+        onlyGovernor
     {
-        _onlyGovernor();
         Proposal memory proposal = proposals[proposalId];
 
         if (support == uint8(VoteType.For)) {
@@ -175,9 +178,9 @@ contract ApprovalVotingModule is VotingModule {
     function _formatExecuteParams(uint256 proposalId, bytes memory proposalData)
         public
         override
+        onlyGovernor
         returns (address[] memory targets, uint256[] memory values, bytes[] memory calldatas)
     {
-        _onlyGovernor();
         (ProposalOption[] memory options, ProposalSettings memory settings) =
             abi.decode(proposalData, (ProposalOption[], ProposalSettings));
 
