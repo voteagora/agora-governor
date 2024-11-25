@@ -19,7 +19,6 @@ struct ProposalSettings {
 }
 
 struct Proposal {
-    address governor;
     ProposalSettings settings;
 }
 
@@ -65,19 +64,19 @@ contract OptimisticModule is VotingModule {
         override
         onlyGovernor
     {
-        if (proposalId != uint256(keccak256(abi.encode(msg.sender, address(this), proposalData, descriptionHash)))) {
+        if (proposalId != uint256(keccak256(abi.encode(governor, address(this), proposalData, descriptionHash)))) {
             revert WrongProposalId();
         }
 
-        if (proposals[proposalId].governor != address(0)) {
+        if (proposals[proposalId].settings.againstThreshold != 0) {
             revert ExistingProposal();
         }
 
         ProposalSettings memory proposalSettings = abi.decode(proposalData, (ProposalSettings));
 
-        uint8 proposalTypeId = IAgoraGovernor(msg.sender).getProposalType(proposalId);
+        uint8 proposalTypeId = IAgoraGovernor(governor).getProposalType(proposalId);
         IProposalTypesConfigurator proposalConfigurator =
-            IProposalTypesConfigurator(IAgoraGovernor(msg.sender).PROPOSAL_TYPES_CONFIGURATOR());
+            IProposalTypesConfigurator(IAgoraGovernor(governor).PROPOSAL_TYPES_CONFIGURATOR());
         IProposalTypesConfigurator.ProposalType memory proposalType = proposalConfigurator.proposalTypes(proposalTypeId);
 
         if (proposalType.quorum != 0 || proposalType.approvalThreshold != 0) {
@@ -90,7 +89,6 @@ contract OptimisticModule is VotingModule {
             revert InvalidParams();
         }
 
-        proposals[proposalId].governor = msg.sender;
         proposals[proposalId].settings = proposalSettings;
     }
 
@@ -130,12 +128,12 @@ contract OptimisticModule is VotingModule {
      */
     function _voteSucceeded(uint256 proposalId) external view override returns (bool) {
         Proposal memory proposal = proposals[proposalId];
-        (uint256 againstVotes,,) = IAgoraGovernor(proposal.governor).proposalVotes(proposalId);
+        (uint256 againstVotes,,) = IAgoraGovernor(governor).proposalVotes(proposalId);
 
         uint256 againstThreshold = proposal.settings.againstThreshold;
         if (proposal.settings.isRelativeToVotableSupply) {
-            uint256 snapshotBlock = IGovernorUpgradeable(proposal.governor).proposalSnapshot(proposalId);
-            IVotesUpgradeable token = IAgoraGovernor(proposal.governor).token();
+            uint256 snapshotBlock = IGovernorUpgradeable(governor).proposalSnapshot(proposalId);
+            IVotesUpgradeable token = IAgoraGovernor(governor).token();
             againstThreshold = (token.getPastTotalSupply(snapshotBlock) * againstThreshold) / PERCENT_DIVISOR;
         }
 

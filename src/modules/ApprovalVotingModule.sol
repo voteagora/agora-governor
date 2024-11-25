@@ -96,7 +96,7 @@ contract ApprovalVotingModule is VotingModule {
         override
         onlyGovernor
     {
-        if (proposalId != uint256(keccak256(abi.encode(msg.sender, address(this), proposalData, descriptionHash)))) {
+        if (proposalId != uint256(keccak256(abi.encode(governor, address(this), proposalData, descriptionHash)))) {
             revert WrongProposalId();
         }
 
