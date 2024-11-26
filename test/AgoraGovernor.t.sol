@@ -781,7 +781,7 @@ contract ProposeWithOptimisticModule is AgoraGovernorTest {
         _totalMintAmount = bound(_totalMintAmount, 1e4, type(uint208).max);
         _againstThresholdPercentage = bound(_againstThresholdPercentage, 1, optimisticModule.PERCENT_DIVISOR());
         uint256 _againstThreshold =
-            _totalMintAmount * _againstThresholdPercentage / (optimisticModule.PERCENT_DIVISOR());
+            (_totalMintAmount * _againstThresholdPercentage) / (optimisticModule.PERCENT_DIVISOR());
         _againstAmount = bound(_againstAmount, 0, _againstThreshold - 1);
         _forAmount = bound(_forAmount, 0, _totalMintAmount - _againstAmount);
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, 1, type(uint16).max);
@@ -830,7 +830,7 @@ contract ProposeWithOptimisticModule is AgoraGovernorTest {
         _totalMintAmount = bound(_totalMintAmount, 1e4, type(uint208).max);
         _againstThresholdPercentage = bound(_againstThresholdPercentage, 1, optimisticModule.PERCENT_DIVISOR());
         uint256 _againstThreshold =
-            _totalMintAmount * _againstThresholdPercentage / (optimisticModule.PERCENT_DIVISOR());
+            (_totalMintAmount * _againstThresholdPercentage) / (optimisticModule.PERCENT_DIVISOR());
         _againstAmount = bound(_againstAmount, _againstThreshold, _totalMintAmount);
         _forAmount = bound(_forAmount, 0, _totalMintAmount - _againstAmount);
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, 1, type(uint16).max);
@@ -2411,9 +2411,9 @@ contract AssignedScopes is AgoraGovernorTest {
 
         IProposalTypesConfigurator.Comparators[] memory comparators = new IProposalTypesConfigurator.Comparators[](3);
 
-        comparators[0] = IProposalTypesConfigurator.Comparators(1); // EQ
-        comparators[1] = IProposalTypesConfigurator.Comparators(1); // EQ
-        comparators[2] = IProposalTypesConfigurator.Comparators(3); // GREATER THAN
+        comparators[0] = IProposalTypesConfigurator.Comparators(0); // EQ
+        comparators[1] = IProposalTypesConfigurator.Comparators(0); // EQ
+        comparators[2] = IProposalTypesConfigurator.Comparators(2); // GREATER THAN
 
         IProposalTypesConfigurator.SupportedTypes[] memory types = new IProposalTypesConfigurator.SupportedTypes[](3);
 

@@ -5,6 +5,7 @@ import {IProposalTypesConfigurator} from "src/interfaces/IProposalTypesConfigura
 library Validator {
     error InvalidParamNotEqual();
     error InvalidParamRange();
+    error InvalidComparison();
 
     /**
      * @notice Compares two byte32 values of the represented type and reverts if condition is not met.
@@ -15,14 +16,12 @@ library Validator {
     function compare(bytes32 paramA, bytes32 paramB, IProposalTypesConfigurator.Comparators comparison) internal pure {
         if (comparison == IProposalTypesConfigurator.Comparators.EQUAL) {
             if (paramA != paramB) revert InvalidParamNotEqual();
-        }
-
-        if (comparison == IProposalTypesConfigurator.Comparators.LESS_THAN) {
+        } else if (comparison == IProposalTypesConfigurator.Comparators.LESS_THAN) {
             if (paramA >= paramB) revert InvalidParamRange();
-        }
-
-        if (comparison == IProposalTypesConfigurator.Comparators.GREATER_THAN) {
+        } else if (comparison == IProposalTypesConfigurator.Comparators.GREATER_THAN) {
             if (paramA <= paramB) revert InvalidParamRange();
+        } else {
+            revert InvalidComparison();
         }
     }
 
