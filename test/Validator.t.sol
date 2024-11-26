@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
 import {IProposalTypesConfigurator} from "src/interfaces/IProposalTypesConfigurator.sol";
-import {Validator} from "src/Validator.sol";
+import {Validator} from "src/lib/Validator.sol";
 
 contract ValidatorTest is Test {
     function setUp() public {}

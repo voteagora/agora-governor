@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+/// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
@@ -135,14 +135,17 @@ contract AgoraGovernorTest is Test {
             )
         );
 
-        // Deploy Proposal Types Configurator
-        proposalTypesConfigurator = new ProposalTypesConfigurator();
-
         // Deploy timelock
         timelock = Timelock(payable(new TransparentUpgradeableProxy(address(new Timelock()), proxyAdmin, "")));
 
         // Deploy governor impl
         implementation = address(new AgoraGovernorMock());
+
+        // Deploy Proposal Types Configurator
+        proposalTypesConfigurator = new ProposalTypesConfigurator(
+            vm.computeCreateAddress(deployer, vm.getNonce(deployer) + 1),
+            new IProposalTypesConfigurator.ProposalType[](0)
+        );
 
         // Deploy governor proxy
         governorProxy = address(
@@ -157,8 +160,7 @@ contract AgoraGovernorTest is Test {
                         admin,
                         manager,
                         timelock,
-                        IProposalTypesConfigurator(proposalTypesConfigurator),
-                        new IProposalTypesConfigurator.ProposalType[](0)
+                        IProposalTypesConfigurator(proposalTypesConfigurator)
                     )
                 )
             )
@@ -262,6 +264,7 @@ contract AgoraGovernorTest is Test {
         targets[0] = address(targetFake);
         uint256[] memory values = new uint256[](1);
         bytes[] memory calldatas = new bytes[](1);
+        calldatas[0] = abi.encodeWithSelector(this.executeCallback.selector);
 
         vm.startPrank(admin);
         governor.setVotingDelay(0);
@@ -278,7 +281,6 @@ contract Initialize is AgoraGovernorTest {
         public
         virtual
     {
-        ProposalTypesConfigurator _proposalTypesConfigurator = new ProposalTypesConfigurator();
         IProposalTypesConfigurator.ProposalType[] memory _proposalTypes =
             new IProposalTypesConfigurator.ProposalType[](4);
         _proposalTypes[0] =
@@ -289,6 +291,9 @@ contract Initialize is AgoraGovernorTest {
             IProposalTypesConfigurator.ProposalType(7_500, 3_100, "Whatever", "Lorem Ipsum", address(0), true);
         _proposalTypes[3] =
             IProposalTypesConfigurator.ProposalType(0, 0, "Optimistic", "Lorem Ipsum", address(optimisticModule), true);
+        ProposalTypesConfigurator _proposalTypesConfigurator = new ProposalTypesConfigurator(
+            vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 1), _proposalTypes
+        );
         AgoraGovernor _governor = AgoraGovernor(
             payable(
                 new TransparentUpgradeableProxy(
@@ -302,8 +307,7 @@ contract Initialize is AgoraGovernorTest {
                             _admin,
                             _manager,
                             TimelockControllerUpgradeable(payable(_timelock)),
-                            IProposalTypesConfigurator(_proposalTypesConfigurator),
-                            _proposalTypes
+                            IProposalTypesConfigurator(_proposalTypesConfigurator)
                         )
                     )
                 )

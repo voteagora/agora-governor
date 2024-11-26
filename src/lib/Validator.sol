@@ -17,13 +17,9 @@ library Validator {
         if (comparison == IProposalTypesConfigurator.Comparators.EQUAL) {
             if (paramA != paramB) revert InvalidParamNotEqual();
         } else if (comparison == IProposalTypesConfigurator.Comparators.LESS_THAN) {
-            if (paramA >= paramB) {
-                revert InvalidParamRange();
-            }
+            if (paramA >= paramB) revert InvalidParamRange();
         } else if (comparison == IProposalTypesConfigurator.Comparators.GREATER_THAN) {
-            if (paramA <= paramB) {
-                revert InvalidParamRange();
-            }
+            if (paramA <= paramB) revert InvalidParamRange();
         } else {
             revert InvalidComparison();
         }
