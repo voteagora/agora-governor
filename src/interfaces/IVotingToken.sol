@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {IVotesUpgradeable} from "@openzeppelin/contracts-upgradeable-v4/governance/utils/IVotesUpgradeable.sol";
+import {VotesUpgradeable} from "@openzeppelin/contracts-upgradeable/governance/utils/VotesUpgradeable.sol";
 
-interface IVotingToken is IVotesUpgradeable {
+interface IVotingToken is VotesUpgradeable {
     /// @dev Return the votable supply at a given block number.
     function getPastVotableSupply(uint256 timepoint) external view returns (uint256);
 }

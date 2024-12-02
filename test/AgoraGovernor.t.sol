@@ -2,10 +2,10 @@
 pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
-import {TransparentUpgradeableProxy} from "@openzeppelin/contracts-v4/proxy/transparent/TransparentUpgradeableProxy.sol";
-import {IVotesUpgradeable} from "@openzeppelin/contracts-upgradeable-v4/governance/utils/IVotesUpgradeable.sol";
-import {IGovernorUpgradeable} from "@openzeppelin/contracts-upgradeable-v4/governance/IGovernorUpgradeable.sol";
-import {ERC1967Proxy} from "@openzeppelin/contracts-v4/proxy/ERC1967/ERC1967Proxy.sol";
+import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {VotesUpgradeable} from "@openzeppelin/contracts-upgradeable/governance/utils/VotesUpgradeable.sol";
+import {GovernorUpgradeable} from "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {Timelock, TimelockControllerUpgradeable} from "test/mocks/TimelockMock.sol";
 import {L2GovToken} from "ERC20VotesPartialDelegationUpgradeable/L2GovToken.sol";
 import {VotingModule} from "src/modules/VotingModule.sol";

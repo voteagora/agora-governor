@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {IGovernor} from "@openzeppelin/contracts-v4/governance/IGovernor.sol";
-import {IVotesUpgradeable} from "@openzeppelin/contracts-upgradeable-v4/governance/utils/IVotesUpgradeable.sol";
+import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
+import {VotesUpgradeable} from "@openzeppelin/contracts-upgradeable/governance/utils/VotesUpgradeable.sol";
 
 abstract contract IAgoraGovernor is IGovernor {
     function manager() external view virtual returns (address);
@@ -11,7 +11,7 @@ abstract contract IAgoraGovernor is IGovernor {
 
     function PROPOSAL_TYPES_CONFIGURATOR() external view virtual returns (address);
 
-    function token() external view virtual returns (IVotesUpgradeable);
+    function token() external view virtual returns (VotesUpgradeable);
 
     function getProposalType(uint256 proposalId) external view virtual returns (uint8);
 

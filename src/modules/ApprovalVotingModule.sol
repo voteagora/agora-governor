@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {EnumerableSetUpgradeable} from
-    "@openzeppelin/contracts-upgradeable-v4/utils/structs/EnumerableSetUpgradeable.sol";
-import {IERC20} from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeCastLib} from "@solady/utils/SafeCastLib.sol";
 import {VotingModule} from "src/modules/VotingModule.sol";
 import {IAgoraGovernor} from "src/interfaces/IAgoraGovernor.sol";

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {IGovernorUpgradeable} from "@openzeppelin/contracts-upgradeable-v4/governance/IGovernorUpgradeable.sol";
-import {IVotesUpgradeable} from "@openzeppelin/contracts-upgradeable-v4/governance/utils/IVotesUpgradeable.sol";
+import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
+import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {IProposalTypesConfigurator} from "src/interfaces/IProposalTypesConfigurator.sol";
 import {IAgoraGovernor} from "src/interfaces/IAgoraGovernor.sol";
 import {VotingModule} from "src/modules/VotingModule.sol";
@@ -131,8 +131,8 @@ contract OptimisticModule is VotingModule {
 
         uint256 againstThreshold = proposal.settings.againstThreshold;
         if (proposal.settings.isRelativeToVotableSupply) {
-            uint256 snapshotBlock = IGovernorUpgradeable(proposal.governor).proposalSnapshot(proposalId);
-            IVotesUpgradeable token = IAgoraGovernor(proposal.governor).token();
+            uint256 snapshotBlock = IGovernor(proposal.governor).proposalSnapshot(proposalId);
+            IVotes token = IAgoraGovernor(proposal.governor).token();
             againstThreshold = (token.getPastTotalSupply(snapshotBlock) * againstThreshold) / PERCENT_DIVISOR;
         }
 
