@@ -41,7 +41,9 @@ contract AgoraGovernor is
         uint256 _proposalThreshold,
         uint256 _quorumNumerator,
         IVotes _token,
-        TimelockController _timelock
+        TimelockController _timelock,
+        address _admin,
+        address _manager
     )
         Governor("AgoraGovernor")
         GovernorCountingSimple()
@@ -49,11 +51,10 @@ contract AgoraGovernor is
         GovernorVotesQuorumFraction(_quorumNumerator)
         GovernorSettings(_votingDelay, _votingPeriod, _proposalThreshold)
         GovernorTimelockControl(_timelock)
-    {}
-
-    /*//////////////////////////////////////////////////////////////
-                           EXTERNAL FUNCTIONS
-    //////////////////////////////////////////////////////////////*/
+    {
+        admin = _admin;
+        manager = _manager;
+    }
 
     /*//////////////////////////////////////////////////////////////
                             PUBLIC FUNCTIONS
@@ -95,6 +96,13 @@ contract AgoraGovernor is
     /*//////////////////////////////////////////////////////////////
                             INTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////*/
+
+    function _checkGovernance() internal override {
+        // Allow the admin to bypass the governor check.
+        if (_msgSender() != admin) {
+            super._checkGovernance();
+        }
+    }
 
     function _cancel(
         address[] memory targets,

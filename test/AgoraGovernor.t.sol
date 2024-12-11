@@ -48,7 +48,11 @@ contract AgoraGovernorTest is Test {
         timelock = new TimelockController(timelockDelay, proposers, executors, deployer);
 
         // Deploy governor
-        governor = new AgoraGovernor(votingDelay, votingPeriod, proposalThreshold, quorumNumerator, token, timelock);
+        governor = new AgoraGovernor(
+            votingDelay, votingPeriod, proposalThreshold, quorumNumerator, token, timelock, admin, manager
+        );
+
+        vm.stopPrank();
     }
 
     function executeCallback() public payable virtual {}
@@ -124,7 +128,11 @@ contract Propose is AgoraGovernorTest {
         vm.startPrank(_actor);
         token.delegate(_actor);
         vm.roll(block.number + 1);
-        vm.expectRevert(IGovernor.GovernorInsufficientProposerVotes.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IGovernor.GovernorInsufficientProposerVotes.selector, _actor, _actorBalance, _proposalThreshold
+            )
+        );
         governor.propose(targets, values, calldatas, "Test");
     }
 
