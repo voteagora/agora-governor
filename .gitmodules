@@ -7,3 +7,6 @@
 [submodule "lib/ERC20VotesPartialDelegationUpgradeable"]
 	path = lib/ERC20VotesPartialDelegationUpgradeable
 	url = https://github.com/voteagora/ERC20VotesPartialDelegationUpgradeable
+[submodule "lib/openzeppelin-contracts"]
+	path = lib/openzeppelin-contracts
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts
