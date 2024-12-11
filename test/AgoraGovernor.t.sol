@@ -59,7 +59,7 @@ contract AgoraGovernorTest is Test {
 }
 
 contract Propose is AgoraGovernorTest {
-    function testFuzz_CreatesProposalWhenThresholdIsMet(
+    function test_propose_validInput_succeeds(
         address _actor,
         uint256 _proposalThreshold,
         uint256 _actorBalance
@@ -89,7 +89,7 @@ contract Propose is AgoraGovernorTest {
         assertGt(governor.proposalSnapshot(proposalId), 0);
     }
 
-    function testFuzz_CreatesProposalAsManager(uint256 _proposalThreshold) public virtual {
+    function test_propose_manager_succeeds(uint256 _proposalThreshold) public virtual {
         _proposalThreshold = bound(_proposalThreshold, 0, type(uint208).max);
         address[] memory targets = new address[](1);
         targets[0] = address(this);
@@ -106,7 +106,7 @@ contract Propose is AgoraGovernorTest {
         assertGt(governor.proposalSnapshot(proposalId), 0);
     }
 
-    function testFuzz_RevertIf_ThresholdNotMet(address _actor, uint256 _proposalThreshold, uint256 _actorBalance)
+    function test_propose_thresholdNotMet_reverts(address _actor, uint256 _proposalThreshold, uint256 _actorBalance)
         public
         virtual
     {
@@ -136,20 +136,18 @@ contract Propose is AgoraGovernorTest {
         governor.propose(targets, values, calldatas, "Test");
     }
 
-    function testRevert_proposalAlreadyCreated() public virtual {
+    function test_propose_alreadyCreated_reverts() public virtual {
         address[] memory targets = new address[](1);
         targets[0] = address(this);
         uint256[] memory values = new uint256[](1);
         bytes[] memory calldatas = new bytes[](1);
         calldatas[0] = abi.encodeWithSelector(this.executeCallback.selector);
 
-        // vm.startPrank(manager);
-        // governor.propose(targets, values, calldatas, "Test", 0);
+        vm.startPrank(manager);
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
 
-        // vm.expectRevert(InvalidProposalExists.selector);
-        // governor.propose(targets, values, calldatas, "Test", 0);
-        // vm.stopPrank();
-
-        // TODO
+        vm.expectRevert(abi.encodeWithSelector(IGovernor.GovernorUnexpectedProposalState.selector, proposalId, governor.state(proposalId), bytes32(0)));
+        governor.propose(targets, values, calldatas, "Test");
+        vm.stopPrank();
     }
 }
