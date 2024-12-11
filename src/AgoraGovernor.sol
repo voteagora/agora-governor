@@ -11,6 +11,8 @@ import {GovernorVotes} from "@openzeppelin/contracts/governance/extensions/Gover
 import {GovernorSettings} from "@openzeppelin/contracts/governance/extensions/GovernorSettings.sol";
 import {GovernorTimelockControl} from "@openzeppelin/contracts/governance/extensions/GovernorTimelockControl.sol";
 
+/// @title AgoraGovernor
+/// @notice Agora Governor contract
 /// @custom:security-contact security@voteagora.com
 contract AgoraGovernor is
     Governor,
@@ -19,6 +21,16 @@ contract AgoraGovernor is
     GovernorSettings,
     GovernorTimelockControl
 {
+    /*//////////////////////////////////////////////////////////////
+                                STORAGE
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice The admin of the governor
+    address public admin;
+
+    /// @notice The manager of the governor
+    address public manager;
+
     /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
@@ -76,7 +88,8 @@ contract AgoraGovernor is
     }
 
     function proposalThreshold() public view override(GovernorSettings, Governor) returns (uint256) {
-        return GovernorSettings.proposalThreshold();
+        // Return 0 if the caller is the manager to not require voting power when proposing.
+        return _msgSender() == manager ? 0 : GovernorSettings.proposalThreshold();
     }
 
     /*//////////////////////////////////////////////////////////////
