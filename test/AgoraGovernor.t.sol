@@ -7,6 +7,7 @@ import {TimelockController} from "@openzeppelin/contracts/governance/TimelockCon
 import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 import {GovernorCountingSimple} from "@openzeppelin/contracts/governance/extensions/GovernorCountingSimple.sol";
 
+import {AgoraGovernor} from "src/AgoraGovernor.sol";
 import {AgoraGovernorMock} from "test/mocks/AgoraGovernorMock.sol";
 
 import {MockToken} from "test/mocks/MockToken.sol";
@@ -581,6 +582,48 @@ contract Execute is AgoraGovernorTest {
 }
 
 contract Cancel is AgoraGovernorTest {
+    function test_cancel_authorized_succeeds(uint256 _actorSeed) public virtual {
+        address[] memory targets = new address[](1);
+        targets[0] = address(this);
+        uint256[] memory values = new uint256[](1);
+        bytes[] memory calldatas = new bytes[](1);
+        calldatas[0] = abi.encodeWithSelector(this.executeCallback.selector);
+
+        vm.prank(manager);
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+
+        assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Pending));
+
+        address canceller;
+        if (_actorSeed % 3 == 0) canceller = admin;
+        else if (_actorSeed % 3 == 1) canceller = address(timelock);
+        else canceller = manager;
+
+        vm.prank(canceller);
+        governor.cancel(targets, values, calldatas, keccak256("Test"));
+        assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Canceled));
+    }
+
+    function test_cancel_unauthorized_reverts(address _actor) public virtual {
+        vm.assume(_actor != proxyAdmin && _actor != manager && _actor != admin && _actor != address(timelock));
+
+        address[] memory targets = new address[](1);
+        targets[0] = address(this);
+        uint256[] memory values = new uint256[](1);
+        bytes[] memory calldatas = new bytes[](1);
+        calldatas[0] = abi.encodeWithSelector(this.executeCallback.selector);
+
+        vm.prank(manager);
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+
+        assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Pending));
+
+        vm.prank(_actor);
+        vm.expectRevert(abi.encodeWithSelector(AgoraGovernor.GovernorUnauthorizedCancel.selector));
+        governor.cancel(targets, values, calldatas, keccak256("Test"));
+        assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Pending));
+    }
+
     function test_cancel_beforeQueuing_succeeds(
         uint256 _proposalTargetCalldata,
         uint256 _elapsedAfterQueuing,
