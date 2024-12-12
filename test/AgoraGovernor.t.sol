@@ -5,14 +5,15 @@ import "forge-std/Test.sol";
 
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
+import {GovernorCountingSimple} from "@openzeppelin/contracts/governance/extensions/GovernorCountingSimple.sol";
 
-import {AgoraGovernor} from "src/AgoraGovernor.sol";
+import {AgoraGovernorMock} from "test/mocks/AgoraGovernorMock.sol";
 
 import {MockToken} from "test/mocks/MockToken.sol";
 
 contract AgoraGovernorTest is Test {
     // Contracts
-    AgoraGovernor public governor;
+    AgoraGovernorMock public governor;
     TimelockController public timelock;
     MockToken public token;
 
@@ -52,7 +53,7 @@ contract AgoraGovernorTest is Test {
         timelock = new TimelockController(timelockDelay, proposers, executors, deployer);
 
         // Deploy governor
-        governor = new AgoraGovernor(
+        governor = new AgoraGovernorMock(
             votingDelay, votingPeriod, proposalThreshold, quorumNumerator, token, timelock, admin, manager
         );
 
@@ -246,7 +247,7 @@ contract Queue is AgoraGovernorTest {
 
         assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Succeeded));
         vm.prank(_actor);
-        governor.queue(targets, values, calldatas, keccak256("Test"));
+        governor.queue(targets, values, calldatas, "Test");
         assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Queued));
     }
 
@@ -907,7 +908,7 @@ contract CastVoteWithReasonAndParams is AgoraGovernorTest {
         string memory reason = "a nice reason";
 
         vm.prank(manager);
-        uint256 proposalId = governor.propose(targets, values, calldatas, keccak256("Test"));
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
 
         vm.roll(snapshot + 1);
 
@@ -916,7 +917,7 @@ contract CastVoteWithReasonAndParams is AgoraGovernorTest {
         bytes memory params = abi.encode(optionVotes);
 
         vm.prank(_voter);
-        governor.castVoteWithReasonAndParams(proposalId, uint8(IGovernor.VoteType.For), reason, params);
+        governor.castVoteWithReasonAndParams(proposalId, uint8(GovernorCountingSimple.VoteType.For), reason, params);
 
         assertTrue(governor.hasVoted(proposalId, _voter));
     }
@@ -930,7 +931,7 @@ contract VoteSucceeded is AgoraGovernorTest {
         string memory reason = "a nice reason";
 
         vm.prank(manager);
-        uint256 proposalId = governor.propose(targets, values, calldatas, keccak256("Test"));
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
 
         vm.roll(snapshot + 1);
 
@@ -939,7 +940,7 @@ contract VoteSucceeded is AgoraGovernorTest {
         bytes memory params = abi.encode(optionVotes);
 
         vm.prank(_voter);
-        governor.castVoteWithReasonAndParams(proposalId, uint8(IGovernor.VoteType.For), reason, params);
+        governor.castVoteWithReasonAndParams(proposalId, uint8(GovernorCountingSimple.VoteType.For), reason, params);
 
         assertTrue(governor.quorum(proposalId) != 0);
         assertTrue(governor.quorumReached(proposalId));
@@ -955,7 +956,7 @@ contract VoteSucceeded is AgoraGovernorTest {
         string memory reason = "a nice reason";
 
         vm.prank(manager);
-        uint256 proposalId = governor.propose(targets, values, calldatas, keccak256("Test"));
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
 
         vm.roll(snapshot + 1);
 
@@ -964,10 +965,10 @@ contract VoteSucceeded is AgoraGovernorTest {
         bytes memory params = abi.encode(optionVotes);
 
         vm.prank(_voter);
-        governor.castVoteWithReasonAndParams(proposalId, uint8(IGovernor.VoteType.For), reason, params);
+        governor.castVoteWithReasonAndParams(proposalId, uint8(GovernorCountingSimple.VoteType.For), reason, params);
 
         vm.prank(_voter2);
-        governor.castVoteWithReasonAndParams(proposalId, uint8(IGovernor.VoteType.Against), reason, "");
+        governor.castVoteWithReasonAndParams(proposalId, uint8(GovernorCountingSimple.VoteType.Against), reason, "");
 
         assertTrue(governor.quorum(proposalId) != 0);
         assertFalse(governor.voteSucceeded(proposalId));
@@ -975,13 +976,13 @@ contract VoteSucceeded is AgoraGovernorTest {
 }
 
 contract SetVotingDelay is AgoraGovernorTest {
-    function test_setVotingDelay_succeeds(uint256 _votingDelay, uint256 _actorSeed) public {
+    function test_setVotingDelay_succeeds(uint48 _votingDelay, uint256 _actorSeed) public {
         vm.prank(_adminOrTimelock(_actorSeed));
         governor.setVotingDelay(_votingDelay);
         assertEq(governor.votingDelay(), _votingDelay);
     }
 
-    function test_setVotingDelay_unauthorized_reverts(address _actor, uint256 _votingDelay) public {
+    function test_setVotingDelay_unauthorized_reverts(address _actor, uint48 _votingDelay) public {
         vm.assume(_actor != admin && _actor != governor.timelock() && _actor != proxyAdmin);
         vm.expectRevert();
         vm.prank(_actor);
@@ -990,14 +991,14 @@ contract SetVotingDelay is AgoraGovernorTest {
 }
 
 contract SetVotingPeriod is AgoraGovernorTest {
-    function test_setVotingPeriod_succeeds(uint256 _votingPeriod, uint256 _actorSeed) public {
-        _votingPeriod = bound(_votingPeriod, 1, type(uint256).max);
+    function test_setVotingPeriod_succeeds(uint32 _votingPeriod, uint256 _actorSeed) public {
+        vm.assume(_votingPeriod > 0);
         vm.prank(_adminOrTimelock(_actorSeed));
         governor.setVotingPeriod(_votingPeriod);
         assertEq(governor.votingPeriod(), _votingPeriod);
     }
 
-    function test_setVotingPeriod_unauthorized_reverts(address _actor, uint256 _votingPeriod) public {
+    function test_setVotingPeriod_unauthorized_reverts(address _actor, uint32 _votingPeriod) public {
         vm.assume(_actor != admin && _actor != governor.timelock() && _actor != proxyAdmin);
         vm.expectRevert();
         vm.prank(_actor);

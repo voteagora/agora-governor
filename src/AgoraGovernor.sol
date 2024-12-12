@@ -22,7 +22,14 @@ contract AgoraGovernor is
     GovernorTimelockControl
 {
     /*//////////////////////////////////////////////////////////////
-                                ERRORS
+                                 EVENTS
+    //////////////////////////////////////////////////////////////*/
+
+    event AdminSet(address indexed oldAdmin, address indexed newAdmin);
+    event ManagerSet(address indexed oldManager, address indexed newManager);
+
+    /*//////////////////////////////////////////////////////////////
+                                 ERRORS
     //////////////////////////////////////////////////////////////*/
 
     error GovernorUnauthorizedCancel();
@@ -65,6 +72,16 @@ contract AgoraGovernor is
     /*//////////////////////////////////////////////////////////////
                             PUBLIC FUNCTIONS
     //////////////////////////////////////////////////////////////*/
+
+    function setAdmin(address _newAdmin) external onlyGovernance {
+        admin = _newAdmin;
+        emit AdminSet(admin, _newAdmin);
+    }
+
+    function setManager(address _newManager) external onlyGovernance {
+        manager = _newManager;
+        emit ManagerSet(manager, _newManager);
+    }
 
     function cancel(
         address[] memory targets,
@@ -158,6 +175,17 @@ contract AgoraGovernor is
         bytes32 descriptionHash
     ) internal override(Governor, GovernorTimelockControl) {
         GovernorTimelockControl._executeOperations(proposalId, targets, values, calldatas, descriptionHash);
+    }
+
+    function _quorumReached(uint256 proposalId)
+        internal
+        view
+        virtual
+        override(Governor, GovernorCountingSimple)
+        returns (bool)
+    {
+        (uint256 againstVotes, uint256 forVotes, uint256 abstainVotes) = proposalVotes(proposalId);
+        return quorum(proposalSnapshot(proposalId)) <= againstVotes + forVotes + abstainVotes;
     }
 
     function _executor() internal view override(Governor, GovernorTimelockControl) returns (address) {
