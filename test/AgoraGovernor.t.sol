@@ -62,6 +62,11 @@ contract AgoraGovernorTest is Test {
     function executeCallback() public payable virtual {
         counter++;
     }
+
+    function _adminOrTimelock(uint256 _actorSeed) internal returns (address) {
+        if (_actorSeed % 2 == 1) return admin;
+        else return governor.timelock();
+    }
 }
 
 contract Propose is AgoraGovernorTest {
@@ -545,5 +550,158 @@ contract Execute is AgoraGovernorTest {
         );
         vm.prank(manager);
         governor.execute(targets, values, calldatas, keccak256("Test"));
+    }
+}
+
+contract Cancel is AgoraGovernorTest {
+    function test_cancel_beforeQueuing_succeeds(
+        uint256 _proposalTargetCalldata,
+        uint256 _elapsedAfterQueuing,
+        uint256 _actorSeed
+    ) public virtual {
+        _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
+        vm.prank(minter);
+        token.mint(address(this), 1e30);
+        token.delegate(address(this));
+        vm.deal(address(manager), 100 ether);
+
+        address[] memory targets = new address[](1);
+        targets[0] = address(this);
+        uint256[] memory values = new uint256[](1);
+        bytes[] memory calldatas = new bytes[](1);
+        calldatas[0] = abi.encodeWithSelector(this.executeCallback.selector);
+
+        vm.startPrank(admin);
+        governor.setVotingDelay(0);
+        governor.setVotingPeriod(14);
+
+        vm.stopPrank();
+        vm.prank(manager);
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+
+        vm.roll(block.number + 1);
+        governor.castVote(proposalId, 1);
+        vm.roll(block.number + 14);
+
+        assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Succeeded));
+
+        vm.prank(_adminOrTimelock(_actorSeed));
+        governor.cancel(targets, values, calldatas, keccak256("Test"));
+        assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Canceled));
+    }
+
+    function test_cancel_afterQueuing_succeeds(
+        uint256 _proposalTargetCalldata,
+        uint256 _elapsedAfterQueuing,
+        uint256 _actorSeed
+    ) public virtual {
+        _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
+        vm.prank(minter);
+        token.mint(address(this), 1e30);
+        token.delegate(address(this));
+        vm.deal(address(manager), 100 ether);
+
+        address[] memory targets = new address[](1);
+        targets[0] = address(this);
+        uint256[] memory values = new uint256[](1);
+        bytes[] memory calldatas = new bytes[](1);
+        calldatas[0] = abi.encodeWithSelector(this.executeCallback.selector);
+
+        vm.startPrank(admin);
+        governor.setVotingDelay(0);
+        governor.setVotingPeriod(14);
+
+        vm.stopPrank();
+        vm.prank(manager);
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+
+        vm.roll(block.number + 1);
+        governor.castVote(proposalId, 1);
+        vm.roll(block.number + 14);
+
+        vm.prank(manager);
+        governor.queue(targets, values, calldatas, keccak256("Test"));
+        vm.warp(block.timestamp + _elapsedAfterQueuing);
+
+        assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Queued));
+        vm.prank(_adminOrTimelock(_actorSeed));
+        governor.cancel(targets, values, calldatas, keccak256("Test"));
+        assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Canceled));
+    }
+
+    function test_cancel_beforeVoteEnd_succeeds(uint256 _actorSeed) public virtual {
+        vm.prank(minter);
+        token.mint(address(this), 1000);
+        token.delegate(address(this));
+
+        address[] memory targets = new address[](1);
+        targets[0] = address(this);
+        uint256[] memory values = new uint256[](1);
+        bytes[] memory calldatas = new bytes[](1);
+        calldatas[0] = abi.encodeWithSelector(this.executeCallback.selector);
+
+        vm.startPrank(admin);
+        governor.setVotingDelay(0);
+        governor.setVotingPeriod(14);
+
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+        vm.stopPrank();
+
+        vm.prank(_adminOrTimelock(_actorSeed));
+        governor.cancel(targets, values, calldatas, keccak256("Test"));
+        assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Canceled));
+    }
+
+    function test_cancel_afterExecution_reverts(
+        uint256 _proposalTargetCalldata,
+        uint256 _elapsedAfterQueuing,
+        uint256 _actorSeed
+    ) public virtual {
+        _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
+        vm.prank(minter);
+        token.mint(address(this), 1e30);
+        token.delegate(address(this));
+        vm.deal(address(manager), 100 ether);
+
+        address[] memory targets = new address[](1);
+        targets[0] = address(this);
+        uint256[] memory values = new uint256[](1);
+        bytes[] memory calldatas = new bytes[](1);
+        calldatas[0] = abi.encodeWithSelector(this.executeCallback.selector);
+
+        vm.startPrank(admin);
+        governor.setVotingDelay(0);
+        governor.setVotingPeriod(14);
+
+        vm.stopPrank();
+        vm.prank(manager);
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+
+        vm.roll(block.number + 1);
+        governor.castVote(proposalId, 1);
+        vm.roll(block.number + 14);
+
+        vm.startPrank(manager);
+        governor.queue(targets, values, calldatas, keccak256("Test"));
+        vm.warp(block.timestamp + _elapsedAfterQueuing);
+        governor.execute(targets, values, calldatas, keccak256("Test"));
+        vm.stopPrank();
+
+        assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Executed));
+        vm.prank(_adminOrTimelock(_actorSeed));
+        vm.expectRevert("Governor: proposal not active");
+        governor.cancel(targets, values, calldatas, keccak256("Test"));
+    }
+
+    function test_cancel_noProposal_reverts(uint256 _actorSeed) public virtual {
+        address[] memory targets = new address[](1);
+        targets[0] = address(this);
+        uint256[] memory values = new uint256[](1);
+        bytes[] memory calldatas = new bytes[](1);
+        calldatas[0] = abi.encodeWithSelector(this.executeCallback.selector);
+
+        vm.prank(_adminOrTimelock(_actorSeed));
+        vm.expectRevert("Governor: unknown proposal id");
+        governor.cancel(targets, values, calldatas, keccak256("Test"));
     }
 }
