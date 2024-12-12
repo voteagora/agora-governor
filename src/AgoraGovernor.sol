@@ -104,13 +104,11 @@ contract AgoraGovernor is
         return _cancel(targets, values, calldatas, descriptionHash);
     }
 
-    function quorum(uint256 _timepoint)
-        public
-        view
-        virtual
-        override(Governor, GovernorVotesQuorumFraction)
-        returns (uint256)
-    {
+    function quorumDenominator() public view override returns (uint256) {
+        return 10_000;
+    }
+
+    function quorum(uint256 _timepoint) public view override(Governor, GovernorVotesQuorumFraction) returns (uint256) {
         return (token().getPastTotalSupply(_timepoint) * quorumNumerator(_timepoint)) / quorumDenominator();
     }
 
@@ -180,7 +178,6 @@ contract AgoraGovernor is
     function _quorumReached(uint256 proposalId)
         internal
         view
-        virtual
         override(Governor, GovernorCountingSimple)
         returns (bool)
     {

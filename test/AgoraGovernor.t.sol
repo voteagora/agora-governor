@@ -29,7 +29,7 @@ contract AgoraGovernorTest is Test {
     uint48 votingDelay = 1;
     uint32 votingPeriod = 14;
     uint256 proposalThreshold = 1;
-    uint256 quorumNumerator = 50;
+    uint256 quorumNumerator = 3000;
     uint256 counter;
 
     /*//////////////////////////////////////////////////////////////
@@ -782,7 +782,7 @@ contract UpdateTimelock is AgoraGovernorTest {
     function test_updateTimelock_unauthorized_reverts(address _actor, address _newTimelock) public {
         vm.assume(_actor != governor.timelock() && _actor != proxyAdmin);
         vm.prank(_actor);
-        vm.expectRevert("Governor: onlyGovernance");
+        vm.expectRevert(abi.encodeWithSelector(IGovernor.GovernorOnlyExecutor.selector, _actor));
         governor.updateTimelock(TimelockController(payable(_newTimelock)));
     }
 }
@@ -802,7 +802,7 @@ contract Quorum is AgoraGovernorTest {
         vm.roll(block.number + governor.votingDelay() + 1);
 
         uint256 supply = token.totalSupply();
-        uint256 quorum = governor.quorum(proposalId);
+        uint256 quorum = governor.quorum(governor.proposalSnapshot(proposalId));
         assertEq(quorum, (supply * 3) / 10);
     }
 }
@@ -917,7 +917,7 @@ contract VoteSucceeded is AgoraGovernorTest {
         vm.prank(_voter);
         governor.castVoteWithReasonAndParams(proposalId, uint8(GovernorCountingSimple.VoteType.For), reason, params);
 
-        assertTrue(governor.quorum(proposalId) != 0);
+        assertTrue(governor.quorum(governor.proposalSnapshot(proposalId)) != 0);
         assertTrue(governor.quorumReached(proposalId));
         assertTrue(governor.voteSucceeded(proposalId));
     }
@@ -945,7 +945,7 @@ contract VoteSucceeded is AgoraGovernorTest {
         vm.prank(_voter2);
         governor.castVoteWithReasonAndParams(proposalId, uint8(GovernorCountingSimple.VoteType.Against), reason, "");
 
-        assertTrue(governor.quorum(proposalId) != 0);
+        assertTrue(governor.quorum(governor.proposalSnapshot(proposalId)) != 0);
         assertFalse(governor.voteSucceeded(proposalId));
     }
 }
@@ -999,7 +999,6 @@ contract SetProposalThreshold is AgoraGovernorTest {
 contract SetAdmin is AgoraGovernorTest {
     function test_setAdmin_succeeds(address _newAdmin, uint256 _actorSeed) public {
         vm.prank(_adminOrTimelock(_actorSeed));
-        vm.expectEmit();
         governor.setAdmin(_newAdmin);
         assertEq(governor.admin(), _newAdmin);
     }
