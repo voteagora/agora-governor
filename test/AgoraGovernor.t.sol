@@ -719,3 +719,368 @@ contract Cancel is AgoraGovernorTest {
         governor.cancel(targets, values, calldatas, keccak256("Test"));
     }
 }
+
+contract UpdateTimelock is AgoraGovernorTest {
+    function testFuzz_UpdateTimelock(uint256 _elapsedAfterQueuing, address _newTimelock) public {
+        _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
+        vm.prank(minter);
+        token.mint(address(this), 1e30);
+        token.delegate(address(this));
+        vm.deal(address(manager), 100 ether);
+
+        address[] memory targets = new address[](1);
+        targets[0] = address(governor);
+        uint256[] memory values = new uint256[](1);
+        bytes[] memory calldatas = new bytes[](1);
+        calldatas[0] = abi.encodeWithSelector(governor.updateTimelock.selector, address(_newTimelock));
+
+        vm.startPrank(admin);
+        governor.setVotingDelay(0);
+        governor.setVotingPeriod(14);
+
+        vm.stopPrank();
+        vm.prank(manager);
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+
+        vm.roll(block.number + 1);
+        governor.castVote(proposalId, 1);
+        vm.roll(block.number + 14);
+
+        vm.prank(manager);
+        governor.queue(targets, values, calldatas, keccak256("Test"));
+        vm.warp(block.timestamp + _elapsedAfterQueuing);
+
+        vm.prank(manager);
+        governor.execute(targets, values, calldatas, keccak256("Test"));
+        assertEq(governor.timelock(), address(_newTimelock));
+    }
+
+    function testFuzz_RevertIf_NotTimelock(address _actor, address _newTimelock) public {
+        vm.assume(_actor != governor.timelock() && _actor != proxyAdmin);
+        vm.prank(_actor);
+        vm.expectRevert("Governor: onlyGovernance");
+        governor.updateTimelock(TimelockControllerUpgradeable(payable(_newTimelock)));
+    }
+}
+
+contract Quorum is AgoraGovernorTest {
+    function test_CorrectlyCalculatesQuorum(address _voter, uint208 _amount) public virtual {
+        _mintAndDelegate(_voter, _amount);
+        address[] memory targets = new address[](1);
+        targets[0] = address(this);
+        uint256[] memory values = new uint256[](1);
+        bytes[] memory calldatas = new bytes[](1);
+        calldatas[0] = abi.encodeWithSelector(this.executeCallback.selector);
+
+        vm.prank(manager);
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+
+        vm.roll(block.number + governor.votingDelay() + 1);
+
+        uint256 supply = token.totalSupply();
+        uint256 quorum = governor.quorum(proposalId);
+        assertEq(quorum, (supply * 3) / 10);
+    }
+}
+
+contract QuorumReached is AgoraGovernorTest {
+    function test_CorrectlyReturnsQuorumStatus(address _voter, address _voter2) public virtual {
+        vm.assume(_voter != _voter2);
+        _mintAndDelegate(_voter, 30e18);
+        _mintAndDelegate(_voter2, 100e18);
+        address[] memory targets = new address[](1);
+        targets[0] = address(this);
+        uint256[] memory values = new uint256[](1);
+        bytes[] memory calldatas = new bytes[](1);
+        calldatas[0] = abi.encodeWithSelector(this.executeCallback.selector);
+
+        vm.prank(manager);
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+
+        uint256 snapshot = block.number + governor.votingDelay();
+        vm.roll(snapshot + 1);
+
+        assertFalse(governor.quorumReached(proposalId));
+
+        vm.prank(_voter);
+        governor.castVote(proposalId, 1);
+
+        assertFalse(governor.quorumReached(proposalId));
+
+        vm.prank(_voter2);
+        governor.castVote(proposalId, 1);
+
+        assertTrue(governor.quorumReached(proposalId));
+    }
+}
+
+contract CastVote is AgoraGovernorTest {
+    function testFuzz_VoteSucceeded(address _voter, address _voter2) public virtual {
+        vm.assume(_voter != _voter2);
+        _mintAndDelegate(_voter, 100e18);
+        _mintAndDelegate(_voter2, 100e18);
+        vm.prank(admin);
+        proposalTypesConfigurator.setProposalType(0, 3_000, 9_910, "Default", "Lorem Ipsum", address(0));
+        address[] memory targets = new address[](1);
+        targets[0] = address(this);
+        uint256[] memory values = new uint256[](1);
+        bytes[] memory calldatas = new bytes[](1);
+        calldatas[0] = abi.encodeWithSelector(this.executeCallback.selector);
+
+        vm.prank(manager);
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+
+        uint256 snapshot = block.number + governor.votingDelay();
+        vm.roll(snapshot + 1);
+
+        vm.prank(_voter);
+        governor.castVote(proposalId, 1);
+        vm.prank(_voter2);
+        governor.castVote(proposalId, 0);
+
+        assertFalse(governor.voteSucceeded(proposalId));
+
+        vm.prank(manager);
+        proposalId = governor.propose(targets, values, calldatas, "Test2");
+
+        snapshot = block.number + governor.votingDelay();
+        vm.roll(snapshot + 1);
+
+        vm.prank(_voter);
+        governor.castVote(proposalId, 1);
+
+        assertTrue(governor.voteSucceeded(proposalId));
+    }
+}
+
+contract CastVoteWithReasonAndParams is AgoraGovernorTest {
+    function test_CastVoteWithModule(address _voter, address _voter2) public virtual {
+        vm.assume(_voter != _voter2);
+        _mintAndDelegate(_voter, 1e18);
+        _mintAndDelegate(_voter2, 1e20);
+        bytes memory proposalData = _formatProposalData(0);
+        uint256 snapshot = block.number + governor.votingDelay();
+        uint256 weight = token.getVotes(_voter);
+        string memory reason = "a nice reason";
+
+        vm.prank(manager);
+        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
+
+        vm.roll(snapshot + 1);
+
+        // Vote for option 0
+        uint256[] memory optionVotes = new uint256[](1);
+        bytes memory params = abi.encode(optionVotes);
+
+        vm.prank(_voter);
+        vm.expectEmit(true, false, false, true);
+        emit VoteCastWithParams(_voter, proposalId, uint8(VoteType.For), weight, reason, params);
+        governor.castVoteWithReasonAndParams(proposalId, uint8(VoteType.For), reason, params);
+
+        weight = token.getVotes(_voter2);
+        vm.prank(_voter2);
+        vm.expectEmit(true, false, false, true);
+        emit VoteCastWithParams(_voter2, proposalId, uint8(VoteType.Against), weight, reason, params);
+        governor.castVoteWithReasonAndParams(proposalId, uint8(VoteType.Against), reason, params);
+
+        (uint256 againstVotes, uint256 forVotes, uint256 abstainVotes) = governor.proposalVotes(proposalId);
+
+        assertEq(againstVotes, 1e20);
+        assertEq(forVotes, 1e18);
+        assertEq(abstainVotes, 0);
+        assertFalse(governor.voteSucceeded(proposalId));
+        assertEq(module._proposals(proposalId).optionVotes[0], 1e18);
+        assertEq(module._proposals(proposalId).optionVotes[1], 0);
+        assertTrue(governor.hasVoted(proposalId, _voter));
+        assertEq(module.getAccountTotalVotes(proposalId, _voter), optionVotes.length);
+        assertTrue(governor.hasVoted(proposalId, _voter2));
+        assertEq(module.getAccountTotalVotes(proposalId, _voter2), 0);
+    }
+
+    function test_RevertIf_voteNotActive(address _voter) public virtual {
+        _mintAndDelegate(_voter, 100e18);
+        bytes memory proposalData = _formatProposalData(0);
+        string memory reason = "a nice reason";
+
+        vm.prank(manager);
+        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
+
+        // Vote for option 0
+        uint256[] memory optionVotes = new uint256[](1);
+        bytes memory params = abi.encode(optionVotes);
+
+        vm.prank(_voter);
+        vm.expectRevert("Governor: vote not currently active");
+        governor.castVoteWithReasonAndParams(proposalId, uint8(VoteType.For), reason, params);
+    }
+
+    function test_HasVoted(address _voter) public virtual {
+        _mintAndDelegate(_voter, 100e18);
+        bytes memory proposalData = _formatProposalData(0);
+        uint256 snapshot = block.number + governor.votingDelay();
+        string memory reason = "a nice reason";
+
+        vm.prank(manager);
+        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
+
+        vm.roll(snapshot + 1);
+
+        // Vote for option 0
+        uint256[] memory optionVotes = new uint256[](1);
+        bytes memory params = abi.encode(optionVotes);
+
+        vm.prank(_voter);
+        governor.castVoteWithReasonAndParams(proposalId, uint8(VoteType.For), reason, params);
+
+        assertTrue(governor.hasVoted(proposalId, _voter));
+    }
+}
+
+contract VoteSucceeded is AgoraGovernorTest {
+    function test_QuorumReachedAndVoteSucceeded(address _voter) public virtual {
+        _mintAndDelegate(_voter, 100e18);
+        bytes memory proposalData = _formatProposalData(0);
+        uint256 snapshot = block.number + governor.votingDelay();
+        string memory reason = "a nice reason";
+
+        vm.prank(manager);
+        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
+
+        vm.roll(snapshot + 1);
+
+        // Vote for option 0
+        uint256[] memory optionVotes = new uint256[](1);
+        bytes memory params = abi.encode(optionVotes);
+
+        vm.prank(_voter);
+        governor.castVoteWithReasonAndParams(proposalId, uint8(VoteType.For), reason, params);
+
+        assertTrue(governor.quorum(proposalId) != 0);
+        assertTrue(governor.quorumReached(proposalId));
+        assertTrue(governor.voteSucceeded(proposalId));
+    }
+
+    function test_VoteNotSucceeded(address _voter, address _voter2) public virtual {
+        vm.assume(_voter != _voter2);
+        _mintAndDelegate(_voter, 100e18);
+        _mintAndDelegate(_voter2, 200e18);
+        bytes memory proposalData = _formatProposalData(0);
+        uint256 snapshot = block.number + governor.votingDelay();
+        string memory reason = "a nice reason";
+
+        vm.prank(manager);
+        uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
+
+        vm.roll(snapshot + 1);
+
+        // Vote for option 0
+        uint256[] memory optionVotes = new uint256[](1);
+        bytes memory params = abi.encode(optionVotes);
+
+        vm.prank(_voter);
+        governor.castVoteWithReasonAndParams(proposalId, uint8(VoteType.For), reason, params);
+
+        vm.prank(_voter2);
+        governor.castVoteWithReasonAndParams(proposalId, uint8(VoteType.Against), reason, "");
+
+        assertTrue(governor.quorum(proposalId) != 0);
+        assertFalse(governor.voteSucceeded(proposalId));
+    }
+}
+
+contract SetProposalDeadline is AgoraGovernorTest {
+    function testFuzz_SetsProposalDeadlineAsAdminOrTimelock(uint64 _proposalDeadline, uint256 _actorSeed) public {
+        uint256 proposalId = _createValidProposal();
+        vm.prank(_adminOrTimelock(_actorSeed));
+        governor.setProposalDeadline(proposalId, _proposalDeadline);
+        assertEq(governor.proposalDeadline(proposalId), _proposalDeadline);
+    }
+
+    function testFuzz_RevertIf_NotAdminOrTimelock(address _actor, uint64 _proposalDeadline) public {
+        vm.assume(_actor != admin && _actor != governor.timelock() && _actor != proxyAdmin);
+        uint256 proposalId = _createValidProposal();
+        vm.prank(_actor);
+        vm.expectRevert(NotAdminOrTimelock.selector);
+        governor.setProposalDeadline(proposalId, _proposalDeadline);
+    }
+}
+
+contract SetVotingDelay is AgoraGovernorTest {
+    function testFuzz_SetsVotingDelayWhenAdminOrTimelock(uint256 _votingDelay, uint256 _actorSeed) public {
+        vm.prank(_adminOrTimelock(_actorSeed));
+        governor.setVotingDelay(_votingDelay);
+        assertEq(governor.votingDelay(), _votingDelay);
+    }
+
+    function testFuzz_RevertIf_NotAdminOrTimelock(address _actor, uint256 _votingDelay) public {
+        vm.assume(_actor != admin && _actor != governor.timelock() && _actor != proxyAdmin);
+        vm.expectRevert(NotAdminOrTimelock.selector);
+        vm.prank(_actor);
+        governor.setVotingDelay(_votingDelay);
+    }
+}
+
+contract SetVotingPeriod is AgoraGovernorTest {
+    function testFuzz_SetsVotingPeriodAsAdminOrTimelock(uint256 _votingPeriod, uint256 _actorSeed) public {
+        _votingPeriod = bound(_votingPeriod, 1, type(uint256).max);
+        vm.prank(_adminOrTimelock(_actorSeed));
+        governor.setVotingPeriod(_votingPeriod);
+        assertEq(governor.votingPeriod(), _votingPeriod);
+    }
+
+    function testFuzz_RevertIf_NotAdminOrTimelock(address _actor, uint256 _votingPeriod) public {
+        vm.assume(_actor != admin && _actor != governor.timelock() && _actor != proxyAdmin);
+        vm.expectRevert(NotAdminOrTimelock.selector);
+        vm.prank(_actor);
+        governor.setVotingPeriod(_votingPeriod);
+    }
+}
+
+contract SetProposalThreshold is AgoraGovernorTest {
+    function testFuzz_SetsProposalThresholdAsAdminOrTimelock(uint256 _proposalThreshold, uint256 _actorSeed) public {
+        vm.prank(_adminOrTimelock(_actorSeed));
+        governor.setProposalThreshold(_proposalThreshold);
+        assertEq(governor.proposalThreshold(), _proposalThreshold);
+    }
+
+    function testFuzz_RevertIf_NotAdminOrTimelock(address _actor, uint256 _proposalThreshold) public {
+        vm.assume(_actor != admin && _actor != governor.timelock() && _actor != proxyAdmin);
+        vm.expectRevert(NotAdminOrTimelock.selector);
+        vm.prank(_actor);
+        governor.setProposalThreshold(_proposalThreshold);
+    }
+}
+
+contract SetAdmin is AgoraGovernorTest {
+    function testFuzz_SetsNewAdmin(address _newAdmin, uint256 _actorSeed) public {
+        vm.prank(_adminOrTimelock(_actorSeed));
+        vm.expectEmit();
+        emit AdminSet(admin, _newAdmin);
+        governor.setAdmin(_newAdmin);
+        assertEq(governor.admin(), _newAdmin);
+    }
+
+    function testFuzz_RevertIf_NotAdmin(address _actor, address _newAdmin) public {
+        vm.assume(_actor != admin && _actor != governor.timelock() && _actor != proxyAdmin);
+        vm.prank(_actor);
+        vm.expectRevert(NotAdminOrTimelock.selector);
+        governor.setAdmin(_newAdmin);
+    }
+}
+
+contract SetManager is AgoraGovernorTest {
+    function testFuzz_SetsNewManager(address _newManager, uint256 _actorSeed) public {
+        vm.prank(_adminOrTimelock(_actorSeed));
+        vm.expectEmit();
+        emit ManagerSet(manager, _newManager);
+        governor.setManager(_newManager);
+        assertEq(governor.manager(), _newManager);
+    }
+
+    function testFuzz_RevertIf_NotAdmin(address _actor, address _newManager) public {
+        vm.assume(_actor != admin && _actor != governor.timelock() && _actor != proxyAdmin);
+        vm.prank(_actor);
+        vm.expectRevert(NotAdminOrTimelock.selector);
+        governor.setManager(_newManager);
+    }
+}
