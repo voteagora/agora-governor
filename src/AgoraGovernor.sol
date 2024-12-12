@@ -22,6 +22,12 @@ contract AgoraGovernor is
     GovernorTimelockControl
 {
     /*//////////////////////////////////////////////////////////////
+                                ERRORS
+    //////////////////////////////////////////////////////////////*/
+
+    error GovernorUnauthorizedCancel();
+
+    /*//////////////////////////////////////////////////////////////
                                 STORAGE
     //////////////////////////////////////////////////////////////*/
 
@@ -59,6 +65,27 @@ contract AgoraGovernor is
     /*//////////////////////////////////////////////////////////////
                             PUBLIC FUNCTIONS
     //////////////////////////////////////////////////////////////*/
+
+    function cancel(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) public override returns (uint256) {
+        // The proposalId will be recomputed in the `_cancel` call further down. However we need the value before we
+        // do the internal call, because we need to check the proposal state BEFORE the internal `_cancel` call
+        // changes it. The `hashProposal` duplication has a cost that is limited, and that we accept.
+        uint256 proposalId = hashProposal(targets, values, calldatas, descriptionHash);
+
+        address sender = _msgSender();
+        // Allow the proposer, admin, or executor (timelock) to cancel.
+        if (sender != proposalProposer(proposalId) && sender != admin && sender != _executor()) {
+            revert GovernorUnauthorizedCancel();
+        }
+
+        // Proposals can only be cancelled in any state other than Canceled, Expired, or Executed.
+        return _cancel(targets, values, calldatas, descriptionHash);
+    }
 
     function quorum(uint256 _timepoint)
         public

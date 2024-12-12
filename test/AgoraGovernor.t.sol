@@ -63,9 +63,9 @@ contract AgoraGovernorTest is Test {
         counter++;
     }
 
-    function _adminOrTimelock(uint256 _actorSeed) internal returns (address) {
+    function _adminOrTimelock(uint256 _actorSeed) internal view returns (address) {
         if (_actorSeed % 2 == 1) return admin;
-        else return governor.timelock();
+        else return address(timelock);
     }
 }
 
@@ -643,9 +643,10 @@ contract Cancel is AgoraGovernorTest {
         vm.startPrank(admin);
         governor.setVotingDelay(0);
         governor.setVotingPeriod(14);
-
-        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
         vm.stopPrank();
+
+        vm.prank(manager);
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
 
         vm.prank(_adminOrTimelock(_actorSeed));
         governor.cancel(targets, values, calldatas, keccak256("Test"));
@@ -687,9 +688,20 @@ contract Cancel is AgoraGovernorTest {
         governor.execute(targets, values, calldatas, keccak256("Test"));
         vm.stopPrank();
 
+        bytes32 all = bytes32((2 ** (uint8(type(IGovernor.ProposalState).max) + 1)) - 1);
+
         assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Executed));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IGovernor.GovernorUnexpectedProposalState.selector,
+                proposalId,
+                governor.state(proposalId),
+                all ^ bytes32(1 << uint8(IGovernor.ProposalState.Canceled))
+                    ^ bytes32(1 << uint8(IGovernor.ProposalState.Expired))
+                    ^ bytes32(1 << uint8(IGovernor.ProposalState.Executed))
+            )
+        );
         vm.prank(_adminOrTimelock(_actorSeed));
-        vm.expectRevert("Governor: proposal not active");
         governor.cancel(targets, values, calldatas, keccak256("Test"));
     }
 
@@ -700,8 +712,10 @@ contract Cancel is AgoraGovernorTest {
         bytes[] memory calldatas = new bytes[](1);
         calldatas[0] = abi.encodeWithSelector(this.executeCallback.selector);
 
+        uint256 proposalId = governor.hashProposal(targets, values, calldatas, keccak256("Test"));
+
         vm.prank(_adminOrTimelock(_actorSeed));
-        vm.expectRevert("Governor: unknown proposal id");
+        vm.expectRevert(abi.encodeWithSelector(IGovernor.GovernorNonexistentProposal.selector, proposalId));
         governor.cancel(targets, values, calldatas, keccak256("Test"));
     }
 }
