@@ -22,4 +22,7 @@ contract MockToken is ERC20, Ownable, ERC20Permit, ERC20Votes {
     function nonces(address owner) public view override(ERC20Permit, Nonces) returns (uint256) {
         return super.nonces(owner);
     }
+
+    // Exclude from coverage report
+    function test() public virtual {}
 }

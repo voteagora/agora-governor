@@ -117,6 +117,9 @@ contract AgoraGovernorTest is Test {
 
         return (targets, values, calldatas);
     }
+
+    // Exclude from coverage report
+    function test() public virtual {}
 }
 
 contract Propose is AgoraGovernorTest {
