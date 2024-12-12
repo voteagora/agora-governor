@@ -951,8 +951,8 @@ contract VoteSucceeded is AgoraGovernorTest {
 }
 
 contract SetVotingDelay is AgoraGovernorTest {
-    function test_setVotingDelay_succeeds(uint48 _votingDelay, uint256 _actorSeed) public {
-        vm.prank(_adminOrTimelock(_actorSeed));
+    function test_setVotingDelay_succeeds(uint48 _votingDelay) public {
+        vm.prank(admin);
         governor.setVotingDelay(_votingDelay);
         assertEq(governor.votingDelay(), _votingDelay);
     }
@@ -966,9 +966,9 @@ contract SetVotingDelay is AgoraGovernorTest {
 }
 
 contract SetVotingPeriod is AgoraGovernorTest {
-    function test_setVotingPeriod_succeeds(uint32 _votingPeriod, uint256 _actorSeed) public {
+    function test_setVotingPeriod_succeeds(uint32 _votingPeriod) public {
         vm.assume(_votingPeriod > 0);
-        vm.prank(_adminOrTimelock(_actorSeed));
+        vm.prank(admin);
         governor.setVotingPeriod(_votingPeriod);
         assertEq(governor.votingPeriod(), _votingPeriod);
     }
@@ -982,8 +982,8 @@ contract SetVotingPeriod is AgoraGovernorTest {
 }
 
 contract SetProposalThreshold is AgoraGovernorTest {
-    function test_setProposalThreshold_succeeds(uint256 _proposalThreshold, uint256 _actorSeed) public {
-        vm.prank(_adminOrTimelock(_actorSeed));
+    function test_setProposalThreshold_succeeds(uint256 _proposalThreshold) public {
+        vm.prank(admin);
         governor.setProposalThreshold(_proposalThreshold);
         assertEq(governor.proposalThreshold(), _proposalThreshold);
     }
@@ -997,8 +997,8 @@ contract SetProposalThreshold is AgoraGovernorTest {
 }
 
 contract SetAdmin is AgoraGovernorTest {
-    function test_setAdmin_succeeds(address _newAdmin, uint256 _actorSeed) public {
-        vm.prank(_adminOrTimelock(_actorSeed));
+    function test_setAdmin_succeeds(address _newAdmin) public {
+        vm.prank(admin);
         governor.setAdmin(_newAdmin);
         assertEq(governor.admin(), _newAdmin);
     }
@@ -1012,8 +1012,8 @@ contract SetAdmin is AgoraGovernorTest {
 }
 
 contract SetManager is AgoraGovernorTest {
-    function test_setManager_succeeds(address _newManager, uint256 _actorSeed) public {
-        vm.prank(_adminOrTimelock(_actorSeed));
+    function test_setManager_succeeds(address _newManager) public {
+        vm.prank(admin);
         governor.setManager(_newManager);
         assertEq(governor.manager(), _newManager);
     }
