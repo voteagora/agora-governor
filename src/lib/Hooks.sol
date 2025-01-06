@@ -90,10 +90,10 @@ library Hooks {
         }
     }
 
-    function parseProposalId(bytes memory result) internal pure returns (uint256 proposalId) {
-        // equivalent: (, proposalId) = abi.decode(result, (bytes4, uint256));
+    function parseUint256(bytes memory result) internal pure returns (uint256 output) {
+        // equivalent: (, number) = abi.decode(result, (bytes4, uint256));
         assembly ("memory-safe") {
-            proposalId := mload(add(result, 0x20))
+            output := mload(add(result, 0x20))
         }
     }
 
@@ -173,30 +173,85 @@ library Hooks {
     }
 
     /// @notice calls beforeQuorumCalculation hook if permissioned and validates return value
-    function beforeQuorumCalculation(IHooks self) internal view noSelfCall(self) {
+    function beforeQuorumCalculation(IHooks self, uint256 timepoint)
+        internal
+        view
+        noSelfCall(self)
+        returns (uint256 returnedQuorum)
+    {
         if (self.hasPermission(BEFORE_QUORUM_CALCULATION_FLAG)) {
-            self.staticCallHook(abi.encodeCall(IHooks.beforeQuorumCalculation, (msg.sender)));
+            bytes memory result =
+                self.staticCallHook(abi.encodeCall(IHooks.beforeQuorumCalculation, (msg.sender, timepoint)));
+
+            // A length of 36 bytes is required to return a bytes4 and a 32 byte proposal ID
+            if (result.length != 36) revert InvalidHookResponse();
+
+            // Extract the proposal ID from the result
+            returnedQuorum = parseUint256(result);
         }
     }
 
     /// @notice calls afterQuorumCalculation hook if permissioned and validates return value
-    function afterQuorumCalculation(IHooks self) internal view noSelfCall(self) {
+    function afterQuorumCalculation(IHooks self, uint256 timepoint)
+        internal
+        view
+        noSelfCall(self)
+        returns (uint256 returnedQuorum)
+    {
         if (self.hasPermission(AFTER_QUORUM_CALCULATION_FLAG)) {
-            self.staticCallHook(abi.encodeCall(IHooks.afterQuorumCalculation, (msg.sender)));
+            bytes memory result =
+                self.staticCallHook(abi.encodeCall(IHooks.afterQuorumCalculation, (msg.sender, timepoint)));
+
+            // A length of 36 bytes is required to return a bytes4 and a 32 byte proposal ID
+            if (result.length != 36) revert InvalidHookResponse();
+
+            // Extract the proposal ID from the result
+            returnedQuorum = parseUint256(result);
         }
     }
 
     /// @notice calls beforeVote hook if permissioned and validates return value
-    function beforeVote(IHooks self) internal noSelfCall(self) {
+    function beforeVote(
+        IHooks self,
+        uint256 proposalId,
+        address account,
+        uint8 support,
+        string memory reason,
+        bytes memory params
+    ) internal noSelfCall(self) returns (uint256 returnedWeight) {
         if (self.hasPermission(BEFORE_VOTE_FLAG)) {
-            self.callHook(abi.encodeCall(IHooks.beforeVote, (msg.sender)));
+            bytes memory result = self.callHook(
+                abi.encodeCall(IHooks.beforeVote, (msg.sender, proposalId, account, support, reason, params))
+            );
+
+            // A length of 36 bytes is required to return a bytes4 and a 32 byte proposal ID
+            if (result.length != 36) revert InvalidHookResponse();
+
+            // Extract the proposal ID from the result
+            returnedWeight = parseUint256(result);
         }
     }
 
     /// @notice calls afterVote hook if permissioned and validates return value
-    function afterVote(IHooks self) internal noSelfCall(self) {
+    function afterVote(
+        IHooks self,
+        uint256 weight,
+        uint256 proposalId,
+        address account,
+        uint8 support,
+        string memory reason,
+        bytes memory params
+    ) internal noSelfCall(self) returns (uint256 returnedWeight) {
         if (self.hasPermission(AFTER_VOTE_FLAG)) {
-            self.callHook(abi.encodeCall(IHooks.afterVote, (msg.sender)));
+            bytes memory result = self.callHook(
+                abi.encodeCall(IHooks.afterVote, (msg.sender, weight, proposalId, account, support, reason, params))
+            );
+
+            // A length of 36 bytes is required to return a bytes4 and a 32 byte proposal ID
+            if (result.length != 36) revert InvalidHookResponse();
+
+            // Extract the proposal ID from the result
+            returnedWeight = parseUint256(result);
         }
     }
 
@@ -217,7 +272,7 @@ library Hooks {
             if (result.length != 36) revert InvalidHookResponse();
 
             // Extract the proposal ID from the result
-            returnedProposalId = parseProposalId(result);
+            returnedProposalId = parseUint256(result);
         }
     }
 
@@ -239,7 +294,7 @@ library Hooks {
             if (result.length != 36) revert InvalidHookResponse();
 
             // Extract the proposal ID from the result
-            returnedProposalId = parseProposalId(result);
+            returnedProposalId = parseUint256(result);
         }
     }
 
@@ -260,7 +315,7 @@ library Hooks {
             if (result.length != 36) revert InvalidHookResponse();
 
             // Extract the proposal ID from the result
-            returnedProposalId = parseProposalId(result);
+            returnedProposalId = parseUint256(result);
         }
     }
 
@@ -284,7 +339,7 @@ library Hooks {
             if (result.length != 36) revert InvalidHookResponse();
 
             // Extract the proposal ID from the result
-            returnedProposalId = parseProposalId(result);
+            returnedProposalId = parseUint256(result);
         }
     }
 
@@ -305,7 +360,7 @@ library Hooks {
             if (result.length != 36) revert InvalidHookResponse();
 
             // Extract the proposal ID from the result
-            returnedProposalId = parseProposalId(result);
+            returnedProposalId = parseUint256(result);
         }
     }
 
@@ -329,7 +384,7 @@ library Hooks {
             if (result.length != 36) revert InvalidHookResponse();
 
             // Extract the proposal ID from the result
-            returnedProposalId = parseProposalId(result);
+            returnedProposalId = parseUint256(result);
         }
     }
 

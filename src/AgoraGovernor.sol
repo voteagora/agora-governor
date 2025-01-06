@@ -177,11 +177,16 @@ contract AgoraGovernor is
         override(Governor, GovernorVotesQuorumFraction)
         returns (uint256 _quorum)
     {
-        hooks.beforeQuorumCalculation();
+        uint256 beforeQuorum = hooks.beforeQuorumCalculation(_timepoint);
 
         _quorum = (token().getPastTotalSupply(_timepoint) * quorumNumerator(_timepoint)) / quorumDenominator();
 
-        hooks.afterQuorumCalculation();
+        uint256 afterQuorum = hooks.afterQuorumCalculation(_timepoint);
+
+        // TODO: check that before and after quorum are the same
+
+        // TODO: replace this with a flag on hook address
+        return beforeQuorum != 0 ? beforeQuorum : _quorum;
     }
 
     function proposalNeedsQueuing(uint256 proposalId)
@@ -224,13 +229,16 @@ contract AgoraGovernor is
         override(Governor)
         returns (uint256)
     {
-        hooks.beforeVote();
+        uint256 beforeWeight = hooks.beforeVote(proposalId, account, support, reason, params);
 
         uint256 votedWeight = super._castVote(proposalId, account, support, reason, params);
 
-        hooks.afterVote();
+        uint256 afterWeight = hooks.afterVote(votedWeight, proposalId, account, support, reason, params);
 
-        return votedWeight;
+        // TODO: check that before and after weights are the same
+
+        // TODO: replace this with a flag on hook address
+        return beforeWeight != 0 ? beforeWeight : votedWeight;
     }
 
     function _cancel(
