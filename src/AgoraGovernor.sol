@@ -107,13 +107,16 @@ contract AgoraGovernor is
         bytes[] memory calldatas,
         string memory description
     ) public virtual override returns (uint256) {
-        hooks.beforePropose(targets, values, calldatas, description);
+        uint256 beforeProposalId = hooks.beforePropose(targets, values, calldatas, description);
 
         uint256 proposalId = super.propose(targets, values, calldatas, description);
 
-        uint256 returnedProposalId = hooks.afterPropose(proposalId, targets, values, calldatas, description);
+        uint256 afterProposalId = hooks.afterPropose(proposalId, targets, values, calldatas, description);
 
-        return returnedProposalId != 0 ? returnedProposalId : proposalId;
+        // TODO: check that before and after proposal IDs are the same
+
+        // TODO: replace this with a flag on hook address
+        return beforeProposalId != 0 ? beforeProposalId : proposalId;
     }
 
     function execute(
@@ -122,13 +125,16 @@ contract AgoraGovernor is
         bytes[] memory calldatas,
         bytes32 descriptionHash
     ) public payable virtual override returns (uint256) {
-        hooks.beforeExecute();
+        uint256 beforeProposalId = hooks.beforeExecute(targets, values, calldatas, descriptionHash);
 
         uint256 proposalId = super.execute(targets, values, calldatas, descriptionHash);
 
-        hooks.afterExecute();
+        uint256 afterProposalId = hooks.afterExecute(proposalId, targets, values, calldatas, descriptionHash);
 
-        return proposalId;
+        // TODO: check that before and after proposal IDs are the same
+
+        // TODO: replace this with a flag on hook address
+        return beforeProposalId != 0 ? beforeProposalId : proposalId;
     }
 
     function cancel(
@@ -137,7 +143,7 @@ contract AgoraGovernor is
         bytes[] memory calldatas,
         bytes32 descriptionHash
     ) public override returns (uint256) {
-        hooks.beforeCancel();
+        uint256 beforeProposalId = hooks.beforeCancel(targets, values, calldatas, descriptionHash);
 
         // The proposalId will be recomputed in the `_cancel` call further down. However we need the value before we
         // do the internal call, because we need to check the proposal state BEFORE the internal `_cancel` call
@@ -153,9 +159,12 @@ contract AgoraGovernor is
         // Proposals can only be cancelled in any state other than Canceled, Expired, or Executed.
         _cancel(targets, values, calldatas, descriptionHash);
 
-        hooks.afterCancel();
+        uint256 afterProposalId = hooks.afterCancel(proposalId, targets, values, calldatas, descriptionHash);
 
-        return proposalId;
+        // TODO: check that before and after proposal IDs are the same
+
+        // TODO: replace this with a flag on hook address
+        return beforeProposalId != 0 ? beforeProposalId : proposalId;
     }
 
     function quorumDenominator() public view override returns (uint256) {

@@ -43,14 +43,40 @@ interface IHooks {
     ) external returns (bytes4);
 
     /// @notice The hook called before a proposal is canceled
-    function beforeCancel(address sender) external returns (bytes4);
+    function beforeCancel(
+        address sender,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) external returns (bytes4);
 
     /// @notice The hook called after a proposal is canceled
-    function afterCancel(address sender) external returns (bytes4);
+    function afterCancel(
+        address sender,
+        uint256 proposalId,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) external returns (bytes4);
 
     /// @notice The hook called before a proposal is executed
-    function beforeExecute(address sender) external returns (bytes4);
+    function beforeExecute(
+        address sender,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) external returns (bytes4);
 
     /// @notice The hook called after a proposal is executed
-    function afterExecute(address sender) external returns (bytes4);
+    function afterExecute(
+        address sender,
+        uint256 proposalId,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) external returns (bytes4);
 }

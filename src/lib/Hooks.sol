@@ -90,6 +90,13 @@ library Hooks {
         }
     }
 
+    function parseProposalId(bytes memory result) internal pure returns (uint256 proposalId) {
+        // equivalent: (, proposalId) = abi.decode(result, (bytes4, uint256));
+        assembly ("memory-safe") {
+            proposalId := mload(add(result, 0x20))
+        }
+    }
+
     /// @notice performs a hook call using the given calldata on the given hook that doesn't return a response
     /// @return result The complete data returned by the hook
     function callHook(IHooks self, bytes memory data) internal returns (bytes memory result) {
@@ -200,9 +207,17 @@ library Hooks {
         uint256[] memory values,
         bytes[] memory calldatas,
         string memory description
-    ) internal noSelfCall(self) {
+    ) internal noSelfCall(self) returns (uint256 returnedProposalId) {
         if (self.hasPermission(BEFORE_PROPOSE_FLAG)) {
-            self.callHook(abi.encodeCall(IHooks.beforePropose, (msg.sender, targets, values, calldatas, description)));
+            bytes memory result = self.callHook(
+                abi.encodeCall(IHooks.beforePropose, (msg.sender, targets, values, calldatas, description))
+            );
+
+            // A length of 36 bytes is required to return a bytes4 and a 32 byte proposal ID
+            if (result.length != 36) revert InvalidHookResponse();
+
+            // Extract the proposal ID from the result
+            returnedProposalId = parseProposalId(result);
         }
     }
 
@@ -224,37 +239,97 @@ library Hooks {
             if (result.length != 36) revert InvalidHookResponse();
 
             // Extract the proposal ID from the result
-            assembly ("memory-safe") {
-                returnedProposalId := mload(add(result, 0x20))
-            }
+            returnedProposalId = parseProposalId(result);
         }
     }
 
     /// @notice calls beforeCancel hook if permissioned and validates return value
-    function beforeCancel(IHooks self) internal noSelfCall(self) {
+    function beforeCancel(
+        IHooks self,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) internal noSelfCall(self) returns (uint256 returnedProposalId) {
         if (self.hasPermission(BEFORE_CANCEL_FLAG)) {
-            self.callHook(abi.encodeCall(IHooks.beforeCancel, (msg.sender)));
+            bytes memory result = self.callHook(
+                abi.encodeCall(IHooks.beforeCancel, (msg.sender, targets, values, calldatas, descriptionHash))
+            );
+
+            // A length of 36 bytes is required to return a bytes4 and a 32 byte proposal ID
+            if (result.length != 36) revert InvalidHookResponse();
+
+            // Extract the proposal ID from the result
+            returnedProposalId = parseProposalId(result);
         }
     }
 
     /// @notice calls afterCancel hook if permissioned and validates return value
-    function afterCancel(IHooks self) internal noSelfCall(self) {
+    function afterCancel(
+        IHooks self,
+        uint256 proposalId,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) internal noSelfCall(self) returns (uint256 returnedProposalId) {
         if (self.hasPermission(AFTER_CANCEL_FLAG)) {
-            self.callHook(abi.encodeCall(IHooks.afterCancel, (msg.sender)));
+            bytes memory result = self.callHook(
+                abi.encodeCall(
+                    IHooks.afterCancel, (msg.sender, proposalId, targets, values, calldatas, descriptionHash)
+                )
+            );
+
+            // A length of 36 bytes is required to return a bytes4 and a 32 byte proposal ID
+            if (result.length != 36) revert InvalidHookResponse();
+
+            // Extract the proposal ID from the result
+            returnedProposalId = parseProposalId(result);
         }
     }
 
     /// @notice calls beforeExecute hook if permissioned and validates return value
-    function beforeExecute(IHooks self) internal noSelfCall(self) {
+    function beforeExecute(
+        IHooks self,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) internal noSelfCall(self) returns (uint256 returnedProposalId) {
         if (self.hasPermission(BEFORE_EXECUTE_FLAG)) {
-            self.callHook(abi.encodeCall(IHooks.beforeExecute, (msg.sender)));
+            bytes memory result = self.callHook(
+                abi.encodeCall(IHooks.beforeExecute, (msg.sender, targets, values, calldatas, descriptionHash))
+            );
+
+            // A length of 36 bytes is required to return a bytes4 and a 32 byte proposal ID
+            if (result.length != 36) revert InvalidHookResponse();
+
+            // Extract the proposal ID from the result
+            returnedProposalId = parseProposalId(result);
         }
     }
 
     /// @notice calls afterExecute hook if permissioned and validates return value
-    function afterExecute(IHooks self) internal noSelfCall(self) {
+    function afterExecute(
+        IHooks self,
+        uint256 proposalId,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) internal noSelfCall(self) returns (uint256 returnedProposalId) {
         if (self.hasPermission(AFTER_EXECUTE_FLAG)) {
-            self.callHook(abi.encodeCall(IHooks.afterExecute, (msg.sender)));
+            bytes memory result = self.callHook(
+                abi.encodeCall(
+                    IHooks.afterExecute, (msg.sender, proposalId, targets, values, calldatas, descriptionHash)
+                )
+            );
+
+            // A length of 36 bytes is required to return a bytes4 and a 32 byte proposal ID
+            if (result.length != 36) revert InvalidHookResponse();
+
+            // Extract the proposal ID from the result
+            returnedProposalId = parseProposalId(result);
         }
     }
 
