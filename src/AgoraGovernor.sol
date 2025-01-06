@@ -11,6 +11,9 @@ import {GovernorVotes} from "@openzeppelin/contracts/governance/extensions/Gover
 import {GovernorSettings} from "@openzeppelin/contracts/governance/extensions/GovernorSettings.sol";
 import {GovernorTimelockControl} from "@openzeppelin/contracts/governance/extensions/GovernorTimelockControl.sol";
 
+import {IHooks} from "src/interfaces/IHooks.sol";
+import {Hooks} from "src/lib/Hooks.sol";
+
 /// @title AgoraGovernor
 /// @notice Agora Governor contract
 /// @custom:security-contact security@voteagora.com
@@ -21,6 +24,8 @@ contract AgoraGovernor is
     GovernorSettings,
     GovernorTimelockControl
 {
+    using Hooks for IHooks;
+
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
@@ -33,6 +38,7 @@ contract AgoraGovernor is
     //////////////////////////////////////////////////////////////*/
 
     error GovernorUnauthorizedCancel();
+    error HookAddressNotValid();
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
@@ -56,7 +62,8 @@ contract AgoraGovernor is
         IVotes _token,
         TimelockController _timelock,
         address _admin,
-        address _manager
+        address _manager,
+        IHooks _hooks
     )
         Governor("AgoraGovernor")
         GovernorCountingSimple()
@@ -65,8 +72,14 @@ contract AgoraGovernor is
         GovernorSettings(_votingDelay, _votingPeriod, _proposalThreshold)
         GovernorTimelockControl(_timelock)
     {
+        if (!_hooks.isValidHookAddress()) revert Hooks.HookAddressNotValid(address(_hooks));
+
+        _hooks.beforeInitialize();
+
         admin = _admin;
         manager = _manager;
+
+        _hooks.afterInitialize();
     }
 
     /*//////////////////////////////////////////////////////////////

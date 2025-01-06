@@ -5,6 +5,7 @@ import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 
 import {AgoraGovernor} from "src/AgoraGovernor.sol";
+import {IHooks} from "src/interfaces/IHooks.sol";
 
 // Expose internal functions for testing
 contract AgoraGovernorMock is AgoraGovernor {
@@ -26,7 +27,8 @@ contract AgoraGovernorMock is AgoraGovernor {
             _token,
             _timelock,
             _admin,
-            _manager
+            _manager,
+            IHooks(address(0))
         )
     {}
 
