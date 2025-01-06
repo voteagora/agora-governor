@@ -12,10 +12,10 @@ interface IHooks {
     function afterInitialize(address sender) external returns (bytes4);
 
     /// @notice The hook called before quorum calculation is performed
-    function beforeQuorumCalculation(address sender) external returns (bytes4);
+    function beforeQuorumCalculation(address sender) external view returns (bytes4);
 
     /// @notice The hook called after quorum calculation is performed
-    function afterQuorumCalculation(address sender) external returns (bytes4);
+    function afterQuorumCalculation(address sender) external view returns (bytes4);
 
     /// @notice The hook called before a vote is cast
     function beforeVote(address sender) external returns (bytes4);

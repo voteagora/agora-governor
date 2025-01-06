@@ -161,8 +161,17 @@ contract AgoraGovernor is
         return 10_000;
     }
 
-    function quorum(uint256 _timepoint) public view override(Governor, GovernorVotesQuorumFraction) returns (uint256) {
-        return (token().getPastTotalSupply(_timepoint) * quorumNumerator(_timepoint)) / quorumDenominator();
+    function quorum(uint256 _timepoint)
+        public
+        view
+        override(Governor, GovernorVotesQuorumFraction)
+        returns (uint256 _quorum)
+    {
+        hooks.beforeQuorumCalculation();
+
+        _quorum = (token().getPastTotalSupply(_timepoint) * quorumNumerator(_timepoint)) / quorumDenominator();
+
+        hooks.afterQuorumCalculation();
     }
 
     function proposalNeedsQueuing(uint256 proposalId)

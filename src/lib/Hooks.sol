@@ -117,6 +117,33 @@ library Hooks {
         }
     }
 
+    /// @notice performs a hook static call using the given calldata on the given hook that doesn't return a response
+    /// @return result The complete data returned by the hook
+    function staticCallHook(IHooks self, bytes memory data) internal view returns (bytes memory result) {
+        bool success;
+        assembly ("memory-safe") {
+            success := staticcall(gas(), self, add(data, 0x20), mload(data), 0, 0)
+        }
+        if (!success) revert HookCallFailed();
+
+        // The call was successful, fetch the returned data
+        assembly ("memory-safe") {
+            // allocate result byte array from the free memory pointer
+            result := mload(0x40)
+            // store new free memory pointer at the end of the array padded to 32 bytes
+            mstore(0x40, add(result, and(add(returndatasize(), 0x3f), not(0x1f))))
+            // store length in memory
+            mstore(result, returndatasize())
+            // copy return data to result
+            returndatacopy(add(result, 0x20), 0, returndatasize())
+        }
+
+        // Length must be at least 32 to contain the selector. Check expected selector and returned selector match.
+        if (result.length < 32 || parseSelector(result) != parseSelector(data)) {
+            revert InvalidHookResponse();
+        }
+    }
+
     /// @notice modifier to prevent calling a hook if they initiated the action
     modifier noSelfCall(IHooks self) {
         if (msg.sender != address(self)) {
@@ -139,16 +166,16 @@ library Hooks {
     }
 
     /// @notice calls beforeQuorumCalculation hook if permissioned and validates return value
-    function beforeQuorumCalculation(IHooks self) internal noSelfCall(self) {
+    function beforeQuorumCalculation(IHooks self) internal view noSelfCall(self) {
         if (self.hasPermission(BEFORE_QUORUM_CALCULATION_FLAG)) {
-            self.callHook(abi.encodeCall(IHooks.beforeQuorumCalculation, (msg.sender)));
+            self.staticCallHook(abi.encodeCall(IHooks.beforeQuorumCalculation, (msg.sender)));
         }
     }
 
     /// @notice calls afterQuorumCalculation hook if permissioned and validates return value
-    function afterQuorumCalculation(IHooks self) internal noSelfCall(self) {
+    function afterQuorumCalculation(IHooks self) internal view noSelfCall(self) {
         if (self.hasPermission(AFTER_QUORUM_CALCULATION_FLAG)) {
-            self.callHook(abi.encodeCall(IHooks.afterQuorumCalculation, (msg.sender)));
+            self.staticCallHook(abi.encodeCall(IHooks.afterQuorumCalculation, (msg.sender)));
         }
     }
 
