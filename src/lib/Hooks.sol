@@ -194,16 +194,39 @@ library Hooks {
     }
 
     /// @notice calls beforePropose hook if permissioned and validates return value
-    function beforePropose(IHooks self) internal noSelfCall(self) {
+    function beforePropose(
+        IHooks self,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        string memory description
+    ) internal noSelfCall(self) {
         if (self.hasPermission(BEFORE_PROPOSE_FLAG)) {
-            self.callHook(abi.encodeCall(IHooks.beforePropose, (msg.sender)));
+            self.callHook(abi.encodeCall(IHooks.beforePropose, (msg.sender, targets, values, calldatas, description)));
         }
     }
 
     /// @notice calls afterPropose hook if permissioned and validates return value
-    function afterPropose(IHooks self) internal noSelfCall(self) {
+    function afterPropose(
+        IHooks self,
+        uint256 proposalId,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        string memory description
+    ) internal noSelfCall(self) returns (uint256 returnedProposalId) {
         if (self.hasPermission(AFTER_PROPOSE_FLAG)) {
-            self.callHook(abi.encodeCall(IHooks.afterPropose, (msg.sender)));
+            bytes memory result = self.callHook(
+                abi.encodeCall(IHooks.afterPropose, (msg.sender, proposalId, targets, values, calldatas, description))
+            );
+
+            // A length of 36 bytes is required to return a bytes4 and a 32 byte proposal ID
+            if (result.length != 36) revert InvalidHookResponse();
+
+            // Extract the proposal ID from the result
+            assembly ("memory-safe") {
+                returnedProposalId := mload(add(result, 0x20))
+            }
         }
     }
 

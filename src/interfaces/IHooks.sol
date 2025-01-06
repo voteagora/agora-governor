@@ -24,10 +24,23 @@ interface IHooks {
     function afterVote(address sender) external returns (bytes4);
 
     /// @notice The hook called before a proposal is created
-    function beforePropose(address sender) external returns (bytes4);
+    function beforePropose(
+        address sender,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        string memory description
+    ) external returns (bytes4);
 
     /// @notice The hook called after a proposal is created
-    function afterPropose(address sender) external returns (bytes4);
+    function afterPropose(
+        address sender,
+        uint256 proposalId,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        string memory description
+    ) external returns (bytes4);
 
     /// @notice The hook called before a proposal is canceled
     function beforeCancel(address sender) external returns (bytes4);

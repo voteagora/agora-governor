@@ -77,6 +77,7 @@ contract AgoraGovernor is
     {
         if (!_hooks.isValidHookAddress()) revert Hooks.HookAddressNotValid(address(_hooks));
 
+        // This call is made after the inhereted constructors have been called
         _hooks.beforeInitialize();
 
         admin = _admin;
@@ -106,13 +107,13 @@ contract AgoraGovernor is
         bytes[] memory calldatas,
         string memory description
     ) public virtual override returns (uint256) {
-        hooks.beforePropose();
+        hooks.beforePropose(targets, values, calldatas, description);
 
         uint256 proposalId = super.propose(targets, values, calldatas, description);
 
-        hooks.afterPropose();
+        uint256 returnedProposalId = hooks.afterPropose(proposalId, targets, values, calldatas, description);
 
-        return proposalId;
+        return returnedProposalId != 0 ? returnedProposalId : proposalId;
     }
 
     function execute(
