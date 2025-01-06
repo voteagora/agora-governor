@@ -7,6 +7,7 @@ import {TimelockController} from "@openzeppelin/contracts/governance/TimelockCon
 import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 import {GovernorCountingSimple} from "@openzeppelin/contracts/governance/extensions/GovernorCountingSimple.sol";
 
+import {IHooks} from "src/interfaces/IHooks.sol";
 import {AgoraGovernor} from "src/AgoraGovernor.sol";
 import {AgoraGovernorMock} from "test/mocks/AgoraGovernorMock.sol";
 
@@ -55,7 +56,15 @@ contract AgoraGovernorTest is Test {
 
         // Deploy governor
         governor = new AgoraGovernorMock(
-            votingDelay, votingPeriod, proposalThreshold, quorumNumerator, token, timelock, admin, manager
+            votingDelay,
+            votingPeriod,
+            proposalThreshold,
+            quorumNumerator,
+            token,
+            timelock,
+            admin,
+            manager,
+            IHooks(address(0))
         );
 
         vm.stopPrank();

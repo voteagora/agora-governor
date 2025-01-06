@@ -17,7 +17,8 @@ contract AgoraGovernorMock is AgoraGovernor {
         IVotes _token,
         TimelockController _timelock,
         address _admin,
-        address _manager
+        address _manager,
+        IHooks _hooks
     )
         AgoraGovernor(
             _votingDelay,
@@ -28,7 +29,7 @@ contract AgoraGovernorMock is AgoraGovernor {
             _timelock,
             _admin,
             _manager,
-            IHooks(address(0))
+            _hooks
         )
     {}
 

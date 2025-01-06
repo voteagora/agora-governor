@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {IHooks} from "../interfaces/IHooks.sol";
+import {IHooks} from "src/interfaces/IHooks.sol";
 
 /// Inspired in the https://github.com/Uniswap/v4-core/blob/main/src/libraries/Hooks.sol[Uniswap v4 implementation of hooks].
 library Hooks {

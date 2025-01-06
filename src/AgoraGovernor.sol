@@ -12,7 +12,7 @@ import {GovernorSettings} from "@openzeppelin/contracts/governance/extensions/Go
 import {GovernorTimelockControl} from "@openzeppelin/contracts/governance/extensions/GovernorTimelockControl.sol";
 
 import {IHooks} from "src/interfaces/IHooks.sol";
-import {Hooks} from "src/lib/Hooks.sol";
+import {Hooks} from "src/libraries/Hooks.sol";
 
 /// @title AgoraGovernor
 /// @notice Agora Governor contract

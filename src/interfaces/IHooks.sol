@@ -12,10 +12,10 @@ interface IHooks {
     function afterInitialize(address sender) external returns (bytes4);
 
     /// @notice The hook called before quorum calculation is performed
-    function beforeQuorumCalculation(address sender, uint256 timepoint) external view returns (bytes4);
+    function beforeQuorumCalculation(address sender, uint256 timepoint) external view returns (bytes4, uint256);
 
     /// @notice The hook called after quorum calculation is performed
-    function afterQuorumCalculation(address sender, uint256 timepoint) external view returns (bytes4);
+    function afterQuorumCalculation(address sender, uint256 timepoint) external view returns (bytes4, uint256);
 
     /// @notice The hook called before a vote is cast
     function beforeVote(
@@ -25,7 +25,7 @@ interface IHooks {
         uint8 support,
         string memory reason,
         bytes memory params
-    ) external returns (bytes4);
+    ) external returns (bytes4, uint256);
 
     /// @notice The hook called after a vote is cast
     function afterVote(
@@ -36,7 +36,7 @@ interface IHooks {
         uint8 support,
         string memory reason,
         bytes memory params
-    ) external returns (bytes4);
+    ) external returns (bytes4, uint256);
 
     /// @notice The hook called before a proposal is created
     function beforePropose(
@@ -45,7 +45,7 @@ interface IHooks {
         uint256[] memory values,
         bytes[] memory calldatas,
         string memory description
-    ) external returns (bytes4);
+    ) external returns (bytes4, uint256);
 
     /// @notice The hook called after a proposal is created
     function afterPropose(
@@ -55,7 +55,7 @@ interface IHooks {
         uint256[] memory values,
         bytes[] memory calldatas,
         string memory description
-    ) external returns (bytes4);
+    ) external returns (bytes4, uint256);
 
     /// @notice The hook called before a proposal is canceled
     function beforeCancel(
@@ -64,7 +64,7 @@ interface IHooks {
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) external returns (bytes4);
+    ) external returns (bytes4, uint256);
 
     /// @notice The hook called after a proposal is canceled
     function afterCancel(
@@ -74,7 +74,7 @@ interface IHooks {
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) external returns (bytes4);
+    ) external returns (bytes4, uint256);
 
     /// @notice The hook called before a proposal is executed
     function beforeExecute(
@@ -83,7 +83,7 @@ interface IHooks {
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) external returns (bytes4);
+    ) external returns (bytes4, uint256);
 
     /// @notice The hook called after a proposal is executed
     function afterExecute(
@@ -93,5 +93,5 @@ interface IHooks {
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) external returns (bytes4);
+    ) external returns (bytes4, uint256);
 }
