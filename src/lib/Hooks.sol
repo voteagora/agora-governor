@@ -138,6 +138,76 @@ library Hooks {
         }
     }
 
+    /// @notice calls beforeQuorumCalculation hook if permissioned and validates return value
+    function beforeQuorumCalculation(IHooks self) internal noSelfCall(self) {
+        if (self.hasPermission(BEFORE_QUORUM_CALCULATION_FLAG)) {
+            self.callHook(abi.encodeCall(IHooks.beforeQuorumCalculation, (msg.sender)));
+        }
+    }
+
+    /// @notice calls afterQuorumCalculation hook if permissioned and validates return value
+    function afterQuorumCalculation(IHooks self) internal noSelfCall(self) {
+        if (self.hasPermission(AFTER_QUORUM_CALCULATION_FLAG)) {
+            self.callHook(abi.encodeCall(IHooks.afterQuorumCalculation, (msg.sender)));
+        }
+    }
+
+    /// @notice calls beforeVote hook if permissioned and validates return value
+    function beforeVote(IHooks self) internal noSelfCall(self) {
+        if (self.hasPermission(BEFORE_VOTE_FLAG)) {
+            self.callHook(abi.encodeCall(IHooks.beforeVote, (msg.sender)));
+        }
+    }
+
+    /// @notice calls afterVote hook if permissioned and validates return value
+    function afterVote(IHooks self) internal noSelfCall(self) {
+        if (self.hasPermission(AFTER_VOTE_FLAG)) {
+            self.callHook(abi.encodeCall(IHooks.afterVote, (msg.sender)));
+        }
+    }
+
+    /// @notice calls beforePropose hook if permissioned and validates return value
+    function beforePropose(IHooks self) internal noSelfCall(self) {
+        if (self.hasPermission(BEFORE_PROPOSE_FLAG)) {
+            self.callHook(abi.encodeCall(IHooks.beforePropose, (msg.sender)));
+        }
+    }
+
+    /// @notice calls afterPropose hook if permissioned and validates return value
+    function afterPropose(IHooks self) internal noSelfCall(self) {
+        if (self.hasPermission(AFTER_PROPOSE_FLAG)) {
+            self.callHook(abi.encodeCall(IHooks.afterPropose, (msg.sender)));
+        }
+    }
+
+    /// @notice calls beforeCancel hook if permissioned and validates return value
+    function beforeCancel(IHooks self) internal noSelfCall(self) {
+        if (self.hasPermission(BEFORE_CANCEL_FLAG)) {
+            self.callHook(abi.encodeCall(IHooks.beforeCancel, (msg.sender)));
+        }
+    }
+
+    /// @notice calls afterCancel hook if permissioned and validates return value
+    function afterCancel(IHooks self) internal noSelfCall(self) {
+        if (self.hasPermission(AFTER_CANCEL_FLAG)) {
+            self.callHook(abi.encodeCall(IHooks.afterCancel, (msg.sender)));
+        }
+    }
+
+    /// @notice calls beforeExecute hook if permissioned and validates return value
+    function beforeExecute(IHooks self) internal noSelfCall(self) {
+        if (self.hasPermission(BEFORE_EXECUTE_FLAG)) {
+            self.callHook(abi.encodeCall(IHooks.beforeExecute, (msg.sender)));
+        }
+    }
+
+    /// @notice calls afterExecute hook if permissioned and validates return value
+    function afterExecute(IHooks self) internal noSelfCall(self) {
+        if (self.hasPermission(AFTER_EXECUTE_FLAG)) {
+            self.callHook(abi.encodeCall(IHooks.afterExecute, (msg.sender)));
+        }
+    }
+
     function hasPermission(IHooks self, uint160 flag) internal pure returns (bool) {
         return uint160(address(self)) & flag != 0;
     }

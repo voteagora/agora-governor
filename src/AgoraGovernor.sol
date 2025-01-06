@@ -50,6 +50,9 @@ contract AgoraGovernor is
     /// @notice The manager of the governor
     address public manager;
 
+    /// @notice The hooks of the governor
+    IHooks public hooks;
+
     /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
@@ -78,6 +81,7 @@ contract AgoraGovernor is
 
         admin = _admin;
         manager = _manager;
+        hooks = _hooks;
 
         _hooks.afterInitialize();
     }
@@ -96,12 +100,44 @@ contract AgoraGovernor is
         emit ManagerSet(manager, _newManager);
     }
 
+    function propose(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        string memory description
+    ) public virtual override returns (uint256) {
+        hooks.beforePropose();
+
+        uint256 proposalId = super.propose(targets, values, calldatas, description);
+
+        hooks.afterPropose();
+
+        return proposalId;
+    }
+
+    function execute(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) public payable virtual override returns (uint256) {
+        hooks.beforeExecute();
+
+        uint256 proposalId = super.execute(targets, values, calldatas, descriptionHash);
+
+        hooks.afterExecute();
+
+        return proposalId;
+    }
+
     function cancel(
         address[] memory targets,
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
     ) public override returns (uint256) {
+        hooks.beforeCancel();
+
         // The proposalId will be recomputed in the `_cancel` call further down. However we need the value before we
         // do the internal call, because we need to check the proposal state BEFORE the internal `_cancel` call
         // changes it. The `hashProposal` duplication has a cost that is limited, and that we accept.
@@ -114,7 +150,11 @@ contract AgoraGovernor is
         }
 
         // Proposals can only be cancelled in any state other than Canceled, Expired, or Executed.
-        return _cancel(targets, values, calldatas, descriptionHash);
+        _cancel(targets, values, calldatas, descriptionHash);
+
+        hooks.afterCancel();
+
+        return proposalId;
     }
 
     function quorumDenominator() public view override returns (uint256) {
@@ -157,6 +197,21 @@ contract AgoraGovernor is
         if (_msgSender() != admin) {
             super._checkGovernance();
         }
+    }
+
+    function _castVote(uint256 proposalId, address account, uint8 support, string memory reason, bytes memory params)
+        internal
+        virtual
+        override(Governor)
+        returns (uint256)
+    {
+        hooks.beforeVote();
+
+        uint256 votedWeight = super._castVote(proposalId, account, support, reason, params);
+
+        hooks.afterVote();
+
+        return votedWeight;
     }
 
     function _cancel(
