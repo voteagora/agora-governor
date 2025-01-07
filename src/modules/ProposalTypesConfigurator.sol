@@ -8,7 +8,7 @@ import {Hooks} from "src/libraries/Hooks.sol";
 
 contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     using Hooks for IHooks;
-     /*//////////////////////////////////////////////////////////////
+    /*//////////////////////////////////////////////////////////////
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
 
@@ -41,7 +41,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         _;
     }
 
-     /*//////////////////////////////////////////////////////////////
+    /*//////////////////////////////////////////////////////////////
                                FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
@@ -51,7 +51,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param _proposalTypesInit Array of ProposalType structs to initialize the contract with.
      */
     function initialize(address payable _governor, ProposalType[] calldata _proposalTypesInit) public {
-         if (address(governor) != address(0)) revert AlreadyInit();
+        if (address(governor) != address(0)) revert AlreadyInit();
         if (_governor == address(0)) revert InvalidGovernor();
 
         governor = AgoraGovernor(_governor);
@@ -85,21 +85,21 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         });
     }
 
-     /*//////////////////////////////////////////////////////////////
+    /*//////////////////////////////////////////////////////////////
                                HOOKS
     //////////////////////////////////////////////////////////////*/
 
-
     /// @notice The hook called before quorum calculation is performed
-    function beforeQuorumCalculation(address sender, uint256 timepoint) external override view returns (uint256) {
-        uint256 _beforeQuorum = (governor.token().getPastTotalSupply(timepoint) * _proposalTypes[0].quorum) / governor.quorumDenominator();
-        return _beforeQuorum;
+    function beforeQuorumCalculation(address sender, uint256 timepoint) external view returns (bytes4, uint256) {
+        uint256 _beforeQuorum =
+            (governor.token().getPastTotalSupply(timepoint) * _proposalTypes[0].quorum) / governor.quorumDenominator();
+        return (IHooks.beforeQuorumCalculation.selector, _beforeQuorum);
     }
 
-     /*//////////////////////////////////////////////////////////////
+    /*//////////////////////////////////////////////////////////////
                                STORAGE
     //////////////////////////////////////////////////////////////*/
-     /**
+    /**
      * @notice Set the parameters for a proposal type. Only callable by the admin or timelock.
      * @param proposalTypeId Id of the proposal type
      * @param quorum Quorum percentage, scaled by `PERCENT_DIVISOR`
@@ -135,4 +135,3 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         emit ProposalTypeSet(proposalTypeId, quorum, approvalThreshold, name, description);
     }
 }
-
