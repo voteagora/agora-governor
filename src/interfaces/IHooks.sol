@@ -76,6 +76,25 @@ interface IHooks {
         bytes32 descriptionHash
     ) external returns (bytes4, uint256);
 
+    /// @notice The hook called before a proposal is queued
+    function beforeQueue(
+        address sender,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) external returns (bytes4, uint256);
+
+    /// @notice The hook called after a proposal is queued
+    function afterQueue(
+        address sender,
+        uint256 proposalId,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) external returns (bytes4, uint256);
+
     /// @notice The hook called before a proposal is executed
     function beforeExecute(
         address sender,

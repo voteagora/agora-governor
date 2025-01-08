@@ -7,22 +7,25 @@ import {IHooks} from "src/interfaces/IHooks.sol";
 library Hooks {
     using Hooks for IHooks;
 
-    uint160 internal constant ALL_HOOK_MASK = uint160((1 << 12) - 1);
+    uint160 internal constant ALL_HOOK_MASK = uint160((1 << 14) - 1);
 
-    uint160 internal constant BEFORE_INITIALIZE_FLAG = 1 << 11;
-    uint160 internal constant AFTER_INITIALIZE_FLAG = 1 << 10;
+    uint160 internal constant BEFORE_INITIALIZE_FLAG = 1 << 13;
+    uint160 internal constant AFTER_INITIALIZE_FLAG = 1 << 12;
 
-    uint160 internal constant BEFORE_QUORUM_CALCULATION_FLAG = 1 << 9;
-    uint160 internal constant AFTER_QUORUM_CALCULATION_FLAG = 1 << 8;
+    uint160 internal constant BEFORE_QUORUM_CALCULATION_FLAG = 1 << 11;
+    uint160 internal constant AFTER_QUORUM_CALCULATION_FLAG = 1 << 10;
 
-    uint160 internal constant BEFORE_VOTE_FLAG = 1 << 7;
-    uint160 internal constant AFTER_VOTE_FLAG = 1 << 6;
+    uint160 internal constant BEFORE_VOTE_FLAG = 1 << 9;
+    uint160 internal constant AFTER_VOTE_FLAG = 1 << 8;
 
-    uint160 internal constant BEFORE_PROPOSE_FLAG = 1 << 5;
-    uint160 internal constant AFTER_PROPOSE_FLAG = 1 << 4;
+    uint160 internal constant BEFORE_PROPOSE_FLAG = 1 << 7;
+    uint160 internal constant AFTER_PROPOSE_FLAG = 1 << 6;
 
-    uint160 internal constant BEFORE_CANCEL_FLAG = 1 << 3;
-    uint160 internal constant AFTER_CANCEL_FLAG = 1 << 2;
+    uint160 internal constant BEFORE_CANCEL_FLAG = 1 << 5;
+    uint160 internal constant AFTER_CANCEL_FLAG = 1 << 4;
+
+    uint160 internal constant BEFORE_QUEUE_FLAG = 1 << 3;
+    uint160 internal constant AFTER_QUEUE_FLAG = 1 << 2;
 
     uint160 internal constant BEFORE_EXECUTE_FLAG = 1 << 1;
     uint160 internal constant AFTER_EXECUTE_FLAG = 1 << 0;
@@ -38,6 +41,8 @@ library Hooks {
         bool afterPropose;
         bool beforeCancel;
         bool afterCancel;
+        bool beforeQueue;
+        bool afterQueue;
         bool beforeExecute;
         bool afterExecute;
     }
@@ -68,6 +73,8 @@ library Hooks {
                 || permissions.afterPropose != self.hasPermission(AFTER_PROPOSE_FLAG)
                 || permissions.beforeCancel != self.hasPermission(BEFORE_CANCEL_FLAG)
                 || permissions.afterCancel != self.hasPermission(AFTER_CANCEL_FLAG)
+                || permissions.beforeQueue != self.hasPermission(BEFORE_QUEUE_FLAG)
+                || permissions.afterQueue != self.hasPermission(AFTER_QUEUE_FLAG)
                 || permissions.beforeExecute != self.hasPermission(BEFORE_EXECUTE_FLAG)
                 || permissions.afterExecute != self.hasPermission(AFTER_EXECUTE_FLAG)
         ) {
@@ -288,6 +295,49 @@ library Hooks {
         if (self.hasPermission(AFTER_PROPOSE_FLAG)) {
             bytes memory result = self.callHook(
                 abi.encodeCall(IHooks.afterPropose, (msg.sender, proposalId, targets, values, calldatas, description))
+            );
+
+            // A length of 36 bytes is required to return a bytes4 and a 32 byte proposal ID
+            if (result.length != 36) revert InvalidHookResponse();
+
+            // Extract the proposal ID from the result
+            returnedProposalId = parseUint256(result);
+        }
+    }
+
+    /// @notice calls beforeQueue hook if permissioned and validates return value
+    function beforeQueue(
+        IHooks self,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) internal noSelfCall(self) returns (uint256 returnedProposalId) {
+        if (self.hasPermission(BEFORE_QUEUE_FLAG)) {
+            bytes memory result = self.callHook(
+                abi.encodeCall(IHooks.beforeQueue, (msg.sender, targets, values, calldatas, descriptionHash))
+            );
+
+            // A length of 36 bytes is required to return a bytes4 and a 32 byte proposal ID
+            if (result.length != 36) revert InvalidHookResponse();
+
+            // Extract the proposal ID from the result
+            returnedProposalId = parseUint256(result);
+        }
+    }
+
+    /// @notice calls afterQueue hook if permissioned and validates return value
+    function afterQueue(
+        IHooks self,
+        uint256 proposalId,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) internal noSelfCall(self) returns (uint256 returnedProposalId) {
+        if (self.hasPermission(AFTER_QUEUE_FLAG)) {
+            bytes memory result = self.callHook(
+                abi.encodeCall(IHooks.afterQueue, (msg.sender, proposalId, targets, values, calldatas, descriptionHash))
             );
 
             // A length of 36 bytes is required to return a bytes4 and a 32 byte proposal ID
