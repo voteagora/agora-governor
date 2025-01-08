@@ -75,7 +75,9 @@ contract AgoraGovernor is
         GovernorSettings(_votingDelay, _votingPeriod, _proposalThreshold)
         GovernorTimelockControl(_timelock)
     {
-        if (!_hooks.isValidHookAddress()) revert Hooks.HookAddressNotValid(address(_hooks));
+        if (!_hooks.isValidHookAddress()) {
+            revert Hooks.HookAddressNotValid(address(_hooks));
+        }
 
         // This call is made after the inhereted constructors have been called
         _hooks.beforeInitialize();
@@ -112,6 +114,24 @@ contract AgoraGovernor is
         uint256 proposalId = super.propose(targets, values, calldatas, description);
 
         uint256 afterProposalId = hooks.afterPropose(proposalId, targets, values, calldatas, description);
+
+        // TODO: check that before and after proposal IDs are the same
+
+        // TODO: replace this with a flag on hook address
+        return beforeProposalId != 0 ? beforeProposalId : proposalId;
+    }
+
+    function queue(address[] memory targets, uint256[] memory values, bytes[] memory calldatas, bytes32 descriptionHash)
+        public
+        virtual
+        override
+        returns (uint256)
+    {
+        uint256 beforeProposalId = hooks.beforeQueue(targets, values, calldatas, descriptionHash);
+
+        uint256 proposalId = super.queue(targets, values, calldatas, descriptionHash);
+
+        uint256 afterProposalId = hooks.afterQueue(proposalId, targets, values, calldatas, descriptionHash);
 
         // TODO: check that before and after proposal IDs are the same
 

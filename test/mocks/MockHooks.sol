@@ -104,6 +104,26 @@ contract MockHooks is IHooks {
         return (returnValues[selector] == bytes4(0) ? selector : returnValues[selector], 0);
     }
 
+    function beforeQueue(address, address[] memory, uint256[] memory, bytes[] memory, bytes32)
+        external
+        override
+        returns (bytes4, uint256)
+    {
+        // beforeQueueData = hookData;
+        bytes4 selector = MockHooks.beforeQueue.selector;
+        return (returnValues[selector] == bytes4(0) ? selector : returnValues[selector], 0);
+    }
+
+    function afterQueue(address, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)
+        external
+        override
+        returns (bytes4, uint256)
+    {
+        // afterQueueData = hookData;
+        bytes4 selector = MockHooks.afterQueue.selector;
+        return (returnValues[selector] == bytes4(0) ? selector : returnValues[selector], 0);
+    }
+
     function beforeExecute(address, address[] memory, uint256[] memory, bytes[] memory, bytes32)
         external
         override
