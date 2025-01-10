@@ -10,14 +10,12 @@ import {IHooks} from "src/interfaces/IHooks.sol";
 /// @custom:security-contact security@voteagora.com
 /// Inspired by https://github.com/Uniswap/v4-periphery/blob/main/src/base/hooks/BaseHook.sol[Uniswap v4 implementation of hooks].
 abstract contract BaseHook is IHooks {
-    error AlreadyInit();
     error InvalidGovernor();
     error HookNotImplemented();
 
     AgoraGovernor public immutable governor;
 
     constructor(address payable _governor) {
-        if (address(governor) != address(0)) revert AlreadyInit();
         if (_governor == address(0)) revert InvalidGovernor();
 
         governor = AgoraGovernor(_governor);
@@ -110,7 +108,7 @@ abstract contract BaseHook is IHooks {
         revert HookNotImplemented();
     }
 
-    /// @notice The hook called before a proposal is queued
+    /// @inheritdoc IHooks
     function beforeQueue(address, address[] memory, uint256[] memory, bytes[] memory, bytes32)
         external
         virtual
