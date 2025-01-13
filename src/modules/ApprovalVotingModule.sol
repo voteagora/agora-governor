@@ -204,10 +204,10 @@ contract ApprovalVotingModule is VotingModule {
         {
             uint256 n;
             ProposalOption memory option;
-            bool budgetExceeded = false;
 
             // Flatten `options` by filling `executeParams` until budgetAmount is exceeded
-            for (uint256 i; i < succeededOptionsLength;) {
+            for (uint256 i; i < succeededOptionsLength; ++i) {
+                bool budgetExceeded = false;
                 option = sortedOptions[i];
 
                 for (n = 0; n < option.targets.length;) {
@@ -229,20 +229,18 @@ contract ApprovalVotingModule is VotingModule {
                 }
 
                 // If `budgetAmount` for ETH is exceeded, skip option.
-                if (budgetExceeded) break;
+                if (budgetExceeded) continue;
 
                 // Check if budgetAmount is exceeded for non-ETH tokens
                 if (settings.budgetToken != address(0) && settings.budgetAmount != 0) {
                     if (option.budgetTokensSpent != 0) {
-                        if (totalValue + option.budgetTokensSpent > settings.budgetAmount) break; // break outer loop for non-ETH tokens
+                        if (totalValue + option.budgetTokensSpent > settings.budgetAmount) continue; // break outer loop for non-ETH tokens
                         totalValue += option.budgetTokensSpent;
                     }
                 }
 
                 unchecked {
                     executeParamsLength += n;
-
-                    ++i;
                 }
             }
         }
