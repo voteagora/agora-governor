@@ -73,7 +73,7 @@ abstract contract BaseHook is IHooks {
     }
 
     /// @inheritdoc IHooks
-    function beforePropose(address, address[] memory, uint256[] memery, bytes[] memory, string memory)
+    function beforePropose(address, address[] memory, uint256[] memory, bytes[] memory, string memory)
         external
         virtual
         returns (bytes4, uint256)

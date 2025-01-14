@@ -12,26 +12,10 @@ import {AgoraGovernor} from "src/AgoraGovernor.sol";
 import {AgoraGovernorMock} from "test/mocks/AgoraGovernorMock.sol";
 
 import {MockToken} from "test/mocks/MockToken.sol";
+import {Deployers} from "test/utils/Deployers.sol";
 
-contract AgoraGovernorTest is Test {
-    // Contracts
-    AgoraGovernorMock public governor;
-    TimelockController public timelock;
-    MockToken public token;
-
-    // Addresses
-    address deployer = makeAddr("deployer");
-    address admin = makeAddr("admin");
-    address proxyAdmin = makeAddr("proxyAdmin");
-    address manager = makeAddr("manager");
-    address minter = makeAddr("minter");
-
+contract AgoraGovernorTest is Test, Deployers {
     // Variables
-    uint256 timelockDelay = 2 days;
-    uint48 votingDelay = 1;
-    uint32 votingPeriod = 14;
-    uint256 proposalThreshold = 1;
-    uint256 quorumNumerator = 3000;
     uint256 counter;
 
     /*//////////////////////////////////////////////////////////////
@@ -39,35 +23,7 @@ contract AgoraGovernorTest is Test {
     //////////////////////////////////////////////////////////////*/
 
     function setUp() public virtual {
-        vm.startPrank(deployer);
-
-        // Deploy token
-        token = new MockToken(minter);
-
-        // Calculate governor address
-        address governorAddress = vm.computeCreateAddress(deployer, vm.getNonce(deployer) + 1);
-
-        // Deploy timelock
-        address[] memory proposers = new address[](1);
-        proposers[0] = governorAddress;
-        address[] memory executors = new address[](1);
-        executors[0] = governorAddress;
-        timelock = new TimelockController(timelockDelay, proposers, executors, deployer);
-
-        // Deploy governor
-        governor = new AgoraGovernorMock(
-            votingDelay,
-            votingPeriod,
-            proposalThreshold,
-            quorumNumerator,
-            token,
-            timelock,
-            admin,
-            manager,
-            IHooks(address(0))
-        );
-
-        vm.stopPrank();
+        deployGovernor(address(0));
     }
 
     function executeCallback() public payable virtual {
