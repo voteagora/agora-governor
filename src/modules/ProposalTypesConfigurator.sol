@@ -5,8 +5,9 @@ import {IProposalTypesConfigurator} from "src/interfaces/IProposalTypesConfigura
 import {AgoraGovernor} from "src/AgoraGovernor.sol";
 import {IHooks} from "src/interfaces/IHooks.sol";
 import {Hooks} from "src/libraries/Hooks.sol";
+import {BaseHook} from "src/BaseHook.sol";
 
-contract ProposalTypesConfigurator is IProposalTypesConfigurator {
+contract ProposalTypesConfigurator is IProposalTypesConfigurator, BaseHook {
     using Hooks for IHooks;
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
@@ -19,8 +20,6 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
                            IMMUTABLE STORAGE
     //////////////////////////////////////////////////////////////*/
 
-    AgoraGovernor public governor;
-
     /// @notice Max value of `quorum` and `approvalThreshold` in `ProposalType`
     uint16 public constant PERCENT_DIVISOR = 10_000;
 
@@ -29,6 +28,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     //////////////////////////////////////////////////////////////*/
 
     mapping(uint8 proposalTypeId => ProposalType) internal _proposalTypes;
+
     mapping(uint8 proposalTypeId => mapping(bytes24 key => Scope[])) internal _assignedScopes;
     mapping(bytes24 key => bool) internal _scopeExists;
 
@@ -41,21 +41,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         _;
     }
 
-    /*//////////////////////////////////////////////////////////////
-                               FUNCTIONS
-    //////////////////////////////////////////////////////////////*/
-
-    /**
-     * @notice Initialize the contract with the governor and proposal types.
-     * @param _governor Address of the governor contract.
-     * @param _proposalTypesInit Array of ProposalType structs to initialize the contract with.
-     */
-    function initialize(address payable _governor, ProposalType[] calldata _proposalTypesInit) public {
-        if (address(governor) != address(0)) revert AlreadyInit();
-        if (_governor == address(0)) revert InvalidGovernor();
-
-        governor = AgoraGovernor(_governor);
-
+    constructor(address payable _governor) BaseHook(_governor) {
         for (uint8 i = 0; i < _proposalTypesInit.length; i++) {
             _setProposalType(
                 i,
@@ -68,18 +54,24 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
         }
     }
 
-    function getHookPermissions() public pure returns (Hooks.Permissions memory) {
+    /*//////////////////////////////////////////////////////////////
+                               FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
+    function getHookPermissions() public pure override returns (Hooks.Permissions memory) {
         return Hooks.Permissions({
             beforeInitialize: false,
             afterInitialize: false,
-            beforeQuorumCalculation: true,
-            afterQuorumCalculation: false,
-            beforeVote: true,
-            afterVote: true,
+            beforeQuorumCalculation: false,
+            afterQuorumCalculation: true,
+            beforeVote: false,
+            afterVote: false,
             beforePropose: true,
-            afterPropose: false,
+            afterPropose: true, // set voting threshold
             beforeCancel: false,
             afterCancel: false,
+            beforeQueue: false,
+            afterQueue: false,
             beforeExecute: false,
             afterExecute: false
         });
@@ -90,11 +82,13 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice The hook called before quorum calculation is performed
-    function beforeQuorumCalculation(address sender, uint256 timepoint) external view returns (bytes4, uint256) {
+    function beforeQuorumCalculation(address sender, uint256 timepoint) external override view returns (bytes4, uint256) {
         uint256 _beforeQuorum =
             (governor.token().getPastTotalSupply(timepoint) * _proposalTypes[0].quorum) / governor.quorumDenominator();
         return (IHooks.beforeQuorumCalculation.selector, _beforeQuorum);
     }
+
+    // remove timepoint (either call the governor or some other hook), just use proposalId
 
     /*//////////////////////////////////////////////////////////////
                                STORAGE

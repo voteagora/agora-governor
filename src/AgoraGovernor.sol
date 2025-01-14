@@ -107,7 +107,7 @@ contract AgoraGovernor is
         address[] memory targets,
         uint256[] memory values,
         bytes[] memory calldatas,
-        string memory description
+        string memory description // 0|this is the string
     ) public virtual override returns (uint256) {
         uint256 beforeProposalId = hooks.beforePropose(targets, values, calldatas, description);
 
@@ -295,7 +295,12 @@ contract AgoraGovernor is
         override(Governor, GovernorCountingSimple)
         returns (bool)
     {
+
         (uint256 againstVotes, uint256 forVotes, uint256 abstainVotes) = proposalVotes(proposalId);
+        
+        // uint256 defaultQuorum = this.quorum()
+        // uint256 x = afterQuorum(against, for, abstain, defaultQuorum);
+        // return x == 0 ? defaultQuorum : 
         return quorum(proposalSnapshot(proposalId)) <= againstVotes + forVotes + abstainVotes;
     }
 
