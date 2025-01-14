@@ -45,13 +45,19 @@ contract BaseHookTest is Test, Deployers {
     function test_quorum_succeeds() public {
         deployGovernor(address(hook));
 
-        vm.expectCall(address(hook), abi.encodeCall(hook.beforeQuorumCalculation, (0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496, 0)));
-        vm.expectCall(address(hook), abi.encodeCall(hook.afterQuorumCalculation, (0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496, 0)));
+        vm.expectCall(
+            address(hook), abi.encodeCall(hook.beforeQuorumCalculation, (0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496, 0))
+        );
+        vm.expectCall(
+            address(hook), abi.encodeCall(hook.afterQuorumCalculation, (0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496, 0))
+        );
         governor.quorum(0);
     }
 
-    function test_propose_succeeds(address _actor) public {
+    function test_propose_succeeds() public {
         deployGovernor(address(hook));
+
+        address _actor = makeAddr("actor");
         address[] memory targets = new address[](1);
         targets[0] = address(this);
         uint256[] memory values = new uint256[](1);
@@ -69,9 +75,10 @@ contract BaseHookTest is Test, Deployers {
         vm.roll(block.number + 1);
 
         uint256 proposalId;
-        vm.expectCall(address(hook), abi.encodeCall(
-            hook.beforePropose, (0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496, targets, values, calldatas, "Test"))
-        );
+        vm.expectEmit(address(hook));
+        emit BaseHookMock.BeforePropose();
+        vm.expectEmit(address(hook));
+        emit BaseHookMock.AfterPropose();
         proposalId = governor.propose(targets, values, calldatas, "Test");
         vm.stopPrank();
     }
