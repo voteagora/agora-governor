@@ -8,8 +8,6 @@ import {AgoraGovernor} from "src/AgoraGovernor.sol";
 contract BaseHookMock is BaseHook {
     event BeforeInitialize();
     event AfterInitialize();
-    event BeforeQuorumCalculation();
-    event AfterQuorumCalculation();
     event BeforeVote();
     event AfterVote();
     event BeforePropose();
@@ -35,16 +33,21 @@ contract BaseHookMock is BaseHook {
 
     function beforeQuorumCalculation(address, uint256 beforeQuorum)
         external
+        view
         virtual
         override
         returns (bytes4, uint256)
     {
-        emit BeforeQuorumCalculation();
         return (this.beforeQuorumCalculation.selector, beforeQuorum);
     }
 
-    function afterQuorumCalculation(address, uint256 afterQuorum) external virtual override returns (bytes4, uint256) {
-        emit AfterQuorumCalculation();
+    function afterQuorumCalculation(address, uint256 afterQuorum)
+        external
+        view
+        virtual
+        override
+        returns (bytes4, uint256)
+    {
         return (this.afterQuorumCalculation.selector, afterQuorum);
     }
 
@@ -75,7 +78,7 @@ contract BaseHookMock is BaseHook {
         returns (bytes4, uint256)
     {
         emit BeforePropose();
-        return (this.beforePropose.selector, 0);
+        return (this.beforePropose.selector, 1);
     }
 
     function afterPropose(address, uint256, address[] memory, uint256[] memory, bytes[] memory, string memory)
@@ -85,7 +88,7 @@ contract BaseHookMock is BaseHook {
         returns (bytes4, uint256)
     {
         emit AfterPropose();
-        return (this.afterPropose.selector, 0);
+        return (this.afterPropose.selector, 1);
     }
 
     function beforeCancel(address, address[] memory, uint256[] memory, bytes[] memory, bytes32)

@@ -49,18 +49,9 @@ contract Deployers is Test {
 
         // Deploy governor
         governor = new AgoraGovernorMock(
-            votingDelay,
-            votingPeriod,
-            proposalThreshold,
-            quorumNumerator,
-            token,
-            timelock,
-            admin,
-            manager,
-            IHooks(hook)
+            votingDelay, votingPeriod, proposalThreshold, quorumNumerator, token, timelock, admin, manager, IHooks(hook)
         );
 
         vm.stopPrank();
     }
 }
-

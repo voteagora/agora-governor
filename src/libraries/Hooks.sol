@@ -190,8 +190,8 @@ library Hooks {
             bytes memory result =
                 self.staticCallHook(abi.encodeCall(IHooks.beforeQuorumCalculation, (msg.sender, timepoint)));
 
-            // A length of 36 bytes is required to return a bytes4 and a 32 byte proposal ID
-            if (result.length != 36) revert InvalidHookResponse();
+            // A length must be greater than 5 bytes to return a bytes4 and a uint256 quorum value
+            if (result.length < 5) revert InvalidHookResponse();
 
             // Extract the proposal ID from the result
             returnedQuorum = parseUint256(result);
@@ -209,8 +209,8 @@ library Hooks {
             bytes memory result =
                 self.staticCallHook(abi.encodeCall(IHooks.afterQuorumCalculation, (msg.sender, timepoint)));
 
-            // A length of 36 bytes is required to return a bytes4 and a 32 byte proposal ID
-            if (result.length != 36) revert InvalidHookResponse();
+            // A length must be greater than 5 bytes to return a bytes4 and a uint256 quorum value
+            if (result.length < 5) revert InvalidHookResponse();
 
             // Extract the proposal ID from the result
             returnedQuorum = parseUint256(result);
@@ -276,7 +276,7 @@ library Hooks {
             );
 
             // A length of 36 bytes is required to return a bytes4 and a 32 byte proposal ID
-            if (result.length != 36) revert InvalidHookResponse();
+            // if (result.length != 36) revert InvalidHookResponse();
 
             // Extract the proposal ID from the result
             returnedProposalId = parseUint256(result);
@@ -298,7 +298,7 @@ library Hooks {
             );
 
             // A length of 36 bytes is required to return a bytes4 and a 32 byte proposal ID
-            if (result.length != 36) revert InvalidHookResponse();
+            // if (result.length != 36) revert InvalidHookResponse();
 
             // Extract the proposal ID from the result
             returnedProposalId = parseUint256(result);

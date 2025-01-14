@@ -45,12 +45,12 @@ abstract contract BaseHook is IHooks {
     }
 
     /// @inheritdoc IHooks
-    function beforeQuorumCalculation(address, uint256) external virtual returns (bytes4, uint256) {
+    function beforeQuorumCalculation(address, uint256) external view virtual returns (bytes4, uint256) {
         revert HookNotImplemented();
     }
 
     /// @inheritdoc IHooks
-    function afterQuorumCalculation(address, uint256) external virtual returns (bytes4, uint256) {
+    function afterQuorumCalculation(address, uint256) external view virtual returns (bytes4, uint256) {
         revert HookNotImplemented();
     }
 
