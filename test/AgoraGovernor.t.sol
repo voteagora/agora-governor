@@ -35,7 +35,7 @@ contract AgoraGovernorTest is Test, Deployers {
         else return address(timelock);
     }
 
-    function _mintAndDelegate(address _actor, uint256 _amount) internal {
+    function _mintAndDelegate(address _actor, uint256 _amount) public {
         vm.assume(_actor != address(0));
         vm.assume(_actor != proxyAdmin);
         vm.prank(minter);

@@ -81,14 +81,14 @@ contract BaseHookMock is BaseHook {
         return (this.beforePropose.selector, 1);
     }
 
-    function afterPropose(address, uint256, address[] memory, uint256[] memory, bytes[] memory, string memory)
+    function afterPropose(address, uint256 proposalId, address[] memory, uint256[] memory, bytes[] memory, string memory)
         external
         virtual
         override
         returns (bytes4, uint256)
     {
         emit AfterPropose();
-        return (this.afterPropose.selector, 1);
+        return (this.afterPropose.selector, proposalId);
     }
 
     function beforeCancel(address, address[] memory, uint256[] memory, bytes[] memory, bytes32)

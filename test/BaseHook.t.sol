@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import "forge-std/Test.sol";
 import {BaseHook} from "src/BaseHook.sol";
 import {BaseHookMock, BaseHookMockReverts} from "test/mocks/BaseHookMock.sol";
+import {GovernorCountingSimple} from "@openzeppelin/contracts/governance/extensions/GovernorCountingSimple.sol";
 import {IHooks} from "src/interfaces/IHooks.sol";
 import {Hooks} from "src/libraries/Hooks.sol";
 
@@ -80,6 +81,38 @@ contract BaseHookTest is Test, Deployers {
         vm.expectEmit(address(hook));
         emit BaseHookMock.AfterPropose();
         proposalId = governor.propose(targets, values, calldatas, "Test");
+        vm.stopPrank();
+    }
+
+    function test_vote_succeeds(address _actor) public {
+        deployGovernor(address(hook));
+
+        vm.assume(_actor != proxyAdmin);
+
+        vm.prank(minter);
+        token.mint(_actor, 100);
+        vm.startPrank(_actor);
+        token.delegate(_actor);
+        vm.roll(block.number + 1);
+
+        address[] memory targets = new address[](1);
+        targets[0] = address(this);
+        uint256[] memory values = new uint256[](1);
+        bytes[] memory calldatas = new bytes[](1);
+        calldatas[0] = abi.encodeWithSelector(this.test_initialize_succeeds.selector);
+
+        vm.startPrank(_actor);
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+
+        vm.roll(block.number + 2);
+
+        vm.expectEmit(address(hook));
+        emit BaseHookMock.BeforeVote();
+        vm.expectEmit(address(hook));
+        emit BaseHookMock.AfterVote();
+        governor.castVote(proposalId, uint8(GovernorCountingSimple.VoteType.For));
+
+        vm.roll(block.number + 14);
         vm.stopPrank();
     }
 }

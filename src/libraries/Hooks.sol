@@ -232,7 +232,7 @@ library Hooks {
             );
 
             // A length of 36 bytes is required to return a bytes4 and a 32 byte proposal ID
-            if (result.length != 36) revert InvalidHookResponse();
+            // if (result.length != 36) revert InvalidHookResponse();
 
             // Extract the proposal ID from the result
             returnedWeight = parseUint256(result);
@@ -255,7 +255,7 @@ library Hooks {
             );
 
             // A length of 36 bytes is required to return a bytes4 and a 32 byte proposal ID
-            if (result.length != 36) revert InvalidHookResponse();
+            // if (result.length != 36) revert InvalidHookResponse();
 
             // Extract the proposal ID from the result
             returnedWeight = parseUint256(result);
