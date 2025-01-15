@@ -68,7 +68,6 @@ contract BaseHookTest is Test, Deployers {
         vm.prank(admin);
         governor.setProposalThreshold(10);
 
-        // Give actor enough tokens to meet proposal threshold.
         vm.prank(minter);
         token.mint(_actor, 100);
         vm.startPrank(_actor);
@@ -172,11 +171,9 @@ contract BaseHookTest is Test, Deployers {
         governor.queue(targets, values, calldatas, keccak256("Test"));
     }
 
-    function test_execute_succeeds(
-        address _actor,
-        uint256 _proposalTargetCalldata,
-        uint256 _elapsedAfterQueuing
-    ) public {
+    function test_execute_succeeds(address _actor, uint256 _proposalTargetCalldata, uint256 _elapsedAfterQueuing)
+        public
+    {
         deployGovernor(address(hook));
 
         _actor = makeAddr("actor");
@@ -210,8 +207,10 @@ contract BaseHookTest is Test, Deployers {
         vm.expectEmit(address(hook));
         emit BaseHookMock.BeforeExecute();
         vm.expectCall(
-            address(hook), abi.encodeCall(hook.afterExecute, (_actor, proposalId, targets, values, calldatas, keccak256("Test")))
+            address(hook),
+            abi.encodeCall(hook.afterExecute, (_actor, proposalId, targets, values, calldatas, keccak256("Test")))
         );
+
         governor.execute(targets, values, calldatas, keccak256("Test"));
     }
 }
