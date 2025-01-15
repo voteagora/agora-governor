@@ -8,7 +8,6 @@ interface IProposalTypesConfigurator {
 
     error InvalidQuorum();
     error InvalidApprovalThreshold();
-    error InvalidProposalType();
     error InvalidParameterConditions();
     error InvalidScope();
     error NotAdminOrTimelock();
@@ -18,6 +17,7 @@ interface IProposalTypesConfigurator {
     error InvalidParamNotEqual();
     error InvalidParamRange();
     error InvalidProposedTxForType();
+    error InvalidProposalType(uint8 proposalTypeId);
 
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
@@ -74,13 +74,9 @@ interface IProposalTypesConfigurator {
                                FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
-    function initialize(address payable _governor, ProposalType[] calldata _proposalTypes) external;
-
-    /*
     function proposalTypes(uint8 proposalTypeId) external view returns (ProposalType memory);
     function assignedScopes(uint8 proposalTypeId, bytes24 scopeKey) external view returns (Scope[] memory);
     function scopeExists(bytes24 key) external view returns (bool);
-    */
 
     function setProposalType(
         uint8 proposalTypeId,
@@ -91,7 +87,6 @@ interface IProposalTypesConfigurator {
         address module
     ) external;
 
-    /*
     function setScopeForProposalType(
         uint8 proposalTypeId,
         bytes24 key,
@@ -107,5 +102,4 @@ interface IProposalTypesConfigurator {
     function disableScope(uint8 proposalTypeId, bytes24 scopeKey, uint8 idx) external;
     function validateProposedTx(bytes calldata proposedTx, uint8 proposalTypeId, bytes24 key) external;
     function validateProposalData(address[] memory targets, bytes[] memory calldatas, uint8 proposalTypeId) external;
-    */
 }

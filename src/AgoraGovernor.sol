@@ -295,12 +295,11 @@ contract AgoraGovernor is
         override(Governor, GovernorCountingSimple)
         returns (bool)
     {
-
         (uint256 againstVotes, uint256 forVotes, uint256 abstainVotes) = proposalVotes(proposalId);
-        
+
         // uint256 defaultQuorum = this.quorum()
         // uint256 x = afterQuorum(against, for, abstain, defaultQuorum);
-        // return x == 0 ? defaultQuorum : 
+        // return x == 0 ? defaultQuorum :
         return quorum(proposalSnapshot(proposalId)) <= againstVotes + forVotes + abstainVotes;
     }
 
