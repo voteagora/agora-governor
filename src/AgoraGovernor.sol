@@ -148,7 +148,6 @@ contract AgoraGovernor is
         uint256 beforeProposalId = hooks.beforeExecute(targets, values, calldatas, descriptionHash);
 
         uint256 proposalId = super.execute(targets, values, calldatas, descriptionHash);
-
         uint256 afterProposalId = hooks.afterExecute(proposalId, targets, values, calldatas, descriptionHash);
 
         // TODO: check that before and after proposal IDs are the same

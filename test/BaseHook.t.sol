@@ -87,7 +87,7 @@ contract BaseHookTest is Test, Deployers {
     function test_vote_succeeds(address _actor) public {
         deployGovernor(address(hook));
 
-        vm.assume(_actor != proxyAdmin && _actor != address(hook));
+        _actor = makeAddr("actor");
 
         vm.prank(minter);
         token.mint(_actor, 100);
@@ -114,5 +114,104 @@ contract BaseHookTest is Test, Deployers {
 
         vm.roll(block.number + 14);
         vm.stopPrank();
+    }
+
+    function test_cancel_succeeds() public {
+        deployGovernor(address(hook));
+
+        address[] memory targets = new address[](1);
+        targets[0] = address(this);
+        uint256[] memory values = new uint256[](1);
+        bytes[] memory calldatas = new bytes[](1);
+        calldatas[0] = abi.encodeWithSelector(this.test_initialize_succeeds.selector);
+
+        vm.startPrank(manager);
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+
+        vm.roll(block.number + 2);
+
+        vm.expectEmit(address(hook));
+        emit BaseHookMock.BeforeCancel();
+        vm.expectEmit(address(hook));
+        emit BaseHookMock.AfterCancel();
+        governor.cancel(targets, values, calldatas, keccak256("Test"));
+
+        vm.stopPrank();
+    }
+
+    function test_queue_succeeds(address _actor) public {
+        deployGovernor(address(hook));
+
+        _actor = makeAddr("actor");
+
+        vm.prank(minter);
+        token.mint(_actor, 100);
+        vm.startPrank(_actor);
+        token.delegate(_actor);
+        vm.roll(block.number + 1);
+
+        address[] memory targets = new address[](1);
+        targets[0] = address(this);
+        uint256[] memory values = new uint256[](1);
+        bytes[] memory calldatas = new bytes[](1);
+        calldatas[0] = abi.encodeWithSelector(this.test_initialize_succeeds.selector);
+
+        vm.startPrank(_actor);
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+
+        vm.roll(block.number + 2);
+
+        governor.castVote(proposalId, uint8(GovernorCountingSimple.VoteType.For));
+
+        vm.roll(block.number + 14);
+
+        vm.expectEmit(address(hook));
+        emit BaseHookMock.BeforeQueue();
+        vm.expectEmit(address(hook));
+        emit BaseHookMock.AfterQueue();
+        governor.queue(targets, values, calldatas, keccak256("Test"));
+    }
+
+    function test_execute_succeeds(
+        address _actor,
+        uint256 _proposalTargetCalldata,
+        uint256 _elapsedAfterQueuing
+    ) public {
+        deployGovernor(address(hook));
+
+        _actor = makeAddr("actor");
+
+        _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
+
+        vm.prank(minter);
+        token.mint(_actor, 100);
+        vm.startPrank(_actor);
+        token.delegate(_actor);
+        vm.roll(block.number + 1);
+
+        address[] memory targets = new address[](1);
+        targets[0] = address(this);
+        uint256[] memory values = new uint256[](1);
+        bytes[] memory calldatas = new bytes[](1);
+        calldatas[0] = abi.encodeWithSelector(this.test_initialize_succeeds.selector);
+
+        vm.startPrank(_actor);
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+
+        vm.roll(block.number + 2);
+
+        governor.castVote(proposalId, uint8(GovernorCountingSimple.VoteType.For));
+
+        vm.roll(block.number + 14);
+
+        governor.queue(targets, values, calldatas, keccak256("Test"));
+        vm.warp(block.timestamp + _elapsedAfterQueuing);
+
+        vm.expectEmit(address(hook));
+        emit BaseHookMock.BeforeExecute();
+        vm.expectCall(
+            address(hook), abi.encodeCall(hook.afterExecute, (_actor, proposalId, targets, values, calldatas, keccak256("Test")))
+        );
+        governor.execute(targets, values, calldatas, keccak256("Test"));
     }
 }

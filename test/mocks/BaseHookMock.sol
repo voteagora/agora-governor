@@ -144,14 +144,14 @@ contract BaseHookMock is BaseHook {
         return (this.beforeExecute.selector, 0);
     }
 
-    function afterExecute(address, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)
+    function afterExecute(address, uint256 proposalId, address[] memory, uint256[] memory, bytes[] memory, bytes32)
         external
         virtual
         override
         returns (bytes4, uint256)
     {
         emit AfterExecute();
-        return (this.afterExecute.selector, 0);
+        return (this.afterExecute.selector, proposalId);
     }
 
     /**
