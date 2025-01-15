@@ -38,7 +38,7 @@ contract BaseHookMock is BaseHook {
         override
         returns (bytes4, uint256)
     {
-        return (this.beforeQuorumCalculation.selector, beforeQuorum);
+        return (this.beforeQuorumCalculation.selector, 100);
     }
 
     function afterQuorumCalculation(address, uint256 afterQuorum)
@@ -58,7 +58,7 @@ contract BaseHookMock is BaseHook {
         returns (bytes4, uint256)
     {
         emit BeforeVote();
-        return (this.beforeVote.selector, 0);
+        return (this.beforeVote.selector, 299);
     }
 
     function afterVote(address, uint256, uint256, address, uint8, string memory, bytes memory)
@@ -78,15 +78,18 @@ contract BaseHookMock is BaseHook {
         returns (bytes4, uint256)
     {
         emit BeforePropose();
-        return (this.beforePropose.selector, 1);
+
+        return (this.beforePropose.selector, 0);
     }
 
-    function afterPropose(address, uint256 proposalId, address[] memory, uint256[] memory, bytes[] memory, string memory)
-        external
-        virtual
-        override
-        returns (bytes4, uint256)
-    {
+    function afterPropose(
+        address,
+        uint256 proposalId,
+        address[] memory,
+        uint256[] memory,
+        bytes[] memory,
+        string memory
+    ) external virtual override returns (bytes4, uint256) {
         emit AfterPropose();
         return (this.afterPropose.selector, proposalId);
     }

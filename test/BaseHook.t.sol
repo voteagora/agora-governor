@@ -87,7 +87,7 @@ contract BaseHookTest is Test, Deployers {
     function test_vote_succeeds(address _actor) public {
         deployGovernor(address(hook));
 
-        vm.assume(_actor != proxyAdmin);
+        vm.assume(_actor != proxyAdmin && _actor != address(hook));
 
         vm.prank(minter);
         token.mint(_actor, 100);
