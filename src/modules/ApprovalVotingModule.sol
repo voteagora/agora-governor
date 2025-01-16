@@ -209,15 +209,16 @@ contract ApprovalVotingModule is VotingModule {
             for (uint256 i; i < succeededOptionsLength; ++i) {
                 bool budgetExceeded = false;
                 option = sortedOptions[i];
+                uint256 optionTotalValue = 0;
 
                 for (n = 0; n < option.targets.length;) {
-                    // If `budgetToken` is ETH and value is not zero, add transaction value to `totalValue`
+                    // If `budgetToken` is ETH and value is not zero, add transaction value to `optionTotalValue`
                     if (settings.budgetToken == address(0) && option.values[n] != 0) {
-                        if (totalValue + option.values[n] > settings.budgetAmount) {
+                        if (totalValue + optionTotalValue + option.values[n] > settings.budgetAmount) {
                             budgetExceeded = true;
                             break; // break inner loop
                         }
-                        totalValue += option.values[n];
+                        optionTotalValue += option.values[n];
                     }
 
                     unchecked {
@@ -234,11 +235,13 @@ contract ApprovalVotingModule is VotingModule {
                 // Check if budgetAmount is exceeded for non-ETH tokens
                 if (settings.budgetToken != address(0) && settings.budgetAmount != 0) {
                     if (option.budgetTokensSpent != 0) {
-                        if (totalValue + option.budgetTokensSpent > settings.budgetAmount) continue; // break outer loop for non-ETH tokens
-                        totalValue += option.budgetTokensSpent;
+                        if (totalValue + optionTotalValue + option.budgetTokensSpent > settings.budgetAmount) continue; // break outer loop for non-ETH tokens
+                        optionTotalValue += option.budgetTokensSpent;
                     }
                 }
 
+                // Add option-specific value to the total value
+                totalValue += optionTotalValue;
                 unchecked {
                     executeParamsLength += n;
                 }
