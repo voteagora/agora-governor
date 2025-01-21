@@ -7,10 +7,13 @@ import {IHooks} from "src/interfaces/IHooks.sol";
 library Hooks {
     using Hooks for IHooks;
 
-    uint160 internal constant ALL_HOOK_MASK = uint160((1 << 14) - 1);
+    uint160 internal constant ALL_HOOK_MASK = uint160((1 << 16) - 1);
 
-    uint160 internal constant BEFORE_INITIALIZE_FLAG = 1 << 13;
-    uint160 internal constant AFTER_INITIALIZE_FLAG = 1 << 12;
+    uint160 internal constant BEFORE_INITIALIZE_FLAG = 1 << 15;
+    uint160 internal constant AFTER_INITIALIZE_FLAG = 1 << 14;
+
+    uint160 internal constant BEFORE_VOTE_SUCCEEDED_FLAG = 1 << 13;
+    uint160 internal constant AFTER_VOTE_SUCCEEDED_FLAG = 1 << 12;
 
     uint160 internal constant BEFORE_QUORUM_CALCULATION_FLAG = 1 << 11;
     uint160 internal constant AFTER_QUORUM_CALCULATION_FLAG = 1 << 10;
@@ -33,6 +36,8 @@ library Hooks {
     struct Permissions {
         bool beforeInitialize;
         bool afterInitialize;
+        bool beforeVoteSucceeded;
+        bool afterVoteSucceeded;
         bool beforeQuorumCalculation;
         bool afterQuorumCalculation;
         bool beforeVote;
@@ -65,6 +70,8 @@ library Hooks {
         if (
             permissions.beforeInitialize != self.hasPermission(BEFORE_INITIALIZE_FLAG)
                 || permissions.afterInitialize != self.hasPermission(AFTER_INITIALIZE_FLAG)
+                || permissions.beforeVoteSucceeded != self.hasPermission(BEFORE_VOTE_SUCCEEDED_FLAG)
+                || permissions.afterVoteSucceeded != self.hasPermission(AFTER_VOTE_SUCCEEDED_FLAG)
                 || permissions.beforeQuorumCalculation != self.hasPermission(BEFORE_QUORUM_CALCULATION_FLAG)
                 || permissions.afterQuorumCalculation != self.hasPermission(AFTER_QUORUM_CALCULATION_FLAG)
                 || permissions.beforeVote != self.hasPermission(BEFORE_VOTE_FLAG)
@@ -176,6 +183,44 @@ library Hooks {
     function afterInitialize(IHooks self) internal noSelfCall(self) {
         if (self.hasPermission(AFTER_INITIALIZE_FLAG)) {
             self.callHook(abi.encodeCall(IHooks.afterInitialize, (msg.sender)));
+        }
+    }
+
+    /// @notice calls beforeVoteSucceeded hook if permissioned and validates return value
+    function beforeVoteSucceeded(IHooks self, uint256 proposalId)
+        internal
+        view
+        noSelfCall(self)
+        returns (uint256 returnedProposalId)
+    {
+        if (self.hasPermission(BEFORE_VOTE_SUCCEEDED_FLAG)) {
+            bytes memory result =
+                self.staticCallHook(abi.encodeCall(IHooks.beforeVoteSucceeded, (msg.sender, proposalId)));
+
+            // The length of the result must be 64 bytes to return a bytes4 (padded to 32 bytes) and a uint256 (32 bytes) quorum value
+            if (result.length != 64) revert InvalidHookResponse();
+
+            // Extract the quorum from the result
+            returnedProposalId = parseUint256(result);
+        }
+    }
+
+    /// @notice calls afterVoteSucceeded hook if permissioned and validates return value
+    function afterVoteSucceeded(IHooks self, uint256 proposalId)
+        internal
+        view
+        noSelfCall(self)
+        returns (uint256 returnedProposalId)
+    {
+        if (self.hasPermission(AFTER_VOTE_SUCCEEDED_FLAG)) {
+            bytes memory result =
+                self.staticCallHook(abi.encodeCall(IHooks.afterVoteSucceeded, (msg.sender, proposalId)));
+
+            // The length of the result must be 64 bytes to return a bytes4 (padded to 32 bytes) and a uint256 (32 bytes) quorum value
+            if (result.length != 64) revert InvalidHookResponse();
+
+            // Extract the quorum from the result
+            returnedProposalId = parseUint256(result);
         }
     }
 

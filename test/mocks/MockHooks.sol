@@ -34,6 +34,16 @@ contract MockHooks is IHooks {
         return returnValues[selector] == bytes4(0) ? selector : returnValues[selector];
     }
 
+    function beforeVoteSucceeded(address, uint256) external view override returns (bytes4, uint256) {
+        bytes4 selector = MockHooks.beforeVoteSucceeded.selector;
+        return (returnValues[selector] == bytes4(0) ? selector : returnValues[selector], 0);
+    }
+
+    function afterVoteSucceeded(address, uint256) external view override returns (bytes4, uint256) {
+        bytes4 selector = MockHooks.afterVoteSucceeded.selector;
+        return (returnValues[selector] == bytes4(0) ? selector : returnValues[selector], 0);
+    }
+
     function beforeQuorumCalculation(address, uint256) external view override returns (bytes4, uint256) {
         bytes4 selector = MockHooks.beforeQuorumCalculation.selector;
         return (returnValues[selector] == bytes4(0) ? selector : returnValues[selector], 0);
