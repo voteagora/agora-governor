@@ -16,6 +16,7 @@ contract ProposalTypesConfiguratorTest is Test {
 
     event ScopeCreated(uint8 indexed proposalTypeId, bytes24 indexed scopeKey, bytes4 selector, string description);
     event ScopeDisabled(uint8 indexed proposalTypeId, bytes24 indexed scopeKey);
+    event ScopeDeleted(uint8 indexed proposalTypeId, bytes24 indexed scopeKey);
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
@@ -439,6 +440,19 @@ contract DisableScope is ProposalTypesConfiguratorTest {
         vm.expectEmit();
         emit ScopeDisabled(0, scopeKey);
         proposalTypesConfigurator.disableScope(0, scopeKey, 0);
+    }
+}
+
+contract DeleteScope is ProposalTypesConfiguratorTest {
+    function testFuzz_DeleteScope(uint256 _actorSeed) public {
+        vm.prank(_adminOrTimelock(_actorSeed));
+        bytes32 txTypeHash = keccak256("transfer(address,address,uint256)");
+        address contractAddress = makeAddr("contract");
+        bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
+
+        vm.expectEmit();
+        emit ScopeDeleted(0, scopeKey);
+        proposalTypesConfigurator.deleteScope(0, scopeKey, 0);
     }
 }
 
