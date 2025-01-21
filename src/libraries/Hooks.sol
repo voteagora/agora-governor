@@ -111,6 +111,15 @@ library Hooks {
         }
     }
 
+    function parseBool(bytes memory result) internal pure returns (bool output) {
+        // equivalent: (, boolean) = abi.decode(result, (bytes4, bool));
+        assembly ("memory-safe") {
+            // Load a single byte (bytes1) from position 0x20 + 0x20 (skip selector)
+            // and compare it with 0x01 to get the boolean value
+            output := eq(1, mload(add(result, 0x40)))
+        }
+    }
+
     /// @notice performs a hook call using the given calldata on the given hook that doesn't return a response
     /// @return result The complete data returned by the hook
     function callHook(IHooks self, bytes memory data) internal returns (bytes memory result) {
@@ -191,36 +200,36 @@ library Hooks {
         internal
         view
         noSelfCall(self)
-        returns (uint256 returnedProposalId)
+        returns (uint8 returnedVoteSucceeded)
     {
         if (self.hasPermission(BEFORE_VOTE_SUCCEEDED_FLAG)) {
             bytes memory result =
                 self.staticCallHook(abi.encodeCall(IHooks.beforeVoteSucceeded, (msg.sender, proposalId)));
 
-            // The length of the result must be 64 bytes to return a bytes4 (padded to 32 bytes) and a uint256 (32 bytes) quorum value
+            // The length of the result must be 64 bytes to return a bytes4 (padded to 32 bytes) and a boolean (padded to 32 bytes) value
             if (result.length != 64) revert InvalidHookResponse();
 
-            // Extract the quorum from the result
-            returnedProposalId = parseUint256(result);
+            // Extract the boolean from the result and convert to uint8 with 2 meaning true and 1 meaning false
+            returnedVoteSucceeded = parseBool(result) ? 2 : 1;
         }
     }
 
     /// @notice calls afterVoteSucceeded hook if permissioned and validates return value
-    function afterVoteSucceeded(IHooks self, uint256 proposalId)
+    function afterVoteSucceeded(IHooks self, uint256 proposalId, bool voteSucceeded)
         internal
         view
         noSelfCall(self)
-        returns (uint256 returnedProposalId)
+        returns (uint8 returnedVoteSucceeded)
     {
         if (self.hasPermission(AFTER_VOTE_SUCCEEDED_FLAG)) {
             bytes memory result =
-                self.staticCallHook(abi.encodeCall(IHooks.afterVoteSucceeded, (msg.sender, proposalId)));
+                self.staticCallHook(abi.encodeCall(IHooks.afterVoteSucceeded, (msg.sender, proposalId, voteSucceeded)));
 
-            // The length of the result must be 64 bytes to return a bytes4 (padded to 32 bytes) and a uint256 (32 bytes) quorum value
+            // The length of the result must be 64 bytes to return a bytes4 (padded to 32 bytes) and a boolean (padded to 32 bytes) value
             if (result.length != 64) revert InvalidHookResponse();
 
-            // Extract the quorum from the result
-            returnedProposalId = parseUint256(result);
+            // Extract the boolean from the result and convert to uint8 with 2 meaning true and 1 meaning false
+            returnedVoteSucceeded = parseBool(result) ? 2 : 1;
         }
     }
 

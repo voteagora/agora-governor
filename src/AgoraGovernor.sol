@@ -75,9 +75,7 @@ contract AgoraGovernor is
         GovernorSettings(_votingDelay, _votingPeriod, _proposalThreshold)
         GovernorTimelockControl(_timelock)
     {
-        if (!_hooks.isValidHookAddress()) {
-            revert Hooks.HookAddressNotValid(address(_hooks));
-        }
+        if (!_hooks.isValidHookAddress()) revert Hooks.HookAddressNotValid(address(_hooks));
 
         // This call is made after the inhereted constructors have been called
         _hooks.beforeInitialize();
@@ -297,6 +295,28 @@ contract AgoraGovernor is
     {
         (uint256 againstVotes, uint256 forVotes, uint256 abstainVotes) = proposalVotes(proposalId);
         return quorum(proposalSnapshot(proposalId)) <= againstVotes + forVotes + abstainVotes;
+    }
+
+    /**
+     * @inheritdoc Governor
+     */
+    function _voteSucceeded(uint256 proposalId)
+        internal
+        view
+        virtual
+        override(Governor, GovernorCountingSimple)
+        returns (bool)
+    {
+        uint8 beforeVoteSucceeded = hooks.beforeVoteSucceeded(proposalId);
+
+        bool voteSucceeded = super._voteSucceeded(proposalId);
+
+        uint8 afterVoteSucceeded = hooks.afterVoteSucceeded(proposalId, voteSucceeded);
+
+        // TODO: check that before and after vote succeeded are the same
+
+        // TODO: replace this with a flag on hook address because it returns false by default!
+        return beforeVoteSucceeded != 0 ? beforeVoteSucceeded == 2 : voteSucceeded;
     }
 
     function _executor() internal view override(Governor, GovernorTimelockControl) returns (address) {
