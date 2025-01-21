@@ -190,8 +190,10 @@ library Hooks {
             bytes memory result =
                 self.staticCallHook(abi.encodeCall(IHooks.beforeQuorumCalculation, (msg.sender, timepoint)));
 
+            // The length of the result must be 64 bytes to return a bytes4 (padded to 32 bytes) and a uint256 (32 bytes) quorum value
             if (result.length != 64) revert InvalidHookResponse();
-            // Extract the proposal ID from the result
+
+            // Extract the quorum from the result
             returnedQuorum = parseUint256(result);
         }
     }
@@ -207,10 +209,10 @@ library Hooks {
             bytes memory result =
                 self.staticCallHook(abi.encodeCall(IHooks.afterQuorumCalculation, (msg.sender, timepoint)));
 
-            // A length must be greater than 5 bytes to return a bytes4 and a uint256 quorum value
+            // The length of the result must be 64 bytes to return a bytes4 (padded to 32 bytes) and a uint256 (32 bytes) quorum value
             if (result.length != 64) revert InvalidHookResponse();
 
-            // Extract the proposal ID from the result
+            // Extract the quorum from the result
             returnedQuorum = parseUint256(result);
         }
     }
@@ -229,9 +231,10 @@ library Hooks {
                 abi.encodeCall(IHooks.beforeVote, (msg.sender, proposalId, account, support, reason, params))
             );
 
+            // The length of the result must be 64 bytes to return a bytes4 (padded to 32 bytes) and a uint256 (32 bytes) weight value
             if (result.length != 64) revert InvalidHookResponse();
 
-            // Extract the proposal ID from the result
+            // Extract the weight from the result
             returnedWeight = parseUint256(result);
         }
     }
@@ -251,9 +254,10 @@ library Hooks {
                 abi.encodeCall(IHooks.afterVote, (msg.sender, weight, proposalId, account, support, reason, params))
             );
 
+            // The length of the result must be 64 bytes to return a bytes4 (padded to 32 bytes) and a uint256 (32 bytes) weight value
             if (result.length != 64) revert InvalidHookResponse();
 
-            // Extract the proposal ID from the result
+            // Extract the weight from the result
             returnedWeight = parseUint256(result);
         }
     }
@@ -271,6 +275,7 @@ library Hooks {
                 abi.encodeCall(IHooks.beforePropose, (msg.sender, targets, values, calldatas, description))
             );
 
+            // The length of the result must be 64 bytes to return a bytes4 (padded to 32 bytes) and a uint256 (32 bytes) proposal ID value
             if (result.length != 64) revert InvalidHookResponse();
 
             // Extract the proposal ID from the result
@@ -292,6 +297,7 @@ library Hooks {
                 abi.encodeCall(IHooks.afterPropose, (msg.sender, proposalId, targets, values, calldatas, description))
             );
 
+            // The length of the result must be 64 bytes to return a bytes4 (padded to 32 bytes) and a uint256 (32 bytes) proposal ID value
             if (result.length != 64) revert InvalidHookResponse();
 
             // Extract the proposal ID from the result
@@ -312,7 +318,7 @@ library Hooks {
                 abi.encodeCall(IHooks.beforeQueue, (msg.sender, targets, values, calldatas, descriptionHash))
             );
 
-            // A length of 64 bytes is required to return a bytes4 and a 32 byte proposal ID
+            // The length of the result must be 64 bytes to return a bytes4 (padded to 32 bytes) and a uint256 (32 bytes) proposal ID value
             if (result.length != 64) revert InvalidHookResponse();
 
             // Extract the proposal ID from the result
@@ -334,7 +340,7 @@ library Hooks {
                 abi.encodeCall(IHooks.afterQueue, (msg.sender, proposalId, targets, values, calldatas, descriptionHash))
             );
 
-            // A length of 36 bytes is required to return a bytes4 and a 32 byte proposal ID
+            // The length of the result must be 64 bytes to return a bytes4 (padded to 32 bytes) and a uint256 (32 bytes) proposal ID value
             if (result.length != 64) revert InvalidHookResponse();
 
             // Extract the proposal ID from the result
@@ -355,7 +361,7 @@ library Hooks {
                 abi.encodeCall(IHooks.beforeCancel, (msg.sender, targets, values, calldatas, descriptionHash))
             );
 
-            // A length of 36 bytes is required to return a bytes4 and a 32 byte proposal ID
+            // The length of the result must be 64 bytes to return a bytes4 (padded to 32 bytes) and a uint256 (32 bytes) proposal ID value
             if (result.length != 64) revert InvalidHookResponse();
 
             // Extract the proposal ID from the result
@@ -379,7 +385,7 @@ library Hooks {
                 )
             );
 
-            // A length of 36 bytes is required to return a bytes4 and a 32 byte proposal ID
+            // The length of the result must be 64 bytes to return a bytes4 (padded to 32 bytes) and a uint256 (32 bytes) proposal ID value
             if (result.length != 64) revert InvalidHookResponse();
 
             // Extract the proposal ID from the result
@@ -400,7 +406,7 @@ library Hooks {
                 abi.encodeCall(IHooks.beforeExecute, (msg.sender, targets, values, calldatas, descriptionHash))
             );
 
-            // A length of 36 bytes is required to return a bytes4 and a 32 byte proposal ID
+            // The length of the result must be 64 bytes to return a bytes4 (padded to 32 bytes) and a uint256 (32 bytes) proposal ID value
             if (result.length != 64) revert InvalidHookResponse();
 
             // Extract the proposal ID from the result
@@ -424,7 +430,7 @@ library Hooks {
                 )
             );
 
-            // A length of 36 bytes is required to return a bytes4 and a 32 byte proposal ID
+            // The length of the result must be 64 bytes to return a bytes4 (padded to 32 bytes) and a uint256 (32 bytes) proposal ID value
             if (result.length != 64) revert InvalidHookResponse();
 
             // Extract the proposal ID from the result
