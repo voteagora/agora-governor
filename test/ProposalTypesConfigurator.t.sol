@@ -207,8 +207,8 @@ contract SetProposalType is ProposalTypesConfiguratorTest {
         );
         vm.stopPrank();
 
-       bytes4 selector = proposalTypesConfigurator.getSelector(0, scopeKey);
-       assertEq(selector, txEncoded);
+        bytes4 selector = proposalTypesConfigurator.getSelector(0, scopeKey);
+        assertEq(selector, txEncoded);
     }
 
     function test_RevertIf_NotAdminOrTimelock(address _actor) public {
