@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
+import "forge-std/console.sol";
 import {Test} from "forge-std/Test.sol";
 import {ProposalTypesConfigurator} from "src/ProposalTypesConfigurator.sol";
 import {IProposalTypesConfigurator} from "src/interfaces/IProposalTypesConfigurator.sol";
@@ -21,6 +22,7 @@ contract ProposalTypesConfiguratorTest is Test {
 
     event ScopeCreated(uint8 indexed proposalTypeId, bytes24 indexed scopeKey, bytes4 selector, string description);
     event ScopeDisabled(uint8 indexed proposalTypeId, bytes24 indexed scopeKey);
+    event ScopeDeleted(uint8 indexed proposalTypeId, bytes24 indexed scopeKey);
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
@@ -501,6 +503,23 @@ contract DisableScope is ProposalTypesConfiguratorTest {
         vm.expectEmit();
         emit ScopeDisabled(0, scopeKey);
         proposalTypesConfigurator.disableScope(0, scopeKey, 0);
+    }
+}
+
+contract DeleteScope is ProposalTypesConfiguratorTest {
+    function testFuzz_DeleteScope(uint256 _actorSeed) public {
+        vm.startPrank(_adminOrTimelock(_actorSeed));
+        bytes32 txTypeHash = keccak256("transfer(address,address,uint256)");
+        address contractAddress = makeAddr("contract");
+        bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
+
+        assertEq(proposalTypesConfigurator.assignedScopes(0, scopeKey).length, 1);
+        vm.expectEmit();
+        emit ScopeDeleted(0, scopeKey);
+        proposalTypesConfigurator.deleteScope(0, scopeKey, 0);
+        assertEq(proposalTypesConfigurator.assignedScopes(0, scopeKey).length, 0);
+
+        vm.stopPrank();
     }
 }
 

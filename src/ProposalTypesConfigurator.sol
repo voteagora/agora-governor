@@ -219,7 +219,11 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param idx the index of the assigned scope.
      */
     function deleteScope(uint8 proposalTypeId, bytes24 scopeKey, uint8 idx) external override onlyAdminOrTimelock {
-        delete _assignedScopes[proposalTypeId][scopeKey][idx];
+        Scope[] storage scopeArr = _assignedScopes[proposalTypeId][scopeKey];
+
+        scopeArr[idx] = scopeArr[scopeArr.length - 1];
+        scopeArr.pop();
+
         emit ScopeDeleted(proposalTypeId, scopeKey);
     }
 
