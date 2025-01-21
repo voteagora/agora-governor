@@ -186,7 +186,7 @@ contract AgoraGovernor is
         return beforeProposalId != 0 ? beforeProposalId : proposalId;
     }
 
-    function quorumDenominator() public view override returns (uint256) {
+    function quorumDenominator() public pure override returns (uint256) {
         return 10_000;
     }
 

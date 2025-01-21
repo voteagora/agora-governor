@@ -66,6 +66,7 @@ contract MockHooks is IHooks {
 
     function beforePropose(address, address[] memory, uint256[] memory, bytes[] memory, string memory)
         external
+        view
         override
         returns (bytes4, uint256)
     {
@@ -76,6 +77,7 @@ contract MockHooks is IHooks {
 
     function afterPropose(address, uint256, address[] memory, uint256[] memory, bytes[] memory, string memory)
         external
+        view
         override
         returns (bytes4, uint256)
     {
@@ -86,6 +88,7 @@ contract MockHooks is IHooks {
 
     function beforeCancel(address, address[] memory, uint256[] memory, bytes[] memory, bytes32)
         external
+        view
         override
         returns (bytes4, uint256)
     {
@@ -96,6 +99,7 @@ contract MockHooks is IHooks {
 
     function afterCancel(address, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)
         external
+        view
         override
         returns (bytes4, uint256)
     {
@@ -106,6 +110,7 @@ contract MockHooks is IHooks {
 
     function beforeQueue(address, address[] memory, uint256[] memory, bytes[] memory, bytes32)
         external
+        view
         override
         returns (bytes4, uint256)
     {
@@ -116,6 +121,7 @@ contract MockHooks is IHooks {
 
     function afterQueue(address, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)
         external
+        view
         override
         returns (bytes4, uint256)
     {
@@ -126,6 +132,7 @@ contract MockHooks is IHooks {
 
     function beforeExecute(address, address[] memory, uint256[] memory, bytes[] memory, bytes32)
         external
+        view
         override
         returns (bytes4, uint256)
     {
@@ -136,6 +143,7 @@ contract MockHooks is IHooks {
 
     function afterExecute(address, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)
         external
+        view
         override
         returns (bytes4, uint256)
     {

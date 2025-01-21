@@ -125,7 +125,7 @@ contract BaseHookTest is Test, Deployers {
         calldatas[0] = abi.encodeWithSelector(this.test_initialize_succeeds.selector);
 
         vm.startPrank(manager);
-        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+        governor.propose(targets, values, calldatas, "Test");
 
         vm.roll(block.number + 2);
 
@@ -171,9 +171,7 @@ contract BaseHookTest is Test, Deployers {
         governor.queue(targets, values, calldatas, keccak256("Test"));
     }
 
-    function test_execute_succeeds(address _actor, uint256 _proposalTargetCalldata, uint256 _elapsedAfterQueuing)
-        public
-    {
+    function test_execute_succeeds(address _actor, uint256 _elapsedAfterQueuing) public {
         deployGovernor(address(hook));
 
         _actor = makeAddr("actor");

@@ -31,13 +31,7 @@ contract BaseHookMock is BaseHook {
         return this.afterInitialize.selector;
     }
 
-    function beforeQuorumCalculation(address, uint256 beforeQuorum)
-        external
-        view
-        virtual
-        override
-        returns (bytes4, uint256)
-    {
+    function beforeQuorumCalculation(address, uint256) external view virtual override returns (bytes4, uint256) {
         return (this.beforeQuorumCalculation.selector, 100);
     }
 
