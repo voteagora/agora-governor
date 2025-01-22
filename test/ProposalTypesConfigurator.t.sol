@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "forge-std/console.sol";
 import {Test} from "forge-std/Test.sol";
 import {ProposalTypesConfigurator} from "src/ProposalTypesConfigurator.sol";
 import {IProposalTypesConfigurator} from "src/interfaces/IProposalTypesConfigurator.sol";
