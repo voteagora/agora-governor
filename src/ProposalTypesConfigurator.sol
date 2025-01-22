@@ -196,6 +196,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param key A type signature of a function and contract address that has a limit specified in a scope
      */
     function getSelector(uint8 proposalTypeId, bytes24 key) public view returns (bytes4 selector) {
+        if (!_scopeExists[key]) revert InvalidScope();
         if (!_proposalTypes[proposalTypeId].exists) revert InvalidProposalType();
         Scope memory validScope = _assignedScopes[proposalTypeId][key][0];
         return validScope.selector;

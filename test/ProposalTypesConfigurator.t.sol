@@ -158,6 +158,36 @@ contract ProposalTypes is ProposalTypesConfiguratorTest {
     }
 }
 
+contract GetSelector is ProposalTypesConfiguratorTest {
+    function test_getSelector() public {
+        bytes32 txTypeHash = keccak256("transfer(address,address,uint256)");
+        address contractAddress = makeAddr("contract");
+        bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
+
+        bytes4 selector = proposalTypesConfigurator.getSelector(0, scopeKey);
+        bytes4 expectedSelector = bytes4(txTypeHash);
+        assertEq(selector, expectedSelector);
+    }
+
+    function test_Revert_getSelector_InvalidScope() public {
+        bytes32 txTypeHash = keccak256("foobar(address,address,uint256)");
+        address contractAddress = makeAddr("contract");
+        bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
+
+        vm.expectRevert(IProposalTypesConfigurator.InvalidScope.selector);
+        proposalTypesConfigurator.getSelector(0, scopeKey);
+    }
+
+    function test_Revert_getSelector_InvalidProposalType() public {
+        bytes32 txTypeHash = keccak256("transfer(address,address,uint256)");
+        address contractAddress = makeAddr("contract");
+        bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
+
+        vm.expectRevert(IProposalTypesConfigurator.InvalidProposalType.selector);
+        proposalTypesConfigurator.getSelector(12, scopeKey);
+    }
+}
+
 contract SetProposalType is ProposalTypesConfiguratorTest {
     function testFuzz_SetProposalType(uint256 _actorSeed) public {
         vm.prank(_adminOrTimelock(_actorSeed));
