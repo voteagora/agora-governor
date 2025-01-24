@@ -180,7 +180,7 @@ library Hooks {
     }
 
     /// @notice calls beforeQuorumCalculation hook if permissioned and validates return value
-    function beforeQuorumCalculation(IHooks self, uint256 timepoint)
+    function beforeQuorumCalculation(IHooks self, uint256 proposalId)
         internal
         view
         noSelfCall(self)
@@ -188,7 +188,7 @@ library Hooks {
     {
         if (self.hasPermission(BEFORE_QUORUM_CALCULATION_FLAG)) {
             bytes memory result =
-                self.staticCallHook(abi.encodeCall(IHooks.beforeQuorumCalculation, (msg.sender, timepoint)));
+                self.staticCallHook(abi.encodeCall(IHooks.beforeQuorumCalculation, (msg.sender, proposalId)));
 
             if (result.length != 64) revert InvalidHookResponse();
             // Extract the proposal ID from the result
@@ -197,7 +197,7 @@ library Hooks {
     }
 
     /// @notice calls afterQuorumCalculation hook if permissioned and validates return value
-    function afterQuorumCalculation(IHooks self, uint256 timepoint)
+    function afterQuorumCalculation(IHooks self, uint256 proposalId, uint256 quorum)
         internal
         view
         noSelfCall(self)
@@ -205,7 +205,7 @@ library Hooks {
     {
         if (self.hasPermission(AFTER_QUORUM_CALCULATION_FLAG)) {
             bytes memory result =
-                self.staticCallHook(abi.encodeCall(IHooks.afterQuorumCalculation, (msg.sender, timepoint)));
+                self.staticCallHook(abi.encodeCall(IHooks.afterQuorumCalculation, (msg.sender, proposalId, quorum)));
 
             // A length must be greater than 5 bytes to return a bytes4 and a uint256 quorum value
             if (result.length != 64) revert InvalidHookResponse();

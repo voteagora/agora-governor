@@ -50,7 +50,8 @@ contract BaseHookTest is Test, Deployers {
             address(hook), abi.encodeCall(hook.beforeQuorumCalculation, (0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496, 0))
         );
         vm.expectCall(
-            address(hook), abi.encodeCall(hook.afterQuorumCalculation, (0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496, 0))
+            address(hook),
+            abi.encodeCall(hook.afterQuorumCalculation, (0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496, 0, 0))
         );
         governor.quorum(0);
     }

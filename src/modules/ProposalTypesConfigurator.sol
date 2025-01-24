@@ -33,16 +33,18 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator, BaseHook {
     //////////////////////////////////////////////////////////////*/
 
     mapping(uint8 proposalTypeId => ProposalType) internal _proposalTypes;
-
     mapping(uint8 proposalTypeId => mapping(bytes24 key => Scope[])) internal _assignedScopes;
     mapping(bytes24 key => bool) internal _scopeExists;
+    mapping(uint256 proposalId => uint8 proposalTypeId) internal _proposalTypeId;
 
     /*//////////////////////////////////////////////////////////////
                                MODIFIERS
     //////////////////////////////////////////////////////////////*/
 
     modifier onlyAdminOrTimelock() {
-        if (msg.sender != governor.admin() && msg.sender != governor.timelock()) revert NotAdminOrTimelock();
+        if (msg.sender != governor.admin() && msg.sender != governor.timelock()) {
+            revert NotAdminOrTimelock();
+        }
         _;
     }
 
@@ -86,15 +88,22 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator, BaseHook {
 
     // remove timepoint (either call the governor or some other hook), just use proposalId
     /// @notice The hook called after quorum calculation is performed
-    function afterQuorumCalculation(address sender, uint256 timepoint)
+    function afterQuorumCalculation(address sender, uint256 proposalId, uint256)
         external
         view
         override
         returns (bytes4, uint256)
     {
-        uint256 _beforeQuorum =
-            (governor.token().getPastTotalSupply(timepoint) * _proposalTypes[0].quorum) / governor.quorumDenominator();
-        return (IHooks.afterQuorumCalculation.selector, _beforeQuorum);
+        // Get the proposalId for the timepoint
+        uint8 proposalTypeId = _proposalTypeId[proposalId];
+
+        // Calculate the quorum using the proposal type
+        uint256 quorum = (
+            governor.token().getPastTotalSupply(governor.proposalSnapshot(proposalId))
+                * _proposalTypes[proposalTypeId].quorum
+        ) / governor.quorumDenominator();
+
+        return (IHooks.afterQuorumCalculation.selector, quorum);
     }
 
     function beforePropose(

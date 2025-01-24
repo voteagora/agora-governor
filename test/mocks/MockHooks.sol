@@ -39,7 +39,7 @@ contract MockHooks is IHooks {
         return (returnValues[selector] == bytes4(0) ? selector : returnValues[selector], 0);
     }
 
-    function afterQuorumCalculation(address, uint256) external view override returns (bytes4, uint256) {
+    function afterQuorumCalculation(address, uint256, uint256) external view override returns (bytes4, uint256) {
         bytes4 selector = MockHooks.afterQuorumCalculation.selector;
         return (returnValues[selector] == bytes4(0) ? selector : returnValues[selector], 0);
     }
