@@ -5,6 +5,7 @@ import {IProposalTypesConfigurator} from "src/interfaces/IProposalTypesConfigura
 import {AgoraGovernor} from "src/AgoraGovernor.sol";
 import {IHooks} from "src/interfaces/IHooks.sol";
 import {Hooks} from "src/libraries/Hooks.sol";
+import {Parser} from "src/libraries/Parser.sol";
 import {BaseHook} from "src/BaseHook.sol";
 
 import {Bytes} from "@openzeppelin/contracts/utils/Bytes.sol";
@@ -14,6 +15,8 @@ import {Validator} from "src/modules/Validator.sol";
 
 contract ProposalTypesConfigurator is IProposalTypesConfigurator, BaseHook {
     using Hooks for IHooks;
+    using Parser for string;
+
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
@@ -73,15 +76,6 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator, BaseHook {
         });
     }
 
-    function _parseProposalTypeId(string memory description) internal pure returns (uint8 proposalTypeId) {
-        // description should be in the format: "{proposalTypeId}|some random string" i.e "1|Test"
-        bytes memory byteString = bytes(description);
-        uint256 idx = Bytes.indexOf(byteString, bytes1("|"));
-        bytes memory typeId = Bytes.slice(byteString, 0, idx);
-
-        proposalTypeId = SafeCast.toUint8(Strings.parseUint(string(typeId)));
-    }
-
     /*//////////////////////////////////////////////////////////////
                                HOOKS
     //////////////////////////////////////////////////////////////*/
@@ -113,7 +107,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator, BaseHook {
         bytes[] memory calldatas,
         string memory description
     ) external virtual override returns (bytes4, uint256) {
-        uint8 proposalTypeId = _parseProposalTypeId(description);
+        uint8 proposalTypeId = description._parseProposalTypeId();
 
         // Revert if `proposalType` is unset or requires module
         if (
@@ -139,7 +133,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator, BaseHook {
         bytes[] memory calldatas,
         string memory description
     ) external virtual override returns (bytes4, uint256) {
-        uint8 proposalTypeId = _parseProposalTypeId(description);
+        uint8 proposalTypeId = description._parseProposalTypeId();
         //TODO hashProposalWithModule
         uint256 proposalId = governor.hashProposal(targets, values, calldatas, keccak256(bytes(description)));
 
