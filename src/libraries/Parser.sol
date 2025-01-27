@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import {LibString} from "@solady/utils/LibString.sol";
 import {JSONParserLib} from "@solady/utils/JSONParserLib.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {console2 as console} from "forge-std/console2.sol";
 
 library Parser {
     using LibString for string;
@@ -33,9 +32,7 @@ library Parser {
             if (parts.length != 2) revert InvalidDescription();
 
             // Slice the marker part if there's any other marker after the given marker
-            string memory value = parts[1].split("#")[0];
-
-            return value;
+            value = parts[1].split("#")[0];
         }
     }
 

@@ -7,13 +7,13 @@ import {Parser} from "src/libraries/Parser.sol";
 contract ParserTest is Test {
     using Parser for string;
 
-    function test_parse() public {
+    function test_parse() public pure {
         string memory description = "my description is this one#proposalTypeId=1";
         uint8 proposalTypeId = description._parseProposalTypeId();
         assertEq(proposalTypeId, 1);
     }
 
-    function test_parse_2() public {
+    function test_parse_2() public pure {
         string memory description = "my description is this one#proposalTypeId=255";
         uint8 proposalTypeId = description._parseProposalTypeId();
         assertEq(proposalTypeId, 255);
@@ -25,7 +25,7 @@ contract ParserTest is Test {
         description._parseProposalTypeId();
     }
 
-    function test_parse_anotherMarker() public {
+    function test_parse_anotherMarker() public pure {
         string memory description = "my description is this one#proposalTypeId=10#proposalData=data";
         uint8 proposalTypeId = description._parseProposalTypeId();
         assertEq(proposalTypeId, 10);
