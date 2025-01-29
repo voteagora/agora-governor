@@ -174,7 +174,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator, BaseHook {
         if (approvalThreshold == 0) return (this.afterPropose.selector, true);
 
         (uint256 againstVotes, uint256 forVotes, uint256 abstainVotes) = governor.proposalVotes(proposalId);
-        uint256 totalVotes = forVotes + againstVotes + abstainVotes;
+        uint256 totalVotes = forVotes + againstVotes;
 
         if (totalVotes != 0) {
             voteSucceeded = (forVotes * PERCENT_DIVISOR) / totalVotes >= approvalThreshold;
