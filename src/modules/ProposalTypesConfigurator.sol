@@ -145,7 +145,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator, BaseHook {
         // Route hook to voting module
         if (_proposalTypes[proposalTypeId].module != address(0)) {
             (bool success,) = _proposalTypes[proposalTypeId].module.call(
-                abi.encodeCall(IHooks.beforePropose, (msg.sender, targets, values, calldatas, description))
+                abi.encodeCall(IHooks.afterPropose, (msg.sender, proposalId, targets, values, calldatas, description))
             );
 
             if (!success) revert Hooks.InvalidHookResponse();
