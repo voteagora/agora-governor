@@ -31,6 +31,14 @@ contract BaseHookMock is BaseHook {
         return this.afterInitialize.selector;
     }
 
+    function beforeVoteSucceeded(address, uint256) external view virtual override returns (bytes4, bool) {
+        return (this.beforeVoteSucceeded.selector, true);
+    }
+
+    function afterVoteSucceeded(address, uint256, bool) external view virtual override returns (bytes4, bool) {
+        return (this.afterVoteSucceeded.selector, true);
+    }
+
     function beforeQuorumCalculation(address, uint256) external view virtual override returns (bytes4, uint256) {
         return (this.beforeQuorumCalculation.selector, 100);
     }
@@ -155,6 +163,8 @@ contract BaseHookMock is BaseHook {
         return Hooks.Permissions({
             beforeInitialize: true,
             afterInitialize: true,
+            beforeVoteSucceeded: true,
+            afterVoteSucceeded: true,
             beforeQuorumCalculation: true,
             afterQuorumCalculation: true,
             beforeVote: true,
@@ -181,6 +191,8 @@ contract BaseHookMockReverts is BaseHook {
         return Hooks.Permissions({
             beforeInitialize: true,
             afterInitialize: true,
+            beforeVoteSucceeded: true,
+            afterVoteSucceeded: true,
             beforeQuorumCalculation: true,
             afterQuorumCalculation: true,
             beforeVote: true,
