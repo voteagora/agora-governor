@@ -61,7 +61,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator, BaseHook {
         return Hooks.Permissions({
             beforeInitialize: false,
             afterInitialize: false,
-            beforeVoteSucceeded: false,
+            beforeVoteSucceeded: true,
             afterVoteSucceeded: false,
             beforeQuorumCalculation: false,
             afterQuorumCalculation: true,
@@ -82,7 +82,6 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator, BaseHook {
                                HOOKS
     //////////////////////////////////////////////////////////////*/
 
-    // remove timepoint (either call the governor or some other hook), just use proposalId
     /// @notice The hook called after quorum calculation is performed
     function afterQuorumCalculation(address sender, uint256 proposalId, uint256)
         external
@@ -111,19 +110,25 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator, BaseHook {
     ) external virtual override returns (bytes4, uint256) {
         uint8 proposalTypeId = description._parseProposalTypeId();
 
-        // Revert if `proposalType` is unset or requires module
-        if (
-            bytes(_proposalTypes[proposalTypeId].name).length == 0
-                || _proposalTypes[proposalTypeId].module != address(0) // Revert for now but TODO: handle proposeWithModule
-        ) {
+        // Revert if `proposalType` is unset
+        if (bytes(_proposalTypes[proposalTypeId].name).length == 0) {
             revert InvalidProposalType(proposalTypeId);
+        }
+
+        // Route hook to voting module
+        if (_proposalTypes[proposalTypeId].module != address(0)) {
+            (bool success,) = _proposalTypes[proposalTypeId].module.call(
+                abi.encodeCall(IHooks.beforePropose, (msg.sender, targets, values, calldatas, description))
+            );
+
+            if (!success) revert Hooks.InvalidHookResponse();
         }
 
         this.validateProposalData(targets, calldatas, proposalTypeId);
 
-        //TODO hashProposalWithModule
         uint256 proposalId = governor.hashProposal(targets, values, calldatas, keccak256(bytes(description)));
 
+        _proposalTypeId[proposalId] = proposalTypeId;
         return (this.beforePropose.selector, proposalId);
     }
 
@@ -136,10 +141,46 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator, BaseHook {
         string memory description
     ) external virtual override returns (bytes4, uint256) {
         uint8 proposalTypeId = description._parseProposalTypeId();
-        //TODO hashProposalWithModule
-        uint256 newProposalId = governor.hashProposal(targets, values, calldatas, keccak256(bytes(description)));
 
-        return (this.afterPropose.selector, newProposalId);
+        // Route hook to voting module
+        if (_proposalTypes[proposalTypeId].module != address(0)) {
+            (bool success,) = _proposalTypes[proposalTypeId].module.call(
+                abi.encodeCall(IHooks.beforePropose, (msg.sender, targets, values, calldatas, description))
+            );
+
+            if (!success) revert Hooks.InvalidHookResponse();
+        }
+
+        uint256 afterProposalId = governor.hashProposal(targets, values, calldatas, keccak256(bytes(description)));
+
+        _proposalTypeId[proposalId] = proposalTypeId;
+        return (this.afterPropose.selector, afterProposalId);
+    }
+
+    function beforeVoteSucceeded(address sender, uint256 proposalId) external virtual view override returns (bytes4, bool voteSucceeded) {
+        uint8 proposalTypeId = _proposalTypeId[proposalId];
+        address votingModule = _proposalTypes[proposalTypeId].module;
+        if (votingModule != address(0)) {
+
+            /*
+            if (!VotingModule(votingModule)._voteSucceeded(proposalId)) {
+                return false;
+            }
+            */
+        }
+
+        uint256 approvalThreshold = _proposalTypes[proposalTypeId].approvalThreshold;
+
+        if (approvalThreshold == 0) return (this.afterPropose.selector, true);
+
+        (uint256 againstVotes, uint256 forVotes, uint256 abstainVotes) = governor.proposalVotes(proposalId);
+        uint256 totalVotes = forVotes + againstVotes + abstainVotes;
+
+        if (totalVotes != 0) {
+            voteSucceeded = (forVotes * PERCENT_DIVISOR) / totalVotes >= approvalThreshold;
+        }
+
+        return (this.afterPropose.selector, voteSucceeded);
     }
 
     /*//////////////////////////////////////////////////////////////
