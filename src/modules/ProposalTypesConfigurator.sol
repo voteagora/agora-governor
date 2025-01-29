@@ -61,6 +61,8 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator, BaseHook {
         return Hooks.Permissions({
             beforeInitialize: false,
             afterInitialize: false,
+            beforeVoteSucceeded: false,
+            afterVoteSucceeded: false,
             beforeQuorumCalculation: false,
             afterQuorumCalculation: true,
             beforeVote: false,
@@ -135,9 +137,9 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator, BaseHook {
     ) external virtual override returns (bytes4, uint256) {
         uint8 proposalTypeId = description._parseProposalTypeId();
         //TODO hashProposalWithModule
-        uint256 proposalId = governor.hashProposal(targets, values, calldatas, keccak256(bytes(description)));
+        uint256 newProposalId = governor.hashProposal(targets, values, calldatas, keccak256(bytes(description)));
 
-        return (this.afterPropose.selector, proposalId);
+        return (this.afterPropose.selector, newProposalId);
     }
 
     /*//////////////////////////////////////////////////////////////
