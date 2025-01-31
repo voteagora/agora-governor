@@ -5,6 +5,7 @@ import {IProposalTypesConfigurator} from "src/interfaces/IProposalTypesConfigura
 import {AgoraGovernor} from "src/AgoraGovernor.sol";
 import {IHooks} from "src/interfaces/IHooks.sol";
 import {Hooks} from "src/libraries/Hooks.sol";
+import {Parser} from "src/libraries/Parser.sol";
 import {BaseHook} from "src/BaseHook.sol";
 
 import {Bytes} from "@openzeppelin/contracts/utils/Bytes.sol";
@@ -14,6 +15,8 @@ import {Validator} from "src/modules/Validator.sol";
 
 contract ProposalTypesConfigurator is IProposalTypesConfigurator, BaseHook {
     using Hooks for IHooks;
+    using Parser for string;
+
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
@@ -58,6 +61,8 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator, BaseHook {
         return Hooks.Permissions({
             beforeInitialize: false,
             afterInitialize: false,
+            beforeVoteSucceeded: true,
+            afterVoteSucceeded: false,
             beforeQuorumCalculation: false,
             afterQuorumCalculation: true,
             beforeVote: false,
@@ -73,20 +78,10 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator, BaseHook {
         });
     }
 
-    function _parseProposalTypeId(string memory description) internal pure returns (uint8 proposalTypeId) {
-        // description should be in the format: "{proposalTypeId}|some random string" i.e "1|Test"
-        bytes memory byteString = bytes(description);
-        uint256 idx = Bytes.indexOf(byteString, bytes1("|"));
-        bytes memory typeId = Bytes.slice(byteString, 0, idx);
-
-        proposalTypeId = SafeCast.toUint8(Strings.parseUint(string(typeId)));
-    }
-
     /*//////////////////////////////////////////////////////////////
                                HOOKS
     //////////////////////////////////////////////////////////////*/
 
-    // remove timepoint (either call the governor or some other hook), just use proposalId
     /// @notice The hook called after quorum calculation is performed
     function afterQuorumCalculation(address sender, uint256 proposalId, uint256)
         external
@@ -113,21 +108,27 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator, BaseHook {
         bytes[] memory calldatas,
         string memory description
     ) external virtual override returns (bytes4, uint256) {
-        uint8 proposalTypeId = _parseProposalTypeId(description);
+        uint8 proposalTypeId = description._parseProposalTypeId();
 
-        // Revert if `proposalType` is unset or requires module
-        if (
-            bytes(_proposalTypes[proposalTypeId].name).length == 0
-                || _proposalTypes[proposalTypeId].module != address(0) // Revert for now but TODO: handle proposeWithModule
-        ) {
+        // Revert if `proposalType` is unset
+        if (bytes(_proposalTypes[proposalTypeId].name).length == 0) {
             revert InvalidProposalType(proposalTypeId);
+        }
+
+        // Route hook to voting module
+        if (_proposalTypes[proposalTypeId].module != address(0)) {
+            (bool success,) = _proposalTypes[proposalTypeId].module.call(
+                abi.encodeCall(IHooks.beforePropose, (msg.sender, targets, values, calldatas, description))
+            );
+
+            if (!success) revert Hooks.InvalidHookResponse();
         }
 
         this.validateProposalData(targets, calldatas, proposalTypeId);
 
-        //TODO hashProposalWithModule
         uint256 proposalId = governor.hashProposal(targets, values, calldatas, keccak256(bytes(description)));
 
+        _proposalTypeId[proposalId] = proposalTypeId;
         return (this.beforePropose.selector, proposalId);
     }
 
@@ -139,11 +140,47 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator, BaseHook {
         bytes[] memory calldatas,
         string memory description
     ) external virtual override returns (bytes4, uint256) {
-        uint8 proposalTypeId = _parseProposalTypeId(description);
-        //TODO hashProposalWithModule
-        uint256 proposalId = governor.hashProposal(targets, values, calldatas, keccak256(bytes(description)));
+        uint8 proposalTypeId = description._parseProposalTypeId();
 
-        return (this.afterPropose.selector, proposalId);
+        // Route hook to voting module
+        if (_proposalTypes[proposalTypeId].module != address(0)) {
+            (bool success,) = _proposalTypes[proposalTypeId].module.call(
+                abi.encodeCall(IHooks.afterPropose, (msg.sender, proposalId, targets, values, calldatas, description))
+            );
+
+            if (!success) revert Hooks.InvalidHookResponse();
+        }
+
+        uint256 afterProposalId = governor.hashProposal(targets, values, calldatas, keccak256(bytes(description)));
+
+        _proposalTypeId[proposalId] = proposalTypeId;
+        return (this.afterPropose.selector, afterProposalId);
+    }
+
+    function beforeVoteSucceeded(address sender, uint256 proposalId) external virtual view override returns (bytes4, bool voteSucceeded) {
+        uint8 proposalTypeId = _proposalTypeId[proposalId];
+        address votingModule = _proposalTypes[proposalTypeId].module;
+        if (votingModule != address(0)) {
+
+            /*
+            if (!VotingModule(votingModule)._voteSucceeded(proposalId)) {
+                return false;
+            }
+            */
+        }
+
+        uint256 approvalThreshold = _proposalTypes[proposalTypeId].approvalThreshold;
+
+        if (approvalThreshold == 0) return (this.afterPropose.selector, true);
+
+        (uint256 againstVotes, uint256 forVotes, uint256 abstainVotes) = governor.proposalVotes(proposalId);
+        uint256 totalVotes = forVotes + againstVotes;
+
+        if (totalVotes != 0) {
+            voteSucceeded = (forVotes * PERCENT_DIVISOR) / totalVotes >= approvalThreshold;
+        }
+
+        return (this.afterPropose.selector, voteSucceeded);
     }
 
     /*//////////////////////////////////////////////////////////////

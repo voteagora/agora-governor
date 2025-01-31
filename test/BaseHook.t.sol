@@ -15,21 +15,11 @@ contract BaseHookTest is Test, Deployers {
     BaseHookMockReverts hookReverts;
 
     function setUp() public {
-        hook = BaseHookMock(
-            address(
-                uint160(
-                    Hooks.BEFORE_INITIALIZE_FLAG | Hooks.AFTER_INITIALIZE_FLAG | Hooks.BEFORE_QUORUM_CALCULATION_FLAG
-                        | Hooks.AFTER_QUORUM_CALCULATION_FLAG | Hooks.BEFORE_VOTE_FLAG | Hooks.AFTER_VOTE_FLAG
-                        | Hooks.BEFORE_PROPOSE_FLAG | Hooks.AFTER_PROPOSE_FLAG | Hooks.BEFORE_CANCEL_FLAG
-                        | Hooks.AFTER_CANCEL_FLAG | Hooks.BEFORE_QUEUE_FLAG | Hooks.AFTER_QUEUE_FLAG
-                        | Hooks.BEFORE_EXECUTE_FLAG | Hooks.AFTER_EXECUTE_FLAG
-                )
-            )
-        );
+        hook = BaseHookMock(address(uint160(Hooks.ALL_HOOK_MASK)));
 
         deployCodeTo("test/mocks/BaseHookMock.sol:BaseHookMock", abi.encode(governorAddress), address(hook));
 
-        hookReverts = BaseHookMockReverts(address(0x1000000000000000000000000000000000003ffF));
+        hookReverts = BaseHookMockReverts(address(0x100000000000000000000000000000000000ffFf));
         deployCodeTo(
             "test/mocks/BaseHookMock.sol:BaseHookMockReverts", abi.encode(governorAddress), address(hookReverts)
         );
@@ -126,7 +116,7 @@ contract BaseHookTest is Test, Deployers {
         calldatas[0] = abi.encodeWithSelector(this.test_initialize_succeeds.selector);
 
         vm.startPrank(manager);
-        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+        governor.propose(targets, values, calldatas, "Test");
 
         vm.roll(block.number + 2);
 
@@ -172,9 +162,7 @@ contract BaseHookTest is Test, Deployers {
         governor.queue(targets, values, calldatas, keccak256("Test"));
     }
 
-    function test_execute_succeeds(address _actor, uint256 _proposalTargetCalldata, uint256 _elapsedAfterQueuing)
-        public
-    {
+    function test_execute_succeeds(address _actor, uint256 _elapsedAfterQueuing) public {
         deployGovernor(address(hook));
 
         _actor = makeAddr("actor");

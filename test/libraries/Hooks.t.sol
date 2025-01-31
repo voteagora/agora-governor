@@ -6,7 +6,6 @@ import {Vm} from "forge-std/Vm.sol";
 import {Hooks} from "src/libraries/Hooks.sol";
 import {IHooks} from "src/interfaces/IHooks.sol";
 import {MockHooks} from "test/mocks/MockHooks.sol";
-import {Constants} from "test/utils/Constants.sol";
 import {AgoraGovernorMock} from "test/mocks/AgoraGovernorMock.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
@@ -23,8 +22,8 @@ contract HooksTest is Test {
 
     function setUp() public {
         MockHooks impl = new MockHooks();
-        vm.etch(Constants.ALL_HOOKS, address(impl).code);
-        mockHooks = MockHooks(Constants.ALL_HOOKS);
+        vm.etch(address(uint160(Hooks.ALL_HOOK_MASK)), address(impl).code);
+        mockHooks = MockHooks(address(uint160(Hooks.ALL_HOOK_MASK)));
     }
 
     function deployGovernor(address hook) public returns (AgoraGovernorMock governor) {

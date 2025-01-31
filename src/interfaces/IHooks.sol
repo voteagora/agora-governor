@@ -11,6 +11,15 @@ interface IHooks {
     /// @notice The hook called after the state of a governor is initialized
     function afterInitialize(address sender) external returns (bytes4);
 
+    /// @notice The hook called before determining if a proposal has succeeded in terms of votes
+    function beforeVoteSucceeded(address sender, uint256 proposalId) external view returns (bytes4, bool);
+
+    /// @notice The hook called after determining if a proposal has succeeded in terms of votes
+    function afterVoteSucceeded(address sender, uint256 proposalId, bool voteSucceeded)
+        external
+        view
+        returns (bytes4, bool);
+
     /// @notice The hook called before quorum calculation is performed
     function beforeQuorumCalculation(address sender, uint256 proposalId) external returns (bytes4, uint256);
 
