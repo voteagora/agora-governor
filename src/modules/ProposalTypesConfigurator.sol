@@ -157,11 +157,16 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator, BaseHook {
         return (this.afterPropose.selector, afterProposalId);
     }
 
-    function beforeVoteSucceeded(address sender, uint256 proposalId) external virtual view override returns (bytes4, bool voteSucceeded) {
+    function beforeVoteSucceeded(address sender, uint256 proposalId)
+        external
+        view
+        virtual
+        override
+        returns (bytes4, bool voteSucceeded)
+    {
         uint8 proposalTypeId = _proposalTypeId[proposalId];
         address votingModule = _proposalTypes[proposalTypeId].module;
         if (votingModule != address(0)) {
-
             /*
             if (!VotingModule(votingModule)._voteSucceeded(proposalId)) {
                 return false;

@@ -90,10 +90,12 @@ contract ApprovalVotingModule is BaseHook {
         return Hooks.Permissions({
             beforeInitialize: false,
             afterInitialize: false,
+            beforeVoteSucceeded: true,
+            afterVoteSucceeded: false,
             beforeQuorumCalculation: false,
             afterQuorumCalculation: false,
             beforeVote: false,
-            afterVote: false,
+            afterVote: true,
             beforePropose: false,
             afterPropose: true,
             beforeCancel: false,
@@ -167,10 +169,15 @@ contract ApprovalVotingModule is BaseHook {
      * @param weight The total vote weight of the `account`.
      * @param params The ids of the options to vote for sorted in ascending order, encoded as `uint256[]`.
      */
-    function _countVote(uint256 proposalId, address account, uint8 support, uint256 weight, bytes memory params)
-        external
-        virtual
-    {
+    function afterVote(
+        address sender,
+        uint256 weight,
+        uint256 proposalId,
+        address account,
+        uint8 support,
+        string memory reason,
+        bytes memory params
+    ) external override returns (bytes4, uint256) {
         // _onlyGovernor(); TODO: only governor
         Proposal memory proposal = proposals[proposalId];
 
@@ -185,6 +192,8 @@ contract ApprovalVotingModule is BaseHook {
                 );
             }
         }
+
+        return (this.afterVote.selector, weight);
     }
 
     /**
@@ -346,7 +355,8 @@ contract ApprovalVotingModule is BaseHook {
      *
      * @param proposalId The id of the proposal.
      */
-    function _voteSucceeded(uint256 proposalId) external view returns (bool) {
+    function beforeVoteSucceeded(address sender, uint256 proposalId) external view override returns (bytes4, bool) {
+        // _onlyGovernor(); TODO: only governor
         Proposal memory proposal = proposals[proposalId];
 
         ProposalOption[] memory options = proposal.options;
@@ -354,16 +364,18 @@ contract ApprovalVotingModule is BaseHook {
         unchecked {
             if (proposal.settings.criteria == uint8(PassingCriteria.Threshold)) {
                 for (uint256 i; i < n; ++i) {
-                    if (proposal.optionVotes[i] >= proposal.settings.criteriaValue) return true;
+                    if (proposal.optionVotes[i] >= proposal.settings.criteriaValue) {
+                        return (this.beforeVoteSucceeded.selector, true);
+                    }
                 }
             } else if (proposal.settings.criteria == uint8(PassingCriteria.TopChoices)) {
                 for (uint256 i; i < n; ++i) {
-                    if (proposal.optionVotes[i] != 0) return true;
+                    if (proposal.optionVotes[i] != 0) return (this.beforeVoteSucceeded.selector, true);
                 }
             }
         }
 
-        return false;
+        return (this.beforeVoteSucceeded.selector, false);
     }
 
     /**

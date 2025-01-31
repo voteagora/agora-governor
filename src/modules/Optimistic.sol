@@ -66,6 +66,8 @@ contract OptimisticModule is BaseHook {
         return Hooks.Permissions({
             beforeInitialize: false,
             afterInitialize: false,
+            beforeVoteSucceeded: true,
+            afterVoteSucceeded: false,
             beforeQuorumCalculation: false,
             afterQuorumCalculation: false,
             beforeVote: false,
@@ -76,7 +78,7 @@ contract OptimisticModule is BaseHook {
             afterCancel: false,
             beforeQueue: false,
             afterQueue: false,
-            beforeExecute: false,
+            beforeExecute: true,
             afterExecute: false
         });
     }
@@ -125,19 +127,15 @@ contract OptimisticModule is BaseHook {
     /**
      * Format executeParams for a governor, given `proposalId` and `proposalData`.
      * Returns empty `targets`, `values` and `calldatas`.
-     *
-     * @return targets The targets of the proposal.
-     * @return values The values of the proposal.
-     * @return calldatas The calldatas of the proposal.
      */
-    function _formatExecuteParams(uint256, bytes memory)
-        public
+    function beforeExecute(address, address[] memory, uint256[] memory, bytes[] memory, bytes32)
+        external
         pure
-        returns (address[] memory targets, uint256[] memory values, bytes[] memory calldatas)
+        override
+        returns (bytes4, uint256)
     {
-        targets = new address[](0);
-        values = new uint256[](0);
-        calldatas = new bytes[](0);
+        // TODO: revert or return empty txs
+        revert("Not implemented");
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -150,7 +148,8 @@ contract OptimisticModule is BaseHook {
      *
      * @param proposalId The id of the proposal.
      */
-    function _voteSucceeded(uint256 proposalId) external view returns (bool) {
+    function beforeVoteSucceeded(address, uint256 proposalId) external view override returns (bytes4, bool) {
+        // _onlyGovernor(); TODO: only governor
         Proposal memory proposal = proposals[proposalId];
         (uint256 againstVotes,,) = governor.proposalVotes(proposalId);
 
@@ -161,7 +160,7 @@ contract OptimisticModule is BaseHook {
             againstThreshold = (token.getPastTotalSupply(snapshotBlock) * againstThreshold) / PERCENT_DIVISOR;
         }
 
-        return againstVotes < againstThreshold;
+        return (this.beforeVoteSucceeded.selector, againstVotes < againstThreshold);
     }
 
     /**
