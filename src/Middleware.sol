@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {IProposalTypesConfigurator} from "src/interfaces/IProposalTypesConfigurator.sol";
+import {IMiddleware} from "src/interfaces/IMiddleware.sol";
 import {AgoraGovernor} from "src/AgoraGovernor.sol";
 import {IHooks} from "src/interfaces/IHooks.sol";
 import {Hooks} from "src/libraries/Hooks.sol";
 import {Parser} from "src/libraries/Parser.sol";
-import {BaseHook} from "src/BaseHook.sol";
+import {BaseHook} from "src/hooks/BaseHook.sol";
 
 import {Bytes} from "@openzeppelin/contracts/utils/Bytes.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {Validator} from "src/modules/Validator.sol";
+import {Validator} from "src/libraries/Validator.sol";
 
-contract ProposalTypesConfigurator is IProposalTypesConfigurator, BaseHook {
+contract Middleware is IMiddleware, BaseHook {
     using Hooks for IHooks;
     using Parser for string;
 
@@ -239,8 +239,12 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator, BaseHook {
         SupportedTypes[] memory types,
         string calldata description
     ) external override onlyAdminOrTimelock {
-        if (!_proposalTypes[proposalTypeId].exists) revert InvalidProposalType(proposalTypeId);
-        if (parameters.length != comparators.length) revert InvalidParameterConditions();
+        if (!_proposalTypes[proposalTypeId].exists) {
+            revert InvalidProposalType(proposalTypeId);
+        }
+        if (parameters.length != comparators.length) {
+            revert InvalidParameterConditions();
+        }
 
         Scope memory scope = Scope(key, selector, parameters, comparators, types, proposalTypeId, description, true);
         _assignedScopes[proposalTypeId][key].push(scope);
@@ -278,7 +282,9 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator, BaseHook {
         address module
     ) internal {
         if (quorum > PERCENT_DIVISOR) revert InvalidQuorum();
-        if (approvalThreshold > PERCENT_DIVISOR) revert InvalidApprovalThreshold();
+        if (approvalThreshold > PERCENT_DIVISOR) {
+            revert InvalidApprovalThreshold();
+        }
 
         _proposalTypes[proposalTypeId] = ProposalType(quorum, approvalThreshold, name, description, module, true);
 
@@ -295,8 +301,12 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator, BaseHook {
         override
         onlyAdminOrTimelock
     {
-        if (!_proposalTypes[proposalTypeId].exists) revert InvalidProposalType(proposalTypeId);
-        if (scope.parameters.length != scope.comparators.length) revert InvalidParameterConditions();
+        if (!_proposalTypes[proposalTypeId].exists) {
+            revert InvalidProposalType(proposalTypeId);
+        }
+        if (scope.parameters.length != scope.comparators.length) {
+            revert InvalidParameterConditions();
+        }
         bytes24 scopeKey = scope.key;
 
         _scopeExists[scope.key] = true;
@@ -311,7 +321,9 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator, BaseHook {
      * @param key A type signature of a function and contract address that has a limit specified in a scope
      */
     function getSelector(uint8 proposalTypeId, bytes24 key) public view returns (bytes4 selector) {
-        if (!_proposalTypes[proposalTypeId].exists) revert InvalidProposalType(proposalTypeId);
+        if (!_proposalTypes[proposalTypeId].exists) {
+            revert InvalidProposalType(proposalTypeId);
+        }
         Scope memory validScope = _assignedScopes[proposalTypeId][key][0];
         return validScope.selector;
     }
@@ -344,7 +356,9 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator, BaseHook {
         if (_scopeExists[key]) {
             for (uint8 i = 0; i < scopes.length; i++) {
                 Scope memory validScope = scopes[i];
-                if (validScope.selector != bytes4(proposedTx[:4])) revert Invalid4ByteSelector();
+                if (validScope.selector != bytes4(proposedTx[:4])) {
+                    revert Invalid4ByteSelector();
+                }
 
                 uint256 startIdx = 4;
                 uint256 endIdx = startIdx;

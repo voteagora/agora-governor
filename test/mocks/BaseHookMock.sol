@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {BaseHook} from "src/BaseHook.sol";
+import {BaseHook} from "src/hooks/BaseHook.sol";
 import {Hooks} from "src/libraries/Hooks.sol";
 import {AgoraGovernor} from "src/AgoraGovernor.sol";
 

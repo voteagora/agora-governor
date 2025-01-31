@@ -2,8 +2,8 @@
 pragma solidity ^0.8.19;
 
 import {Hooks} from "src/libraries/Hooks.sol";
-import {BaseHook} from "src/BaseHook.sol";
-import {IProposalTypesConfigurator} from "src/interfaces/IProposalTypesConfigurator.sol";
+import {BaseHook} from "src/hooks/BaseHook.sol";
+import {IMiddleware} from "src/interfaces/IMiddleware.sol";
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
@@ -48,14 +48,14 @@ contract OptimisticModule is BaseHook {
     //////////////////////////////////////////////////////////////*/
 
     mapping(uint256 proposalId => Proposal) public proposals;
-    IProposalTypesConfigurator public proposalTypesConfigurator;
+    IMiddleware public middleware;
 
     /*//////////////////////////////////////////////////////////////
                                CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
-    constructor(address payable _governor, address _proposalTypesConfigurator) BaseHook(_governor) {
-        proposalTypesConfigurator = IProposalTypesConfigurator(_proposalTypesConfigurator);
+    constructor(address payable _governor, address _middleware) BaseHook(_governor) {
+        middleware = IMiddleware(_middleware);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -96,7 +96,9 @@ contract OptimisticModule is BaseHook {
         string memory description
     ) external virtual override returns (bytes4, uint256) {
         // _onlyGovernor(); TODO: only governor
-        if (proposals[proposalId].governor != address(0)) revert ExistingProposal();
+        if (proposals[proposalId].governor != address(0)) {
+            revert ExistingProposal();
+        }
 
         // TODO: decode description into proposal data
         bytes memory proposalData = abi.encode(description);
@@ -107,8 +109,7 @@ contract OptimisticModule is BaseHook {
         //     proposalId
         // );
         uint8 proposalTypeId = 0;
-        IProposalTypesConfigurator.ProposalType memory proposalType =
-            proposalTypesConfigurator.proposalTypes(proposalTypeId);
+        IMiddleware.ProposalType memory proposalType = middleware.proposalTypes(proposalTypeId);
 
         if (proposalType.quorum != 0 || proposalType.approvalThreshold != 0) {
             revert NotOptimisticProposalType();

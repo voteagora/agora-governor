@@ -7,12 +7,11 @@ Core and peripheral contracts for the Agora Governor.
 ## Contracts
 
 ```ml
-├─ AgoraGovernor — "Governor contract"
-├─ ProposalTypesConfigurator — "Proposal types configurator contract"
+├─ AgoraGovernor — "Core governor with integrated hook system"
+├─ Middleware — "Connector between modules and governor with proposal types"
 ├─ modules
-│  ├─ ApprovalVotingModule — "Approval voting module"
-│  ├─ OptimisticModule — "Optimistic voting module"
-│  ├─ VotingModule — "Base voting module"
+│  ├─ ApprovalVoting — "Approval voting module"
+│  ├─ Optimistic — "Optimistic voting module"
 ```
 
 ## Installation

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import "forge-std/Test.sol";
-import {BaseHook} from "src/BaseHook.sol";
+import {BaseHook} from "src/hooks/BaseHook.sol";
 import {BaseHookMock, BaseHookMockReverts} from "test/mocks/BaseHookMock.sol";
 import {GovernorCountingSimple} from "@openzeppelin/contracts/governance/extensions/GovernorCountingSimple.sol";
 import {IHooks} from "src/interfaces/IHooks.sol";

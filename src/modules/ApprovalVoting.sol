@@ -2,7 +2,7 @@
 pragma solidity ^0.8.19;
 
 import {Hooks} from "src/libraries/Hooks.sol";
-import {BaseHook} from "src/BaseHook.sol";
+import {BaseHook} from "src/hooks/BaseHook.sol";
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
@@ -370,7 +370,9 @@ contract ApprovalVotingModule is BaseHook {
                 }
             } else if (proposal.settings.criteria == uint8(PassingCriteria.TopChoices)) {
                 for (uint256 i; i < n; ++i) {
-                    if (proposal.optionVotes[i] != 0) return (this.beforeVoteSucceeded.selector, true);
+                    if (proposal.optionVotes[i] != 0) {
+                        return (this.beforeVoteSucceeded.selector, true);
+                    }
                 }
             }
         }
