@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {BaseHook} from "src/BaseHook.sol";
+import {BaseHook} from "src/hooks/BaseHook.sol";
 import {Hooks} from "src/libraries/Hooks.sol";
 import {AgoraGovernor} from "src/AgoraGovernor.sol";
 
@@ -43,7 +43,7 @@ contract BaseHookMock is BaseHook {
         return (this.beforeQuorumCalculation.selector, 100);
     }
 
-    function afterQuorumCalculation(address, uint256 afterQuorum)
+    function afterQuorumCalculation(address, uint256, uint256 afterQuorum)
         external
         view
         virtual

@@ -188,17 +188,21 @@ contract AgoraGovernor is
         return 10_000;
     }
 
-    function quorum(uint256 _timepoint)
+    function quorum(uint256 proposalId)
         public
         view
         override(Governor, GovernorVotesQuorumFraction)
         returns (uint256 _quorum)
     {
-        uint256 beforeQuorum = hooks.beforeQuorumCalculation(_timepoint);
+        // Call the hook before quorum calculation
+        uint256 beforeQuorum = hooks.beforeQuorumCalculation(proposalId);
 
-        _quorum = (token().getPastTotalSupply(_timepoint) * quorumNumerator(_timepoint)) / quorumDenominator();
+        // Get the snapshot for the proposal and calculate the quorum
+        uint256 snapshot = proposalSnapshot(proposalId);
+        _quorum = (token().getPastTotalSupply(snapshot) * quorumNumerator(snapshot)) / quorumDenominator();
 
-        uint256 afterQuorum = hooks.afterQuorumCalculation(_timepoint);
+        // Call the hook after quorum calculation
+        uint256 afterQuorum = hooks.afterQuorumCalculation(proposalId, _quorum);
 
         // TODO: check that before and after quorum are the same
 
@@ -294,7 +298,11 @@ contract AgoraGovernor is
         returns (bool)
     {
         (uint256 againstVotes, uint256 forVotes, uint256 abstainVotes) = proposalVotes(proposalId);
-        return quorum(proposalSnapshot(proposalId)) <= againstVotes + forVotes + abstainVotes;
+
+        // uint256 defaultQuorum = this.quorum()
+        // uint256 x = afterQuorum(against, for, abstain, defaultQuorum);
+        // return x == 0 ? defaultQuorum :
+        return quorum(proposalId) <= againstVotes + forVotes + abstainVotes;
     }
 
     /**

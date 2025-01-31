@@ -21,10 +21,12 @@ interface IHooks {
         returns (bytes4, bool);
 
     /// @notice The hook called before quorum calculation is performed
-    function beforeQuorumCalculation(address sender, uint256 timepoint) external view returns (bytes4, uint256);
+    function beforeQuorumCalculation(address sender, uint256 proposalId) external returns (bytes4, uint256);
 
     /// @notice The hook called after quorum calculation is performed
-    function afterQuorumCalculation(address sender, uint256 timepoint) external view returns (bytes4, uint256);
+    function afterQuorumCalculation(address sender, uint256 proposalId, uint256 quorum)
+        external
+        returns (bytes4, uint256);
 
     /// @notice The hook called before a vote is cast
     function beforeVote(
