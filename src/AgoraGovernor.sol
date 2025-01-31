@@ -105,7 +105,7 @@ contract AgoraGovernor is
         address[] memory targets,
         uint256[] memory values,
         bytes[] memory calldatas,
-        string memory description // 0|this is the string
+        string memory description
     ) public virtual override returns (uint256) {
         uint256 beforeProposalId = hooks.beforePropose(targets, values, calldatas, description);
 
