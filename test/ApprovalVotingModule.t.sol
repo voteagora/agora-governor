@@ -376,9 +376,8 @@ contract ApprovalVotingModuleTest is Test {
         uint256 proposalId = hashProposalWithModule(governor, address(module), proposalData, descriptionHash);
         module.propose(proposalId, proposalData, descriptionHash);
 
-        uint256[] memory votes = new uint256[](2);
+        uint256[] memory votes = new uint256[](1);
         votes[0] = 1;
-        votes[1] = 2;
         bytes memory params = abi.encode(votes);
         module._countVote(proposalId, voter, uint8(VoteType.For), weight, params);
 
@@ -397,13 +396,10 @@ contract ApprovalVotingModuleTest is Test {
         assertEq(targets[0], options[1].targets[0]);
         assertEq(values[0], options[1].values[0]);
         assertEq(calldatas[0], options[1].calldatas[0]);
-        assertEq(targets[1], options[1].targets[1]);
-        assertEq(values[1], options[1].values[1]);
-        assertEq(calldatas[1], options[1].calldatas[1]);
-        assertEq(targets[2], address(module));
-        assertEq(values[2], 0);
+        assertEq(targets[1], address(module));
+        assertEq(values[1], 0);
         assertEq(
-            calldatas[2],
+            calldatas[1],
             abi.encodeCall(ApprovalVotingModule._afterExecute, (proposalId, proposalData, options[1].budgetTokensSpent))
         );
     }
@@ -626,6 +622,37 @@ contract ApprovalVotingModuleTest is Test {
         module._formatExecuteParams(proposalId, proposalData);
     }
 
+    function testReverts_formatExecuteParams_nativeMix() public {
+        address[] memory _targets = new address[](2);
+        uint256[] memory _values = new uint256[](2);
+        bytes[] memory _calldatas = new bytes[](2);
+        // Token transfer
+        _targets[0] = token;
+        _values[0] = 0;
+        _calldatas[0] = abi.encodeCall(IERC20.transfer, (receiver1, 100));
+        // Native transfer
+        _targets[1] = receiver1;
+        _values[1] = 0.01 ether;
+
+        ProposalOption[] memory options = new ProposalOption[](1);
+        options[0] = ProposalOption(100, _targets, _values, _calldatas, "option 1");
+
+        ProposalSettings memory settings = ProposalSettings({
+            maxApprovals: 2,
+            criteria: uint8(PassingCriteria.TopChoices),
+            criteriaValue: 1,
+            budgetToken: token,
+            budgetAmount: 100
+        });
+
+        bytes memory proposalData = abi.encode(options, settings);
+
+        vm.startPrank(governor);
+        uint256 proposalId = hashProposalWithModule(governor, address(module), proposalData, descriptionHash);
+        vm.expectRevert(VotingModule.InvalidParams.selector);
+        module.propose(proposalId, proposalData, descriptionHash);
+    }
+
     /*//////////////////////////////////////////////////////////////
                                 HELPERS
     //////////////////////////////////////////////////////////////*/
@@ -648,14 +675,9 @@ contract ApprovalVotingModuleTest is Test {
         // Transfer 100 OP tokens to receiver2
         targets2[0] = token;
         calldatas2[0] = abi.encodeCall(IERC20.transfer, (receiver1, budgetExceeded ? 6e17 : 100));
-        // Send 0.01 ether to receiver2, and emit call to test calls to targets different than budgetTokens are ignored
         targets2[1] = receiver2;
-        values2[1] = budgetExceeded ? 0.6 ether : 0.01 ether;
+        values2[1] = (!isBudgetOp && budgetExceeded) ? 0.6 ether : 0;
         calldatas2[1] = calldatas2[0];
-
-        options = new ProposalOption[](3);
-        options[0] = ProposalOption(0, targets1, values1, calldatas1, "option 1");
-        options[1] = ProposalOption(budgetExceeded ? 6e17 : 100, targets2, values2, calldatas2, "option 2");
 
         address[] memory targets3 = new address[](1);
         uint256[] memory values3 = new uint256[](1);
@@ -663,7 +685,17 @@ contract ApprovalVotingModuleTest is Test {
         targets3[0] = token;
         calldatas3[0] = abi.encodeCall(IERC20.transferFrom, (address(governor), receiver1, budgetExceeded ? 6e17 : 100));
 
-        options[2] = ProposalOption(budgetExceeded ? 6e17 : 100, targets3, values3, calldatas3, "option 3");
+        if (isBudgetOp) {
+            options = new ProposalOption[](2);
+            options[0] = ProposalOption(budgetExceeded ? 6e17 : 100, targets2, values2, calldatas2, "option 2");
+            options[1] = ProposalOption(budgetExceeded ? 6e17 : 100, targets3, values3, calldatas3, "option 3");
+        } else {
+            options = new ProposalOption[](3);
+            options[0] = ProposalOption(0, targets1, values1, calldatas1, "option 1");
+            options[1] = ProposalOption(budgetExceeded ? 6e17 : 100, targets2, values2, calldatas2, "option 2");
+            options[2] = ProposalOption(budgetExceeded ? 6e17 : 100, targets3, values3, calldatas3, "option 3");
+        }
+
         settings = ProposalSettings({
             maxApprovals: 2,
             criteria: uint8(PassingCriteria.TopChoices),
