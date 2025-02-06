@@ -55,12 +55,12 @@ library Parser {
     /// at the end of the description or before the next parameter/marker if it exists.
     ///
     /// If the description does not include this pattern, this function will revert
-    function _parseProposalData(string memory description) internal pure returns (bytes memory proposalData) {
+    function _parseProposalData(string memory description) internal pure returns (string memory proposalData) {
         unchecked {
             string memory value = _parseMarker(description, "#proposalData=");
 
             // Cast and return the proposal data
-            return bytes(value);
+            return value;
         }
     }
 }
