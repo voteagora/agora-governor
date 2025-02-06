@@ -40,7 +40,6 @@ contract AgoraGovernor is
     error GovernorUnauthorizedCancel();
     error HookAddressNotValid();
     error InvalidProposalIdHook();
-    error InvalidQuorumValueHook();
     error InvalidVoteWeightHook();
     error InvalidVoteSucceededHook();
 
@@ -208,8 +207,6 @@ contract AgoraGovernor is
 
         // Call the hook after quorum calculation
         uint256 afterQuorum = hooks.afterQuorumCalculation(proposalId, _quorum);
-
-        if (beforeQuorum != afterQuorum) revert InvalidQuorumValueHook();
 
         // TODO: replace this with a flag on hook address
         return beforeQuorum != 0 ? beforeQuorum : _quorum;
