@@ -61,6 +61,7 @@ contract ApprovalVotingModule is BaseHook {
     error OptionsNotStrictlyAscending();
     error ExistingProposal();
     error InvalidParams();
+    error NotGovernor();
 
     /*//////////////////////////////////////////////////////////////
                                LIBRARIES
@@ -106,6 +107,10 @@ contract ApprovalVotingModule is BaseHook {
             afterExecute: false
         });
     }
+    /// @notice Reverts if the sender of the hook is not the governor
+    function _onlyGovernor(address sender) internal view {
+        if (sender != address(governor)) revert NotGovernor();
+    }
 
     /*//////////////////////////////////////////////////////////////
                                  HOOKS
@@ -119,14 +124,12 @@ contract ApprovalVotingModule is BaseHook {
         bytes[] memory calldatas,
         string memory description
     ) external virtual override returns (bytes4, uint256) {
-        // function propose(uint256 proposalId, bytes memory proposalData, bytes32 descriptionHash) external override {
-        //     _onlyGovernor();
-        // TODO: only governor
+        _onlyGovernor(sender);
+
         if (proposals[proposalId].governor != address(0)) {
             revert ExistingProposal();
         }
 
-        // TODO: decode description into proposal data
         bytes memory proposalData = abi.encode(description);
 
         (ProposalOption[] memory proposalOptions, ProposalSettings memory proposalSettings) =
@@ -178,7 +181,7 @@ contract ApprovalVotingModule is BaseHook {
         string memory reason,
         bytes memory params
     ) external override returns (bytes4, uint256) {
-        // _onlyGovernor(); TODO: only governor
+        _onlyGovernor(sender);
         Proposal memory proposal = proposals[proposalId];
 
         if (support == uint8(VoteType.For)) {
@@ -209,7 +212,7 @@ contract ApprovalVotingModule is BaseHook {
         public
         returns (address[] memory targets, uint256[] memory values, bytes[] memory calldatas)
     {
-        // _onlyGovernor(); TODO: only governor
+        _onlyGovernor(msg.sender);
         (ProposalOption[] memory options, ProposalSettings memory settings) =
             abi.decode(proposalData, (ProposalOption[], ProposalSettings));
 
@@ -356,7 +359,7 @@ contract ApprovalVotingModule is BaseHook {
      * @param proposalId The id of the proposal.
      */
     function beforeVoteSucceeded(address sender, uint256 proposalId) external view override returns (bytes4, bool) {
-        // _onlyGovernor(); TODO: only governor
+        _onlyGovernor(sender);
         Proposal memory proposal = proposals[proposalId];
 
         ProposalOption[] memory options = proposal.options;
