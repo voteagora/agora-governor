@@ -42,7 +42,6 @@ struct ProposalOption {
 }
 
 struct Proposal {
-    address governor;
     uint256 initBalance;
     uint128[] optionVotes;
     ProposalOption[] options;
@@ -92,13 +91,16 @@ contract ApprovalVotingModule is VotingModule {
      * @param proposalId The id of the proposal.
      * @param proposalData The proposal data encoded as `PROPOSAL_DATA_ENCODING`.
      */
-    function propose(uint256 proposalId, bytes memory proposalData, bytes32 descriptionHash) external override {
-        _onlyGovernor();
-        if (proposalId != uint256(keccak256(abi.encode(msg.sender, address(this), proposalData, descriptionHash)))) {
+    function propose(uint256 proposalId, bytes memory proposalData, bytes32 descriptionHash)
+        external
+        override
+        onlyGovernor
+    {
+        if (proposalId != uint256(keccak256(abi.encode(governor, address(this), proposalData, descriptionHash)))) {
             revert WrongProposalId();
         }
 
-        if (proposals[proposalId].governor != address(0)) {
+        if (proposals[proposalId].optionVotes.length != 0) {
             revert ExistingProposal();
         }
 
@@ -124,11 +126,17 @@ contract ApprovalVotingModule is VotingModule {
                     revert InvalidParams();
                 }
 
+                // Enforce that non-zero values use native budget token
+                for (uint256 n = 0; n < option.targets.length; ++n) {
+                    if (option.values[n] != 0 && proposalSettings.budgetToken != address(0)) {
+                        revert InvalidParams();
+                    }
+                }
+
                 proposals[proposalId].options.push(option);
             }
         }
 
-        proposals[proposalId].governor = msg.sender;
         proposals[proposalId].settings = proposalSettings;
         proposals[proposalId].optionVotes = new uint128[](optionsLength);
     }
@@ -146,8 +154,8 @@ contract ApprovalVotingModule is VotingModule {
         external
         virtual
         override
+        onlyGovernor
     {
-        _onlyGovernor();
         Proposal memory proposal = proposals[proposalId];
 
         if (support == uint8(VoteType.For)) {
@@ -175,19 +183,18 @@ contract ApprovalVotingModule is VotingModule {
     function _formatExecuteParams(uint256 proposalId, bytes memory proposalData)
         public
         override
+        onlyGovernor
         returns (address[] memory targets, uint256[] memory values, bytes[] memory calldatas)
     {
-        _onlyGovernor();
         (ProposalOption[] memory options, ProposalSettings memory settings) =
             abi.decode(proposalData, (ProposalOption[], ProposalSettings));
 
         {
-            IAgoraGovernor governor = IAgoraGovernor(proposals[proposalId].governor);
-
             // If budgetToken is not ETH
             if (settings.budgetToken != address(0)) {
                 // Save initBalance to be used as comparison in `_afterExecute`
-                proposals[proposalId].initBalance = IERC20(settings.budgetToken).balanceOf(governor.timelock());
+                proposals[proposalId].initBalance =
+                    IERC20(settings.budgetToken).balanceOf(IAgoraGovernor(governor).timelock());
             }
         }
 
@@ -204,20 +211,21 @@ contract ApprovalVotingModule is VotingModule {
         {
             uint256 n;
             ProposalOption memory option;
-            bool budgetExceeded = false;
 
             // Flatten `options` by filling `executeParams` until budgetAmount is exceeded
-            for (uint256 i; i < succeededOptionsLength;) {
+            for (uint256 i; i < succeededOptionsLength; ++i) {
+                bool budgetExceeded = false;
                 option = sortedOptions[i];
+                uint256 optionTotalValue = 0;
 
                 for (n = 0; n < option.targets.length;) {
-                    // If `budgetToken` is ETH and value is not zero, add transaction value to `totalValue`
+                    // If `budgetToken` is ETH and value is not zero, add transaction value to `optionTotalValue`
                     if (settings.budgetToken == address(0) && option.values[n] != 0) {
-                        if (totalValue + option.values[n] > settings.budgetAmount) {
+                        if (totalValue + optionTotalValue + option.values[n] > settings.budgetAmount) {
                             budgetExceeded = true;
                             break; // break inner loop
                         }
-                        totalValue += option.values[n];
+                        optionTotalValue += option.values[n];
                     }
 
                     unchecked {
@@ -229,20 +237,20 @@ contract ApprovalVotingModule is VotingModule {
                 }
 
                 // If `budgetAmount` for ETH is exceeded, skip option.
-                if (budgetExceeded) break;
+                if (budgetExceeded) continue;
 
                 // Check if budgetAmount is exceeded for non-ETH tokens
                 if (settings.budgetToken != address(0) && settings.budgetAmount != 0) {
                     if (option.budgetTokensSpent != 0) {
-                        if (totalValue + option.budgetTokensSpent > settings.budgetAmount) break; // break outer loop for non-ETH tokens
-                        totalValue += option.budgetTokensSpent;
+                        if (totalValue + optionTotalValue + option.budgetTokensSpent > settings.budgetAmount) continue; // break outer loop for non-ETH tokens
+                        optionTotalValue += option.budgetTokensSpent;
                     }
                 }
 
+                // Add option-specific value to the total value
+                totalValue += optionTotalValue;
                 unchecked {
                     executeParamsLength += n;
-
-                    ++i;
                 }
             }
         }
@@ -286,10 +294,8 @@ contract ApprovalVotingModule is VotingModule {
         (, ProposalSettings memory settings) = abi.decode(proposalData, (ProposalOption[], ProposalSettings));
 
         if (settings.budgetToken != address(0) && settings.budgetAmount > 0) {
-            IAgoraGovernor governor = IAgoraGovernor(proposals[proposalId].governor);
-
             uint256 initBalance = proposals[proposalId].initBalance;
-            uint256 finalBalance = IERC20(settings.budgetToken).balanceOf(governor.timelock());
+            uint256 finalBalance = IERC20(settings.budgetToken).balanceOf(IAgoraGovernor(governor).timelock());
 
             // If `finalBalance` is higher than `initBalance`, ignore the budget check
             if (finalBalance < initBalance) {

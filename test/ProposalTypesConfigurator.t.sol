@@ -11,11 +11,17 @@ contract ProposalTypesConfiguratorTest is Test {
     //////////////////////////////////////////////////////////////*/
 
     event ProposalTypeSet(
-        uint8 indexed proposalTypeId, uint16 quorum, uint16 approvalThreshold, string name, string description
+        uint8 indexed proposalTypeId,
+        uint16 quorum,
+        uint16 approvalThreshold,
+        string name,
+        string description,
+        address indexed module
     );
 
     event ScopeCreated(uint8 indexed proposalTypeId, bytes24 indexed scopeKey, bytes4 selector, string description);
     event ScopeDisabled(uint8 indexed proposalTypeId, bytes24 indexed scopeKey);
+    event ScopeDeleted(uint8 indexed proposalTypeId, bytes24 indexed scopeKey);
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
@@ -35,8 +41,8 @@ contract ProposalTypesConfiguratorTest is Test {
         governor = new GovernorMock(admin, timelock);
 
         vm.startPrank(deployer);
-        proposalTypesConfigurator = new ProposalTypesConfigurator();
-        proposalTypesConfigurator.initialize(address(governor), new ProposalTypesConfigurator.ProposalType[](0));
+        proposalTypesConfigurator =
+            new ProposalTypesConfigurator(address(governor), new ProposalTypesConfigurator.ProposalType[](0));
         vm.stopPrank();
 
         vm.startPrank(admin);
@@ -58,9 +64,9 @@ contract ProposalTypesConfiguratorTest is Test {
 
         IProposalTypesConfigurator.Comparators[] memory comparators = new IProposalTypesConfigurator.Comparators[](3);
 
-        comparators[0] = IProposalTypesConfigurator.Comparators(1); // EQ
-        comparators[1] = IProposalTypesConfigurator.Comparators(1); // EQ
-        comparators[2] = IProposalTypesConfigurator.Comparators(3); // GREATER THAN
+        comparators[0] = IProposalTypesConfigurator.Comparators(0); // EQ
+        comparators[1] = IProposalTypesConfigurator.Comparators(0); // EQ
+        comparators[2] = IProposalTypesConfigurator.Comparators(2); // GREATER THAN
 
         IProposalTypesConfigurator.SupportedTypes[] memory types = new IProposalTypesConfigurator.SupportedTypes[](3);
 
@@ -113,29 +119,22 @@ contract ProposalTypesConfiguratorTest is Test {
 contract Initialize is ProposalTypesConfiguratorTest {
     function test_SetsGovernor(address _actor, address _governor) public {
         vm.assume(_governor != address(0));
-        ProposalTypesConfigurator proposalTypesConfigurator = new ProposalTypesConfigurator();
-        vm.prank(_actor);
-        proposalTypesConfigurator.initialize(address(_governor), new ProposalTypesConfigurator.ProposalType[](0));
-        assertEq(_governor, address(proposalTypesConfigurator.governor()));
+        ProposalTypesConfigurator proposalTypesConfigurator =
+            new ProposalTypesConfigurator(address(_governor), new ProposalTypesConfigurator.ProposalType[](0));
+        assertEq(_governor, address(proposalTypesConfigurator.GOVERNOR()));
     }
 
     function test_SetsProposalTypes(address _actor, uint8 _proposalTypes) public {
-        ProposalTypesConfigurator proposalTypesConfigurator = new ProposalTypesConfigurator();
         ProposalTypesConfigurator.ProposalType[] memory proposalTypes =
             new ProposalTypesConfigurator.ProposalType[](_proposalTypes);
-        vm.prank(_actor);
-        proposalTypesConfigurator.initialize(address(governor), proposalTypes);
+        ProposalTypesConfigurator proposalTypesConfigurator =
+            new ProposalTypesConfigurator(address(governor), proposalTypes);
         for (uint8 i = 0; i < _proposalTypes; i++) {
             IProposalTypesConfigurator.ProposalType memory propType = proposalTypesConfigurator.proposalTypes(i);
             assertEq(propType.quorum, 0);
             assertEq(propType.approvalThreshold, 0);
             assertEq(propType.name, "");
         }
-    }
-
-    function test_RevertIf_AlreadyInit() public {
-        vm.expectRevert(IProposalTypesConfigurator.AlreadyInit.selector);
-        proposalTypesConfigurator.initialize(address(governor), new ProposalTypesConfigurator.ProposalType[](0));
     }
 }
 
@@ -160,11 +159,41 @@ contract ProposalTypes is ProposalTypesConfiguratorTest {
     }
 }
 
+contract GetSelector is ProposalTypesConfiguratorTest {
+    function test_getSelector() public {
+        bytes32 txTypeHash = keccak256("transfer(address,address,uint256)");
+        address contractAddress = makeAddr("contract");
+        bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
+
+        bytes4 selector = proposalTypesConfigurator.getSelector(0, scopeKey);
+        bytes4 expectedSelector = bytes4(txTypeHash);
+        assertEq(selector, expectedSelector);
+    }
+
+    function test_Revert_getSelector_InvalidScope() public {
+        bytes32 txTypeHash = keccak256("foobar(address,address,uint256)");
+        address contractAddress = makeAddr("contract");
+        bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
+
+        vm.expectRevert(IProposalTypesConfigurator.InvalidScope.selector);
+        proposalTypesConfigurator.getSelector(0, scopeKey);
+    }
+
+    function test_Revert_getSelector_InvalidProposalType() public {
+        bytes32 txTypeHash = keccak256("transfer(address,address,uint256)");
+        address contractAddress = makeAddr("contract");
+        bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
+
+        vm.expectRevert(IProposalTypesConfigurator.InvalidProposalType.selector);
+        proposalTypesConfigurator.getSelector(12, scopeKey);
+    }
+}
+
 contract SetProposalType is ProposalTypesConfiguratorTest {
     function testFuzz_SetProposalType(uint256 _actorSeed) public {
         vm.prank(_adminOrTimelock(_actorSeed));
         vm.expectEmit();
-        emit ProposalTypeSet(0, 4_000, 6_000, "New Default", "Lorem Ipsum");
+        emit ProposalTypeSet(0, 4_000, 6_000, "New Default", "Lorem Ipsum", address(0));
         proposalTypesConfigurator.setProposalType(0, 4_000, 6_000, "New Default", "Lorem Ipsum", address(0));
 
         IProposalTypesConfigurator.ProposalType memory propType = proposalTypesConfigurator.proposalTypes(0);
@@ -186,7 +215,7 @@ contract SetProposalType is ProposalTypesConfiguratorTest {
     function testFuzz_SetScopeForProposalType(uint256 _actorSeed) public {
         vm.startPrank(_adminOrTimelock(_actorSeed));
         vm.expectEmit();
-        emit ProposalTypeSet(0, 4_000, 6_000, "New Default", "Lorem Ipsum");
+        emit ProposalTypeSet(0, 4_000, 6_000, "New Default", "Lorem Ipsum", address(0));
         proposalTypesConfigurator.setProposalType(0, 4_000, 6_000, "New Default", "Lorem Ipsum", address(0));
         vm.stopPrank();
 
@@ -283,13 +312,37 @@ contract SetProposalType is ProposalTypesConfiguratorTest {
         );
         vm.stopPrank();
     }
+
+    function testRevert_setScopeForProposalType_MaxScopeLengthReached() public {
+        vm.startPrank(admin);
+
+        bytes32 txTypeHash = keccak256("transfer(address,address,uint)");
+        address contractAddress = makeAddr("contract");
+        bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
+        bytes4 txEncoded = bytes4(abi.encode("transfer(address,address,uint)", 0xdeadbeef, 0xdeadbeef, 10));
+        bytes[] memory parameters = new bytes[](1);
+        IProposalTypesConfigurator.Comparators[] memory comparators = new IProposalTypesConfigurator.Comparators[](1);
+        IProposalTypesConfigurator.SupportedTypes[] memory types = new IProposalTypesConfigurator.SupportedTypes[](1);
+
+        for (uint8 i = 0; i < proposalTypesConfigurator.MAX_SCOPE_LENGTH(); i++) {
+            proposalTypesConfigurator.setScopeForProposalType(
+                0, scopeKey, txEncoded, parameters, comparators, types, "Lorem Ipsum"
+            );
+        }
+
+        vm.expectRevert(IProposalTypesConfigurator.MaxScopeLengthReached.selector);
+        proposalTypesConfigurator.setScopeForProposalType(
+            0, scopeKey, txEncoded, parameters, comparators, types, "Lorem Ipsum"
+        );
+        vm.stopPrank();
+    }
 }
 
 contract AddScopeForProposalType is ProposalTypesConfiguratorTest {
     function testFuzz_AddScopeForProposalType(uint256 _actorSeed) public {
         vm.prank(_adminOrTimelock(_actorSeed));
         vm.expectEmit();
-        emit ProposalTypeSet(0, 4_000, 6_000, "New Default", "Lorem Ipsum");
+        emit ProposalTypeSet(0, 4_000, 6_000, "New Default", "Lorem Ipsum", address(0));
         proposalTypesConfigurator.setProposalType(0, 4_000, 6_000, "New Default", "Lorem Ipsum", address(0));
 
         vm.startPrank(admin);
@@ -378,6 +431,28 @@ contract AddScopeForProposalType is ProposalTypesConfiguratorTest {
         proposalTypesConfigurator.addScopeForProposalType(0, scope);
         vm.stopPrank();
     }
+
+    function testRevert_addScopeForProposalType_MaxScopeLengthReached() public {
+        vm.startPrank(admin);
+        bytes32 txTypeHash = keccak256("transfer(address,address,uint)");
+        address contractAddress = makeAddr("contract");
+        bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
+        bytes4 txEncoded = bytes4(abi.encode("transfer(address,address,uint)", 0xdeadbeef, 0xdeadbeef, 10));
+        bytes[] memory parameters = new bytes[](1);
+        IProposalTypesConfigurator.Comparators[] memory comparators = new IProposalTypesConfigurator.Comparators[](1);
+        IProposalTypesConfigurator.SupportedTypes[] memory types = new IProposalTypesConfigurator.SupportedTypes[](1);
+
+        IProposalTypesConfigurator.Scope memory scope =
+            IProposalTypesConfigurator.Scope(scopeKey, txEncoded, parameters, comparators, types, 0, "Lorem", true);
+
+        for (uint8 i = 0; i < proposalTypesConfigurator.MAX_SCOPE_LENGTH(); i++) {
+            proposalTypesConfigurator.addScopeForProposalType(0, scope);
+        }
+
+        vm.expectRevert(IProposalTypesConfigurator.MaxScopeLengthReached.selector);
+        proposalTypesConfigurator.addScopeForProposalType(0, scope);
+        vm.stopPrank();
+    }
 }
 
 contract ValidateProposedTx is ProposalTypesConfiguratorTest {
@@ -429,6 +504,24 @@ contract ValidateProposedTx is ProposalTypesConfiguratorTest {
     }
 }
 
+contract ValidateProposalData is ProposalTypesConfiguratorTest {
+    function testRevert_ValidateProposalData_InvalidCalldatas() public {
+        address[] memory targets = new address[](1);
+        bytes[] memory calldatas = new bytes[](1);
+
+        vm.expectRevert(IProposalTypesConfigurator.InvalidCalldata.selector);
+        proposalTypesConfigurator.validateProposalData(targets, calldatas, 0);
+    }
+
+    function testRevert_ValidateProposalData_InvalidCalldatasLength() public {
+        address[] memory targets = new address[](0);
+        bytes[] memory calldatas = new bytes[](0);
+
+        vm.expectRevert(IProposalTypesConfigurator.InvalidCalldatasLength.selector);
+        proposalTypesConfigurator.validateProposalData(targets, calldatas, 0);
+    }
+}
+
 contract DisableScope is ProposalTypesConfiguratorTest {
     function testFuzz_DisableScope(uint256 _actorSeed) public {
         vm.prank(_adminOrTimelock(_actorSeed));
@@ -442,11 +535,28 @@ contract DisableScope is ProposalTypesConfiguratorTest {
     }
 }
 
+contract DeleteScope is ProposalTypesConfiguratorTest {
+    function testFuzz_DeleteScope(uint256 _actorSeed) public {
+        vm.startPrank(_adminOrTimelock(_actorSeed));
+        bytes32 txTypeHash = keccak256("transfer(address,address,uint256)");
+        address contractAddress = makeAddr("contract");
+        bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
+
+        assertEq(proposalTypesConfigurator.assignedScopes(0, scopeKey).length, 1);
+        vm.expectEmit();
+        emit ScopeDeleted(0, scopeKey);
+        proposalTypesConfigurator.deleteScope(0, scopeKey, 0);
+        assertEq(proposalTypesConfigurator.assignedScopes(0, scopeKey).length, 0);
+
+        vm.stopPrank();
+    }
+}
+
 contract MultipleScopeValidation is ProposalTypesConfiguratorTest {
     function testFuzz_MultipleScopeValidationRange(uint256 _actorSeed) public {
         vm.prank(_adminOrTimelock(_actorSeed));
         vm.expectEmit();
-        emit ProposalTypeSet(0, 4_000, 6_000, "New Default", "Lorem Ipsum");
+        emit ProposalTypeSet(0, 4_000, 6_000, "New Default", "Lorem Ipsum", address(0));
         proposalTypesConfigurator.setProposalType(0, 4_000, 6_000, "New Default", "Lorem Ipsum", address(0));
 
         vm.startPrank(admin);
@@ -465,9 +575,9 @@ contract MultipleScopeValidation is ProposalTypesConfiguratorTest {
 
         IProposalTypesConfigurator.Comparators[] memory comparators1 = new IProposalTypesConfigurator.Comparators[](3);
 
-        comparators1[0] = IProposalTypesConfigurator.Comparators(1); // EQ
-        comparators1[1] = IProposalTypesConfigurator.Comparators(1); // EQ
-        comparators1[2] = IProposalTypesConfigurator.Comparators(3); // GREATER THAN
+        comparators1[0] = IProposalTypesConfigurator.Comparators(0); // EQ
+        comparators1[1] = IProposalTypesConfigurator.Comparators(0); // EQ
+        comparators1[2] = IProposalTypesConfigurator.Comparators(2); // GREATER THAN
 
         IProposalTypesConfigurator.SupportedTypes[] memory types = new IProposalTypesConfigurator.SupportedTypes[](3);
 
@@ -486,9 +596,9 @@ contract MultipleScopeValidation is ProposalTypesConfiguratorTest {
 
         IProposalTypesConfigurator.Comparators[] memory comparators2 = new IProposalTypesConfigurator.Comparators[](3);
 
-        comparators2[0] = IProposalTypesConfigurator.Comparators(1); // EQ
-        comparators2[1] = IProposalTypesConfigurator.Comparators(1); // EQ
-        comparators2[2] = IProposalTypesConfigurator.Comparators(2); // LESS THAN
+        comparators2[0] = IProposalTypesConfigurator.Comparators(0); // EQ
+        comparators2[1] = IProposalTypesConfigurator.Comparators(0); // EQ
+        comparators2[2] = IProposalTypesConfigurator.Comparators(1); // LESS THAN
 
         bytes4 txEncoded2 =
             bytes4(abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(50)));

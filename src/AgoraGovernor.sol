@@ -126,7 +126,6 @@ contract AgoraGovernor is
      * @param _manager Manager address.
      * @param _timelock The governance timelock.
      * @param _proposalTypesConfigurator Proposal types configurator contract.
-     * @param _proposalTypes Initial proposal types to set.
      */
     function initialize(
         IVotingToken _votingToken,
@@ -134,13 +133,10 @@ contract AgoraGovernor is
         address _admin,
         address _manager,
         TimelockControllerUpgradeable _timelock,
-        IProposalTypesConfigurator _proposalTypesConfigurator,
-        IProposalTypesConfigurator.ProposalType[] calldata _proposalTypes
+        IProposalTypesConfigurator _proposalTypesConfigurator
     ) public initializer {
         PROPOSAL_TYPES_CONFIGURATOR = _proposalTypesConfigurator;
         SUPPLY_TYPE = _supplyType;
-
-        PROPOSAL_TYPES_CONFIGURATOR.initialize(address(this), _proposalTypes);
 
         __Governor_init("Agora");
         __GovernorCountingSimple_init();
