@@ -39,6 +39,9 @@ contract AgoraGovernor is
 
     error GovernorUnauthorizedCancel();
     error HookAddressNotValid();
+    error InvalidProposalIdHook();
+    error InvalidVoteWeightHook();
+    error InvalidVoteSucceededHook();
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
@@ -113,7 +116,7 @@ contract AgoraGovernor is
 
         uint256 afterProposalId = hooks.afterPropose(proposalId, targets, values, calldatas, description);
 
-        // TODO: check that before and after proposal IDs are the same
+        if (beforeProposalId != afterProposalId) revert InvalidProposalIdHook();
 
         // TODO: replace this with a flag on hook address
         return beforeProposalId != 0 ? beforeProposalId : proposalId;
@@ -131,7 +134,7 @@ contract AgoraGovernor is
 
         uint256 afterProposalId = hooks.afterQueue(proposalId, targets, values, calldatas, descriptionHash);
 
-        // TODO: check that before and after proposal IDs are the same
+        if (beforeProposalId != afterProposalId) revert InvalidProposalIdHook();
 
         // TODO: replace this with a flag on hook address
         return beforeProposalId != 0 ? beforeProposalId : proposalId;
@@ -146,9 +149,10 @@ contract AgoraGovernor is
         uint256 beforeProposalId = hooks.beforeExecute(targets, values, calldatas, descriptionHash);
 
         uint256 proposalId = super.execute(targets, values, calldatas, descriptionHash);
+
         uint256 afterProposalId = hooks.afterExecute(proposalId, targets, values, calldatas, descriptionHash);
 
-        // TODO: check that before and after proposal IDs are the same
+        if (beforeProposalId != afterProposalId) revert InvalidProposalIdHook();
 
         // TODO: replace this with a flag on hook address
         return beforeProposalId != 0 ? beforeProposalId : proposalId;
@@ -178,7 +182,7 @@ contract AgoraGovernor is
 
         uint256 afterProposalId = hooks.afterCancel(proposalId, targets, values, calldatas, descriptionHash);
 
-        // TODO: check that before and after proposal IDs are the same
+        if (beforeProposalId != afterProposalId) revert InvalidProposalIdHook();
 
         // TODO: replace this with a flag on hook address
         return beforeProposalId != 0 ? beforeProposalId : proposalId;
@@ -203,8 +207,6 @@ contract AgoraGovernor is
 
         // Call the hook after quorum calculation
         uint256 afterQuorum = hooks.afterQuorumCalculation(proposalId, _quorum);
-
-        // TODO: check that before and after quorum are the same
 
         // TODO: replace this with a flag on hook address
         return beforeQuorum != 0 ? beforeQuorum : _quorum;
@@ -256,7 +258,7 @@ contract AgoraGovernor is
 
         uint256 afterWeight = hooks.afterVote(votedWeight, proposalId, account, support, reason, params);
 
-        // TODO: check that before and after weights are the same
+        if (beforeWeight != afterWeight) revert InvalidVoteWeightHook();
 
         // TODO: replace this with a flag on hook address
         return beforeWeight != 0 ? beforeWeight : votedWeight;
@@ -299,10 +301,11 @@ contract AgoraGovernor is
     {
         (uint256 againstVotes, uint256 forVotes, uint256 abstainVotes) = proposalVotes(proposalId);
 
-        // uint256 defaultQuorum = this.quorum()
-        // uint256 x = afterQuorum(against, for, abstain, defaultQuorum);
-        // return x == 0 ? defaultQuorum :
-        return quorum(proposalId) <= againstVotes + forVotes + abstainVotes;
+        uint256 defaultQuorum = quorum(proposalId);
+        uint256 afterQuorum = hooks.afterQuorumCalculation(proposalId, defaultQuorum);
+        return afterQuorum == 0
+            ? (defaultQuorum <= againstVotes + forVotes + abstainVotes)
+            : (afterQuorum <= againstVotes + forVotes + abstainVotes);
     }
 
     /**
@@ -321,7 +324,7 @@ contract AgoraGovernor is
 
         uint8 afterVoteSucceeded = hooks.afterVoteSucceeded(proposalId, voteSucceeded);
 
-        // TODO: check that before and after vote succeeded are the same
+        if (beforeVoteSucceeded != afterVoteSucceeded) revert InvalidVoteSucceededHook();
 
         // TODO: replace this with a flag on hook address because it returns false by default!
         return beforeVoteSucceeded != 0 ? beforeVoteSucceeded == 2 : voteSucceeded;
