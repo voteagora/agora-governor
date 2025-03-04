@@ -39,7 +39,7 @@ contract BaseHookMock is BaseHook {
         return (this.afterVoteSucceeded.selector, true);
     }
 
-    function beforeQuorumCalculation(address, uint256) external view virtual override returns (bytes4, uint256) {
+    function beforeQuorumCalculation(address, uint256 quorum) external view virtual override returns (bytes4, uint256) {
         return (this.beforeQuorumCalculation.selector, 100);
     }
 
@@ -53,35 +53,38 @@ contract BaseHookMock is BaseHook {
         return (this.afterQuorumCalculation.selector, afterQuorum);
     }
 
-    function beforeVote(address, uint256, address, uint8, string memory, bytes memory)
+    function beforeVote(address, uint256, address, uint8 support, string memory, bytes memory)
         external
         virtual
         override
         returns (bytes4, uint256)
     {
         emit BeforeVote();
-        return (this.beforeVote.selector, 299);
+        return (this.beforeVote.selector, uint256(support));
     }
 
-    function afterVote(address, uint256, uint256, address, uint8, string memory, bytes memory)
+    function afterVote(address, uint256, uint256, address, uint8 support, string memory, bytes memory)
         external
         virtual
         override
         returns (bytes4, uint256)
     {
         emit AfterVote();
-        return (this.afterVote.selector, 0);
+        return (this.afterVote.selector, uint256(support));
     }
 
-    function beforePropose(address, address[] memory, uint256[] memory, bytes[] memory, string memory)
+    function beforePropose(address, address[] memory targets, uint256[] memory values, bytes[] memory calldatas, string
+                           memory description)
         external
         virtual
         override
         returns (bytes4, uint256)
     {
         emit BeforePropose();
+        uint256 proposalId = governor.hashProposal(targets, values, calldatas,
+                                                   keccak256(abi.encodePacked(description)));
 
-        return (this.beforePropose.selector, 0);
+        return (this.beforePropose.selector, proposalId);
     }
 
     function afterPropose(
@@ -96,24 +99,26 @@ contract BaseHookMock is BaseHook {
         return (this.afterPropose.selector, proposalId);
     }
 
-    function beforeCancel(address, address[] memory, uint256[] memory, bytes[] memory, bytes32)
+    function beforeCancel(address, address[] memory targets, uint256[] memory values, bytes[] memory calldatas, bytes32
+                         descriptionHash)
         external
         virtual
         override
         returns (bytes4, uint256)
     {
         emit BeforeCancel();
-        return (this.beforeCancel.selector, 0);
+        uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
+        return (this.beforeCancel.selector, proposalId);
     }
 
-    function afterCancel(address, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)
+    function afterCancel(address, uint256 proposalId, address[] memory, uint256[] memory, bytes[] memory, bytes32)
         external
         virtual
         override
         returns (bytes4, uint256)
     {
         emit AfterCancel();
-        return (this.afterCancel.selector, 0);
+        return (this.afterCancel.selector, proposalId);
     }
 
     function beforeQueue(address, address[] memory, uint256[] memory, bytes[] memory, bytes32)
@@ -136,14 +141,16 @@ contract BaseHookMock is BaseHook {
         return (this.afterQueue.selector, 0);
     }
 
-    function beforeExecute(address, address[] memory, uint256[] memory, bytes[] memory, bytes32)
+    function beforeExecute(address, address[] memory targets, uint256[] memory values, bytes[] memory calldatas, bytes32
+                          descriptionHash)
         external
         virtual
         override
         returns (bytes4, uint256)
     {
         emit BeforeExecute();
-        return (this.beforeExecute.selector, 0);
+        uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
+        return (this.beforeExecute.selector, proposalId);
     }
 
     function afterExecute(address, uint256 proposalId, address[] memory, uint256[] memory, bytes[] memory, bytes32)

@@ -12,6 +12,7 @@ import {Bytes} from "@openzeppelin/contracts/utils/Bytes.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Validator} from "src/libraries/Validator.sol";
+import {ApprovalVotingModule} from "src/modules/ApprovalVoting.sol";
 
 contract Middleware is IMiddleware, BaseHook {
     using Hooks for IHooks;
@@ -167,11 +168,8 @@ contract Middleware is IMiddleware, BaseHook {
         uint8 proposalTypeId = _proposalTypeId[proposalId];
         address votingModule = _proposalTypes[proposalTypeId].module;
         if (votingModule != address(0)) {
-            /*
-            if (!VotingModule(votingModule)._voteSucceeded(proposalId)) {
-                return false;
-            }
-            */
+            (bytes4 selector, bool success) = ApprovalVotingModule(votingModule).beforeVoteSucceeded(sender, proposalId);
+            return (selector, success);
         }
 
         uint256 approvalThreshold = _proposalTypes[proposalTypeId].approvalThreshold;
@@ -185,7 +183,7 @@ contract Middleware is IMiddleware, BaseHook {
             voteSucceeded = (forVotes * PERCENT_DIVISOR) / totalVotes >= approvalThreshold;
         }
 
-        return (this.afterPropose.selector, voteSucceeded);
+        return (this.beforeVoteSucceeded.selector, voteSucceeded);
     }
 
     /*//////////////////////////////////////////////////////////////
