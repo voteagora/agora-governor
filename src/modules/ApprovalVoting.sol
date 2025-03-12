@@ -124,7 +124,7 @@ contract ApprovalVotingModule is BaseHook {
         uint256[] memory values,
         bytes[] memory calldatas,
         string memory description
-    ) external virtual override returns (bytes4, uint256) {
+    ) external virtual override returns (bytes4) {
         _onlyGovernor(sender);
 
         if (proposals[proposalId].governor != address(0)) {

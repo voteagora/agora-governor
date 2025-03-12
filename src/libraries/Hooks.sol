@@ -215,21 +215,9 @@ library Hooks {
     }
 
     /// @notice calls afterVoteSucceeded hook if permissioned and validates return value
-    function afterVoteSucceeded(IHooks self, uint256 proposalId, bool voteSucceeded)
-        internal
-        view
-        noSelfCall(self)
-        returns (uint8 returnedVoteSucceeded)
-    {
+    function afterVoteSucceeded(IHooks self, uint256 proposalId, bool voteSucceeded) internal view noSelfCall(self) {
         if (self.hasPermission(AFTER_VOTE_SUCCEEDED_FLAG)) {
-            bytes memory result =
-                self.staticCallHook(abi.encodeCall(IHooks.afterVoteSucceeded, (msg.sender, proposalId, voteSucceeded)));
-
-            // The length of the result must be 64 bytes to return a bytes4 (padded to 32 bytes) and a boolean (padded to 32 bytes) value
-            if (result.length != 64) revert InvalidHookResponse();
-
-            // Extract the boolean from the result and convert to uint8 with 2 meaning true and 1 meaning false
-            returnedVoteSucceeded = parseBool(result) ? 2 : 1;
+            self.staticCallHook(abi.encodeCall(IHooks.afterVoteSucceeded, (msg.sender, proposalId, voteSucceeded)));
         }
     }
 
@@ -253,21 +241,9 @@ library Hooks {
     }
 
     /// @notice calls afterQuorumCalculation hook if permissioned and validates return value
-    function afterQuorumCalculation(IHooks self, uint256 proposalId, uint256 quorum)
-        internal
-        view
-        noSelfCall(self)
-        returns (uint256 returnedQuorum)
-    {
+    function afterQuorumCalculation(IHooks self, uint256 proposalId, uint256 quorum) internal view noSelfCall(self) {
         if (self.hasPermission(AFTER_QUORUM_CALCULATION_FLAG)) {
-            bytes memory result =
-                self.staticCallHook(abi.encodeCall(IHooks.afterQuorumCalculation, (msg.sender, proposalId, quorum)));
-
-            // The length of the result must be 64 bytes to return a bytes4 (padded to 32 bytes) and a uint256 (32 bytes) quorum value
-            if (result.length != 64) revert InvalidHookResponse();
-
-            // Extract the quorum from the result
-            returnedQuorum = parseUint256(result);
+            self.staticCallHook(abi.encodeCall(IHooks.afterQuorumCalculation, (msg.sender, proposalId, quorum)));
         }
     }
 
@@ -339,17 +315,11 @@ library Hooks {
         uint256[] memory values,
         bytes[] memory calldatas,
         string memory description
-    ) internal noSelfCall(self) returns (uint256 returnedProposalId) {
+    ) internal noSelfCall(self) {
         if (self.hasPermission(AFTER_PROPOSE_FLAG)) {
-            bytes memory result = self.callHook(
+            self.callHook(
                 abi.encodeCall(IHooks.afterPropose, (msg.sender, proposalId, targets, values, calldatas, description))
             );
-
-            // The length of the result must be 64 bytes to return a bytes4 (padded to 32 bytes) and a uint256 (32 bytes) proposal ID value
-            if (result.length != 64) revert InvalidHookResponse();
-
-            // Extract the proposal ID from the result
-            returnedProposalId = parseUint256(result);
         }
     }
 
@@ -382,17 +352,11 @@ library Hooks {
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) internal noSelfCall(self) returns (uint256 returnedProposalId) {
+    ) internal noSelfCall(self) {
         if (self.hasPermission(AFTER_QUEUE_FLAG)) {
-            bytes memory result = self.callHook(
+            self.callHook(
                 abi.encodeCall(IHooks.afterQueue, (msg.sender, proposalId, targets, values, calldatas, descriptionHash))
             );
-
-            // The length of the result must be 64 bytes to return a bytes4 (padded to 32 bytes) and a uint256 (32 bytes) proposal ID value
-            if (result.length != 64) revert InvalidHookResponse();
-
-            // Extract the proposal ID from the result
-            returnedProposalId = parseUint256(result);
         }
     }
 
@@ -425,19 +389,13 @@ library Hooks {
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) internal noSelfCall(self) returns (uint256 returnedProposalId) {
+    ) internal noSelfCall(self) {
         if (self.hasPermission(AFTER_CANCEL_FLAG)) {
-            bytes memory result = self.callHook(
+            self.callHook(
                 abi.encodeCall(
                     IHooks.afterCancel, (msg.sender, proposalId, targets, values, calldatas, descriptionHash)
                 )
             );
-
-            // The length of the result must be 64 bytes to return a bytes4 (padded to 32 bytes) and a uint256 (32 bytes) proposal ID value
-            if (result.length != 64) revert InvalidHookResponse();
-
-            // Extract the proposal ID from the result
-            returnedProposalId = parseUint256(result);
         }
     }
 
@@ -470,19 +428,13 @@ library Hooks {
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) internal noSelfCall(self) returns (uint256 returnedProposalId) {
+    ) internal noSelfCall(self) {
         if (self.hasPermission(AFTER_EXECUTE_FLAG)) {
-            bytes memory result = self.callHook(
+            self.callHook(
                 abi.encodeCall(
                     IHooks.afterExecute, (msg.sender, proposalId, targets, values, calldatas, descriptionHash)
                 )
             );
-
-            // The length of the result must be 64 bytes to return a bytes4 (padded to 32 bytes) and a uint256 (32 bytes) proposal ID value
-            if (result.length != 64) revert InvalidHookResponse();
-
-            // Extract the proposal ID from the result
-            returnedProposalId = parseUint256(result);
         }
     }
 

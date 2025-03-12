@@ -50,7 +50,7 @@ abstract contract BaseHook is IHooks {
     }
 
     /// @inheritdoc IHooks
-    function afterVoteSucceeded(address, uint256, bool) external view virtual returns (bytes4, bool) {
+    function afterVoteSucceeded(address, uint256, bool) external view virtual returns (bytes4) {
         revert HookNotImplemented();
     }
 
@@ -60,7 +60,7 @@ abstract contract BaseHook is IHooks {
     }
 
     /// @inheritdoc IHooks
-    function afterQuorumCalculation(address, uint256, uint256) external view virtual returns (bytes4, uint256) {
+    function afterQuorumCalculation(address, uint256, uint256) external view virtual returns (bytes4) {
         revert HookNotImplemented();
     }
 
@@ -95,7 +95,7 @@ abstract contract BaseHook is IHooks {
     function afterPropose(address, uint256, address[] memory, uint256[] memory, bytes[] memory, string memory)
         external
         virtual
-        returns (bytes4, uint256)
+        returns (bytes4)
     {
         revert HookNotImplemented();
     }
@@ -113,7 +113,7 @@ abstract contract BaseHook is IHooks {
     function afterCancel(address, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)
         external
         virtual
-        returns (bytes4, uint256)
+        returns (bytes4)
     {
         revert HookNotImplemented();
     }
@@ -131,7 +131,7 @@ abstract contract BaseHook is IHooks {
     function afterQueue(address, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)
         external
         virtual
-        returns (bytes4, uint256)
+        returns (bytes4)
     {
         revert HookNotImplemented();
     }
@@ -149,7 +149,7 @@ abstract contract BaseHook is IHooks {
     function afterExecute(address, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)
         external
         virtual
-        returns (bytes4, uint256)
+        returns (bytes4)
     {
         revert HookNotImplemented();
     }

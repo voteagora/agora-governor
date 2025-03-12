@@ -291,11 +291,7 @@ contract AgoraGovernor is
     {
         (uint256 againstVotes, uint256 forVotes, uint256 abstainVotes) = proposalVotes(proposalId);
 
-        uint256 defaultQuorum = quorum(proposalId);
-        uint256 afterQuorum = hooks.afterQuorumCalculation(proposalId, defaultQuorum);
-        return afterQuorum == 0
-            ? (defaultQuorum <= againstVotes + forVotes + abstainVotes)
-            : (afterQuorum <= againstVotes + forVotes + abstainVotes);
+        return quorum(proposalId) <= againstVotes + forVotes + abstainVotes;
     }
 
     /**
