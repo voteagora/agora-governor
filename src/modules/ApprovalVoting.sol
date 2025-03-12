@@ -108,6 +108,7 @@ contract ApprovalVotingModule is BaseHook {
         });
     }
     /// @notice Reverts if the sender of the hook is not the governor
+
     function _onlyGovernor(address sender) internal view {
         if (sender != address(governor)) revert NotGovernor();
     }

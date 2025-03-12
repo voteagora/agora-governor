@@ -230,6 +230,14 @@ contract Middleware is IMiddleware, BaseHook {
     }
 
     /**
+     * @notice Get the proposalType for a given proposalId.
+     * @param proposalId Id of the proposal
+     */
+    function getProposalTypeId(uint256 proposalId) external view returns (uint8) {
+        return _proposalTypeId[proposalId];
+    }
+
+    /**
      * @notice Get the scope that is assigned to a given proposal type.
      * @param proposalTypeId Id of the proposal type.
      * @param scopeKey The function selector + contract address that is the key for a scope.

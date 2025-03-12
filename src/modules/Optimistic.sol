@@ -36,6 +36,7 @@ contract OptimisticModule is BaseHook {
     error NotOptimisticProposalType();
     error ExistingProposal();
     error InvalidParams();
+    error NotGovernor();
 
     /*//////////////////////////////////////////////////////////////
                            IMMUTABLE STORAGE
@@ -82,7 +83,10 @@ contract OptimisticModule is BaseHook {
             afterExecute: false
         });
     }
-
+   /// @notice Reverts if the sender of the hook is not the governor
+    function _onlyGovernor(address sender) internal view {
+        if (sender != address(governor)) revert NotGovernor();
+    }
     /*//////////////////////////////////////////////////////////////
                             WRITE FUNCTIONS
     //////////////////////////////////////////////////////////////*/
@@ -95,20 +99,16 @@ contract OptimisticModule is BaseHook {
         bytes[] memory calldatas,
         string memory description
     ) external virtual override returns (bytes4, uint256) {
-        // _onlyGovernor(); TODO: only governor
+        _onlyGovernor(sender);
+
         if (proposals[proposalId].governor != address(0)) {
             revert ExistingProposal();
         }
 
-        // TODO: decode description into proposal data
         bytes memory proposalData = abi.encode(description);
-
         ProposalSettings memory proposalSettings = abi.decode(proposalData, (ProposalSettings));
 
-        // uint8 proposalTypeId = IAgoraGovernor(msg.sender).getProposalType(
-        //     proposalId
-        // );
-        uint8 proposalTypeId = 0;
+        uint8 proposalTypeId = middleware.getProposalTypeId(proposalId);
         IMiddleware.ProposalType memory proposalType = middleware.proposalTypes(proposalTypeId);
 
         if (proposalType.quorum != 0 || proposalType.approvalThreshold != 0) {
@@ -150,7 +150,7 @@ contract OptimisticModule is BaseHook {
      * @param proposalId The id of the proposal.
      */
     function beforeVoteSucceeded(address, uint256 proposalId) external view override returns (bytes4, bool) {
-        // _onlyGovernor(); TODO: only governor
+        _onlyGovernor(sender);
         Proposal memory proposal = proposals[proposalId];
         (uint256 againstVotes,,) = governor.proposalVotes(proposalId);
 
