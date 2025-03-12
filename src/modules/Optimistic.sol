@@ -149,7 +149,7 @@ contract OptimisticModule is BaseHook {
      *
      * @param proposalId The id of the proposal.
      */
-    function beforeVoteSucceeded(address, uint256 proposalId) external view override returns (bytes4, bool) {
+    function beforeVoteSucceeded(address sender, uint256 proposalId) external view override returns (bytes4, bool) {
         _onlyGovernor(sender);
         Proposal memory proposal = proposals[proposalId];
         (uint256 againstVotes,,) = governor.proposalVotes(proposalId);
