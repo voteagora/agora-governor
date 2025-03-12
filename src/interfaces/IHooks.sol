@@ -47,7 +47,7 @@ interface IHooks {
         uint8 support,
         string memory reason,
         bytes memory params
-    ) external returns (bytes4, uint256);
+    ) external returns (bytes4);
 
     /// @notice The hook called before a proposal is created
     function beforePropose(

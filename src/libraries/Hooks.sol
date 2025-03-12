@@ -293,7 +293,7 @@ library Hooks {
         }
     }
 
-    /// @notice calls afterVote hook if permissioned and validates return value
+    /// @notice calls afterVote hook if permissioned
     function afterVote(
         IHooks self,
         uint256 weight,
@@ -302,17 +302,11 @@ library Hooks {
         uint8 support,
         string memory reason,
         bytes memory params
-    ) internal noSelfCall(self) returns (uint256 returnedWeight) {
+    ) internal noSelfCall(self) {
         if (self.hasPermission(AFTER_VOTE_FLAG)) {
-            bytes memory result = self.callHook(
+            self.callHook(
                 abi.encodeCall(IHooks.afterVote, (msg.sender, weight, proposalId, account, support, reason, params))
             );
-
-            // The length of the result must be 64 bytes to return a bytes4 (padded to 32 bytes) and a uint256 (32 bytes) weight value
-            if (result.length != 64) revert InvalidHookResponse();
-
-            // Extract the weight from the result
-            returnedWeight = parseUint256(result);
         }
     }
 

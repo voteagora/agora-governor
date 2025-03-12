@@ -67,11 +67,11 @@ contract MockHooks is IHooks {
     function afterVote(address, uint256, uint256, address, uint8, string memory, bytes memory params)
         external
         override
-        returns (bytes4, uint256)
+        returns (bytes4)
     {
         afterVoteData = params;
         bytes4 selector = MockHooks.afterVote.selector;
-        return (returnValues[selector] == bytes4(0) ? selector : returnValues[selector], 0);
+        return (returnValues[selector] == bytes4(0) ? selector : returnValues[selector]);
     }
 
     function beforePropose(address, address[] memory, uint256[] memory, bytes[] memory, string memory)

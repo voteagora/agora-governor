@@ -252,16 +252,30 @@ contract AgoraGovernor is
         override(Governor)
         returns (uint256)
     {
+        _validateStateBitmap(proposalId, _encodeStateBitmap(ProposalState.Active));
+
         uint256 beforeWeight = hooks.beforeVote(proposalId, account, support, reason, params);
 
-        uint256 votedWeight = super._castVote(proposalId, account, support, reason, params);
+        uint256 totalWeight = 0;
+        if (beforeWeight != 0) {
+            totalWeight = beforeWeight;
+        } else {
+            totalWeight = _getVotes(account, proposalSnapshot(proposalId), params);
+        }
 
-        uint256 afterWeight = hooks.afterVote(votedWeight, proposalId, account, support, reason, params);
+        hooks.afterVote(totalWeight, proposalId, account, support, reason, params);
 
-        if (beforeWeight != afterWeight) revert InvalidVoteWeightHook();
+        uint256 votedWeight = _countVote(proposalId, account, support, totalWeight, params);
 
-        // TODO: replace this with a flag on hook address
-        return beforeWeight != 0 ? beforeWeight : votedWeight;
+        if (params.length == 0) {
+            emit VoteCast(account, proposalId, support, votedWeight, reason);
+        } else {
+            emit VoteCastWithParams(account, proposalId, support, votedWeight, reason, params);
+        }
+
+        _tallyUpdated(proposalId);
+
+        return votedWeight;
     }
 
     function _cancel(

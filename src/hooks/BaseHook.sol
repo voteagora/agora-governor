@@ -77,7 +77,7 @@ abstract contract BaseHook is IHooks {
     function afterVote(address, uint256, uint256, address, uint8, string memory, bytes memory)
         external
         virtual
-        returns (bytes4, uint256)
+        returns (bytes4)
     {
         revert HookNotImplemented();
     }
