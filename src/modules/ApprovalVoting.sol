@@ -101,9 +101,9 @@ contract ApprovalVotingModule is BaseHook {
             afterPropose: true,
             beforeCancel: false,
             afterCancel: false,
-            beforeQueue: false,
+            beforeQueue: true,
             afterQueue: false,
-            beforeExecute: false,
+            beforeExecute: true,
             afterExecute: false
         });
     }
@@ -201,22 +201,48 @@ contract ApprovalVotingModule is BaseHook {
         return (this.afterVote.selector);
     }
 
+    function beforeQueue(
+        address,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) external virtual override returns (bytes4, bytes memory) {
+        uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
+
+        (targets, values, calldatas) = _formatExecuteParams(proposalId);
+        return (this.beforeQueue.selector, abi.encode(proposalId, targets, values, calldatas, descriptionHash));
+    }
+
+    function beforeExecute(
+        address,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) external virtual override returns (bytes4, bytes memory) {
+        uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
+
+        (targets, values, calldatas) = _formatExecuteParams(proposalId);
+        return (this.beforeQueue.selector, abi.encode(proposalId, targets, values, calldatas, descriptionHash));
+    }
+
     /**
      * Format executeParams for a governor, given `proposalId` and `proposalData`.
      *
      * @param proposalId The id of the proposal.
-     * @param proposalData The proposal data encoded as `(ProposalOption[], ProposalSettings)`.
      * @return targets The targets of the proposal.
      * @return values The values of the proposal.
      * @return calldatas The calldatas of the proposal.
      */
-    function _formatExecuteParams(uint256 proposalId, bytes memory proposalData)
+    function _formatExecuteParams(uint256 proposalId)
         public
         returns (address[] memory targets, uint256[] memory values, bytes[] memory calldatas)
     {
         _onlyGovernor(msg.sender);
-        (ProposalOption[] memory options, ProposalSettings memory settings) =
-            abi.decode(proposalData, (ProposalOption[], ProposalSettings));
+
+        ProposalOption[] memory options = proposals[proposalId].options;
+        ProposalSettings memory settings = proposals[proposalId].settings;
 
         {
             // If budgetToken is not ETH
@@ -306,7 +332,7 @@ contract ApprovalVotingModule is BaseHook {
         // Set `_afterExecute` as last call
         targets[executeParamsLength] = address(this);
         values[executeParamsLength] = 0;
-        calldatas[executeParamsLength] = abi.encodeCall(this._afterExecute, (proposalId, proposalData, totalValue));
+        calldatas[executeParamsLength] = abi.encodeCall(this._afterExecute, (proposalId, totalValue));
     }
 
     /**
@@ -314,11 +340,10 @@ contract ApprovalVotingModule is BaseHook {
      * Revert if the transaction has resulted in more tokens being spent than `budgetAmount`.
      *
      * @param proposalId The id of the proposal.
-     * @param proposalData The proposal data encoded as `(ProposalOption[], ProposalSettings)`.
      * @param budgetTokensSpent The total amount of tokens that can be spent.
      */
-    function _afterExecute(uint256 proposalId, bytes memory proposalData, uint256 budgetTokensSpent) public view {
-        (, ProposalSettings memory settings) = abi.decode(proposalData, (ProposalOption[], ProposalSettings));
+    function _afterExecute(uint256 proposalId, uint256 budgetTokensSpent) public view {
+        ProposalSettings memory settings = proposals[proposalId].settings;
 
         if (settings.budgetToken != address(0) && settings.budgetAmount > 0) {
             uint256 initBalance = proposals[proposalId].initBalance;
