@@ -107,6 +107,7 @@ contract ApprovalVotingModule is BaseHook {
             afterExecute: false
         });
     }
+
     /// @notice Reverts if the sender of the hook is not the governor
 
     function _onlyGovernor(address sender) internal view {
@@ -124,7 +125,7 @@ contract ApprovalVotingModule is BaseHook {
         uint256[] memory values,
         bytes[] memory calldatas,
         string memory description
-    ) external virtual override returns (bytes4, uint256) {
+    ) external virtual override returns (bytes4) {
         _onlyGovernor(sender);
 
         if (proposals[proposalId].governor != address(0)) {
@@ -181,7 +182,7 @@ contract ApprovalVotingModule is BaseHook {
         uint8 support,
         string memory reason,
         bytes memory params
-    ) external override returns (bytes4, uint256) {
+    ) external override returns (bytes4) {
         _onlyGovernor(sender);
         Proposal memory proposal = proposals[proposalId];
 
@@ -197,7 +198,7 @@ contract ApprovalVotingModule is BaseHook {
             }
         }
 
-        return (this.afterVote.selector, weight);
+        return (this.afterVote.selector);
     }
 
     /**

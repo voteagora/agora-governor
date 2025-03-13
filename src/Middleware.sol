@@ -95,7 +95,7 @@ contract Middleware is IMiddleware, BaseHook {
         external
         view
         override
-        returns (bytes4, uint256)
+        returns (bytes4)
     {
         // Get the proposalId for the timepoint
         uint8 proposalTypeId = _proposalTypeId[proposalId];
@@ -106,7 +106,7 @@ contract Middleware is IMiddleware, BaseHook {
                 * _proposalTypes[proposalTypeId].quorum
         ) / governor.quorumDenominator();
 
-        return (IHooks.afterQuorumCalculation.selector, quorum);
+        return (IHooks.afterQuorumCalculation.selector);
     }
 
     /**
@@ -165,7 +165,7 @@ contract Middleware is IMiddleware, BaseHook {
         uint256[] memory values,
         bytes[] memory calldatas,
         string memory description
-    ) external virtual override returns (bytes4, uint256) {
+    ) external virtual override returns (bytes4) {
         uint8 proposalTypeId = description._parseProposalTypeId();
 
         // Route hook to voting module
@@ -178,10 +178,8 @@ contract Middleware is IMiddleware, BaseHook {
             if (!success) revert Hooks.InvalidHookResponse();
         }
 
-        uint256 afterProposalId = governor.hashProposal(targets, values, calldatas, keccak256(bytes(description)));
-
         _proposalTypeId[proposalId] = proposalTypeId;
-        return (this.afterPropose.selector, afterProposalId);
+        return (this.afterPropose.selector);
     }
 
     /**
