@@ -39,9 +39,9 @@ contract MockHooks is IHooks {
         return (returnValues[selector] == bytes4(0) ? selector : returnValues[selector], true);
     }
 
-    function afterVoteSucceeded(address, uint256, bool) external view override returns (bytes4, bool) {
+    function afterVoteSucceeded(address, uint256, bool) external view override returns (bytes4) {
         bytes4 selector = MockHooks.afterVoteSucceeded.selector;
-        return (returnValues[selector] == bytes4(0) ? selector : returnValues[selector], true);
+        return returnValues[selector] == bytes4(0) ? selector : returnValues[selector];
     }
 
     function beforeQuorumCalculation(address, uint256) external view override returns (bytes4, uint256) {
@@ -49,9 +49,9 @@ contract MockHooks is IHooks {
         return (returnValues[selector] == bytes4(0) ? selector : returnValues[selector], 0);
     }
 
-    function afterQuorumCalculation(address, uint256, uint256) external view override returns (bytes4, uint256) {
+    function afterQuorumCalculation(address, uint256, uint256) external view override returns (bytes4) {
         bytes4 selector = MockHooks.afterQuorumCalculation.selector;
-        return (returnValues[selector] == bytes4(0) ? selector : returnValues[selector], 0);
+        return returnValues[selector] == bytes4(0) ? selector : returnValues[selector];
     }
 
     function beforeVote(address, uint256, address, uint8, string memory, bytes memory params)
@@ -67,11 +67,11 @@ contract MockHooks is IHooks {
     function afterVote(address, uint256, uint256, address, uint8, string memory, bytes memory params)
         external
         override
-        returns (bytes4, uint256)
+        returns (bytes4)
     {
         afterVoteData = params;
         bytes4 selector = MockHooks.afterVote.selector;
-        return (returnValues[selector] == bytes4(0) ? selector : returnValues[selector], 0);
+        return (returnValues[selector] == bytes4(0) ? selector : returnValues[selector]);
     }
 
     function beforePropose(address, address[] memory, uint256[] memory, bytes[] memory, string memory)
@@ -89,11 +89,11 @@ contract MockHooks is IHooks {
         external
         view
         override
-        returns (bytes4, uint256)
+        returns (bytes4)
     {
         // afterProposeData = hookData;
         bytes4 selector = MockHooks.afterPropose.selector;
-        return (returnValues[selector] == bytes4(0) ? selector : returnValues[selector], 0);
+        return (returnValues[selector] == bytes4(0) ? selector : returnValues[selector]);
     }
 
     function beforeCancel(address, address[] memory, uint256[] memory, bytes[] memory, bytes32)
@@ -111,11 +111,11 @@ contract MockHooks is IHooks {
         external
         view
         override
-        returns (bytes4, uint256)
+        returns (bytes4)
     {
         // afterCancelData = hookData;
         bytes4 selector = MockHooks.afterCancel.selector;
-        return (returnValues[selector] == bytes4(0) ? selector : returnValues[selector], 0);
+        return (returnValues[selector] == bytes4(0) ? selector : returnValues[selector]);
     }
 
     function beforeQueue(address, address[] memory, uint256[] memory, bytes[] memory, bytes32)
@@ -133,11 +133,11 @@ contract MockHooks is IHooks {
         external
         view
         override
-        returns (bytes4, uint256)
+        returns (bytes4)
     {
         // afterQueueData = hookData;
         bytes4 selector = MockHooks.afterQueue.selector;
-        return (returnValues[selector] == bytes4(0) ? selector : returnValues[selector], 0);
+        return (returnValues[selector] == bytes4(0) ? selector : returnValues[selector]);
     }
 
     function beforeExecute(address, address[] memory, uint256[] memory, bytes[] memory, bytes32)
@@ -155,11 +155,11 @@ contract MockHooks is IHooks {
         external
         view
         override
-        returns (bytes4, uint256)
+        returns (bytes4)
     {
         // afterExecuteData = hookData;
         bytes4 selector = MockHooks.afterExecute.selector;
-        return (returnValues[selector] == bytes4(0) ? selector : returnValues[selector], 0);
+        return (returnValues[selector] == bytes4(0) ? selector : returnValues[selector]);
     }
 
     function setReturnValue(bytes4 key, bytes4 value) external {

@@ -94,7 +94,7 @@ contract OptimisticModule is BaseHook {
         uint256[] memory values,
         bytes[] memory calldatas,
         string memory description
-    ) external virtual override returns (bytes4, uint256) {
+    ) external virtual override returns (bytes4) {
         // _onlyGovernor(); TODO: only governor
         if (proposals[proposalId].governor != address(0)) {
             revert ExistingProposal();
