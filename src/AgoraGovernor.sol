@@ -97,16 +97,27 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
                             PUBLIC FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
+    /**
+     * @notice Set the admin address. Only the admin or timelock can call this function.
+     * @param _newAdmin The new admin address.
+    */
     function setAdmin(address _newAdmin) external onlyGovernance {
         admin = _newAdmin;
         emit AdminSet(admin, _newAdmin);
     }
 
+    /**
+     * @notice Set the manager address. Only the admin or timelock can call this function.
+     * @param _newManager The new manager address.
+    */
     function setManager(address _newManager) external onlyGovernance {
         manager = _newManager;
         emit ManagerSet(manager, _newManager);
     }
 
+    /**
+     * @inheritdoc Governor
+     */
     function propose(
         address[] memory targets,
         uint256[] memory values,
@@ -122,6 +133,9 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         hooks.afterPropose(proposalId, targets, values, calldatas, description);
     }
 
+    /**
+     * @inheritdoc Governor
+     */
     function queue(address[] memory targets, uint256[] memory values, bytes[] memory calldatas, bytes32 descriptionHash)
         public
         virtual
@@ -146,6 +160,9 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         hooks.afterQueue(proposalId, targets, values, calldatas, descriptionHash);
     }
 
+    /**
+     * @inheritdoc Governor
+     */
     function execute(
         address[] memory targets,
         uint256[] memory values,
@@ -169,6 +186,9 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         hooks.afterExecute(proposalId, targets, values, calldatas, descriptionHash);
     }
 
+    /**
+     * @inheritdoc Governor
+     */
     function cancel(
         address[] memory targets,
         uint256[] memory values,
@@ -196,10 +216,18 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         hooks.afterCancel(proposalId, targets, values, calldatas, descriptionHash);
     }
 
+    /**
+     * @notice Max value of `quorum` and `approvalThreshold` in `ProposalType`
+    */
     function quorumDenominator() public pure override returns (uint256) {
         return 10_000;
     }
 
+     /**
+     * @notice Returns the quorum for a `proposalId`, in terms of number of votes: `supply * numerator / denominator`.
+     * @dev Supply is calculated at the proposal snapshot timepoint.
+     * @dev Quorum value is derived from `ProposalTypes` in the `Middleware` and can be changed using the `beforeQuorumCalculation` hook.
+     */
     function quorum(uint256 proposalId)
         public
         view
@@ -216,6 +244,9 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         hooks.afterQuorumCalculation(proposalId, _quorum);
     }
 
+    /**
+     * @inheritdoc Governor
+     */
     function state(uint256 proposalId) public view virtual override returns (ProposalState) {
         ProposalState currentState = super.state(proposalId);
 
@@ -240,14 +271,27 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         return _msgSender() == manager ? 0 : GovernorSettings.proposalThreshold();
     }
 
+    /**
+     * @notice Returns the address of the current timelock
+    */
     function timelock() public view virtual returns (address) {
         return address(_timelock);
     }
 
-    function proposalNeedsQueuing(uint256) public view virtual override returns (bool) {
-        return true;
+    /**
+     * @notice Returns true if the given proposalId is in the Succeded state see IGovernor-ProposalState
+     * @param proposalId The id of the proposal to be queued.
+    */
+    function proposalNeedsQueuing(uint256 proposalId) public view virtual override returns (bool) {
+        ProposalState currentState = super.state(proposalId);
+
+        return currentState == ProposalState.Succeeded;
     }
 
+    /**
+     * @notice Set the timelock address. Only the existing timelock or the admin can change this value
+     * @param newTimelock The new timelock address.
+    */
     function updateTimelock(TimelockController newTimelock) external virtual onlyGovernance {
         _updateTimelock(newTimelock);
     }
@@ -324,6 +368,9 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         }
     }
 
+    /**
+     * @inheritdoc Governor
+     */
     function _castVote(uint256 proposalId, address account, uint8 support, string memory reason, bytes memory params)
         internal
         virtual
@@ -351,6 +398,9 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         _tallyUpdated(proposalId);
     }
 
+    /**
+     * @inheritdoc Governor
+     */
     function _quorumReached(uint256 proposalId)
         internal
         view
