@@ -54,9 +54,10 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
     /// @notice The timelock ids of the governor
     mapping(uint256 proposalId => bytes32) internal _timelockIds;
 
-    address[] internal tempTargets;
-    uint256[] internal tempValues;
-    bytes[] internal tempCalldatas;
+    // Utilized when a module modifies the queuing and execution lifecycle before sending the data to the Timelock
+    address[] private _tempTargets;
+    uint256[] private _tempValues;
+    bytes[] private _tempCalldatas;
 
     /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
@@ -127,20 +128,20 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         override
         returns (uint256 proposalId)
     {
-        (proposalId, tempTargets, tempValues, tempCalldatas,) =
+        (proposalId, _tempTargets, _tempValues, _tempCalldatas,) =
             hooks.beforeQueue(targets, values, calldatas, descriptionHash);
 
         if (proposalId == 0) {
             proposalId = super.queue(targets, values, calldatas, descriptionHash);
         } else {
-            if (tempTargets.length != 0 && tempValues.length != 0 && tempCalldatas.length != 0) {
-                _queueOperations(proposalId, tempTargets, tempValues, tempCalldatas, descriptionHash);
+            if (_tempTargets.length != 0 && _tempValues.length != 0 && _tempCalldatas.length != 0) {
+                _queueOperations(proposalId, _tempTargets, _tempValues, _tempCalldatas, descriptionHash);
             }
-
-            tempTargets = new address[](0);
-            tempValues = new uint256[](0);
-            tempCalldatas = new bytes[](0);
         }
+
+        _tempTargets = new address[](0);
+        _tempValues = new uint256[](0);
+        _tempCalldatas = new bytes[](0);
 
         hooks.afterQueue(proposalId, targets, values, calldatas, descriptionHash);
     }
@@ -151,20 +152,19 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         bytes[] memory calldatas,
         bytes32 descriptionHash
     ) public payable virtual override returns (uint256 proposalId) {
-        (proposalId, tempTargets, tempValues, tempCalldatas,) =
+        (proposalId, _tempTargets, _tempValues, _tempCalldatas,) =
             hooks.beforeExecute(targets, values, calldatas, descriptionHash);
 
         if (proposalId == 0) {
             proposalId = super.execute(targets, values, calldatas, descriptionHash);
         } else {
-            if (tempTargets.length != 0 && tempValues.length != 0 && tempCalldatas.length != 0) {
-                _executeOperations(proposalId, tempTargets, tempValues, tempCalldatas, descriptionHash);
+            if (_tempTargets.length != 0 && _tempValues.length != 0 && _tempCalldatas.length != 0) {
+                _executeOperations(proposalId, _tempTargets, _tempValues, _tempCalldatas, descriptionHash);
             }
-
-            tempTargets = new address[](0);
-            tempValues = new uint256[](0);
-            tempCalldatas = new bytes[](0);
         }
+        _tempTargets = new address[](0);
+        _tempValues = new uint256[](0);
+        _tempCalldatas = new bytes[](0);
 
         hooks.afterExecute(proposalId, targets, values, calldatas, descriptionHash);
     }

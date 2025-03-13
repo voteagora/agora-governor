@@ -121,9 +121,9 @@ contract ApprovalVotingModule is BaseHook {
     function afterPropose(
         address sender,
         uint256 proposalId,
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory calldatas,
+        address[] memory, /*targets*/
+        uint256[] memory, /*values*/
+        bytes[] memory, /*calldatas*/
         string memory description
     ) external virtual override returns (bytes4) {
         _onlyGovernor(sender);
@@ -163,6 +163,8 @@ contract ApprovalVotingModule is BaseHook {
         proposals[proposalId].governor = msg.sender;
         proposals[proposalId].settings = proposalSettings;
         proposals[proposalId].optionVotes = new uint128[](optionsLength);
+
+        return (this.afterPropose.selector);
     }
 
     /**
@@ -180,7 +182,7 @@ contract ApprovalVotingModule is BaseHook {
         uint256 proposalId,
         address account,
         uint8 support,
-        string memory reason,
+        string memory, /*reason*/
         bytes memory params
     ) external override returns (bytes4) {
         _onlyGovernor(sender);
@@ -202,12 +204,13 @@ contract ApprovalVotingModule is BaseHook {
     }
 
     function beforeQueue(
-        address,
+        address sender,
         address[] memory targets,
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
     ) external virtual override returns (bytes4, bytes memory) {
+        _onlyGovernor(sender);
         uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
 
         (targets, values, calldatas) = _formatExecuteParams(proposalId);
@@ -215,12 +218,13 @@ contract ApprovalVotingModule is BaseHook {
     }
 
     function beforeExecute(
-        address,
+        address sender,
         address[] memory targets,
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
     ) external virtual override returns (bytes4, bytes memory) {
+        _onlyGovernor(sender);
         uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
 
         (targets, values, calldatas) = _formatExecuteParams(proposalId);
