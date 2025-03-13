@@ -330,17 +330,27 @@ library Hooks {
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) internal noSelfCall(self) returns (uint256 returnedProposalId) {
+    )
+        internal
+        noSelfCall(self)
+        returns (
+            uint256 returnedProposalId,
+            address[] memory returnedTargets,
+            uint256[] memory returnedValues,
+            bytes[] memory returnedCalldatas,
+            bytes32 returnedDescriptionHash
+        )
+    {
         if (self.hasPermission(BEFORE_QUEUE_FLAG)) {
             bytes memory result = self.callHook(
                 abi.encodeCall(IHooks.beforeQueue, (msg.sender, targets, values, calldatas, descriptionHash))
             );
 
-            // The length of the result must be 64 bytes to return a bytes4 (padded to 32 bytes) and a uint256 (32 bytes) proposal ID value
-            if (result.length != 64) revert InvalidHookResponse();
+            if (result.length < 4) revert InvalidHookResponse();
 
-            // Extract the proposal ID from the result
-            returnedProposalId = parseUint256(result);
+            // Extract the proposal ID and data from the result
+            (, returnedProposalId, returnedTargets, returnedValues, returnedCalldatas, returnedDescriptionHash) =
+                abi.decode(result, (bytes4, uint256, address[], uint256[], bytes[], bytes32));
         }
     }
 
@@ -406,17 +416,27 @@ library Hooks {
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) internal noSelfCall(self) returns (uint256 returnedProposalId) {
+    )
+        internal
+        noSelfCall(self)
+        returns (
+            uint256 returnedProposalId,
+            address[] memory returnedTargets,
+            uint256[] memory returnedValues,
+            bytes[] memory returnedCalldatas,
+            bytes32 returnedDescriptionHash
+        )
+    {
         if (self.hasPermission(BEFORE_EXECUTE_FLAG)) {
             bytes memory result = self.callHook(
                 abi.encodeCall(IHooks.beforeExecute, (msg.sender, targets, values, calldatas, descriptionHash))
             );
 
-            // The length of the result must be 64 bytes to return a bytes4 (padded to 32 bytes) and a uint256 (32 bytes) proposal ID value
-            if (result.length != 64) revert InvalidHookResponse();
+            if (result.length < 4) revert InvalidHookResponse();
 
-            // Extract the proposal ID from the result
-            returnedProposalId = parseUint256(result);
+            // Extract the proposal ID and data from the result
+            (, returnedProposalId, returnedTargets, returnedValues, returnedCalldatas, returnedDescriptionHash) =
+                abi.decode(result, (bytes4, uint256, address[], uint256[], bytes[], bytes32));
         }
     }
 

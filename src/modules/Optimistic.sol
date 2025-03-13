@@ -36,6 +36,7 @@ contract OptimisticModule is BaseHook {
     error NotOptimisticProposalType();
     error ExistingProposal();
     error InvalidParams();
+    error NotGovernor();
 
     /*//////////////////////////////////////////////////////////////
                            IMMUTABLE STORAGE
@@ -82,7 +83,11 @@ contract OptimisticModule is BaseHook {
             afterExecute: false
         });
     }
+    /// @notice Reverts if the sender of the hook is not the governor
 
+    function _onlyGovernor(address sender) internal view {
+        if (sender != address(governor)) revert NotGovernor();
+    }
     /*//////////////////////////////////////////////////////////////
                             WRITE FUNCTIONS
     //////////////////////////////////////////////////////////////*/
@@ -90,25 +95,21 @@ contract OptimisticModule is BaseHook {
     function afterPropose(
         address sender,
         uint256 proposalId,
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory calldatas,
+        address[] memory,
+        uint256[] memory,
+        bytes[] memory,
         string memory description
     ) external virtual override returns (bytes4) {
-        // _onlyGovernor(); TODO: only governor
+        _onlyGovernor(sender);
+
         if (proposals[proposalId].governor != address(0)) {
             revert ExistingProposal();
         }
 
-        // TODO: decode description into proposal data
         bytes memory proposalData = abi.encode(description);
-
         ProposalSettings memory proposalSettings = abi.decode(proposalData, (ProposalSettings));
 
-        // uint8 proposalTypeId = IAgoraGovernor(msg.sender).getProposalType(
-        //     proposalId
-        // );
-        uint8 proposalTypeId = 0;
+        uint8 proposalTypeId = middleware.getProposalTypeId(proposalId);
         IMiddleware.ProposalType memory proposalType = middleware.proposalTypes(proposalTypeId);
 
         if (proposalType.quorum != 0 || proposalType.approvalThreshold != 0) {
@@ -123,6 +124,8 @@ contract OptimisticModule is BaseHook {
 
         proposals[proposalId].governor = msg.sender;
         proposals[proposalId].settings = proposalSettings;
+
+        return BaseHook.afterPropose.selector;
     }
 
     /**
@@ -133,10 +136,9 @@ contract OptimisticModule is BaseHook {
         external
         pure
         override
-        returns (bytes4, uint256)
+        returns (bytes4, bytes memory)
     {
-        // TODO: revert or return empty txs
-        revert("Not implemented");
+        return (BaseHook.beforeExecute.selector, new bytes(0));
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -149,8 +151,8 @@ contract OptimisticModule is BaseHook {
      *
      * @param proposalId The id of the proposal.
      */
-    function beforeVoteSucceeded(address, uint256 proposalId) external view override returns (bytes4, bool) {
-        // _onlyGovernor(); TODO: only governor
+    function beforeVoteSucceeded(address sender, uint256 proposalId) external view override returns (bytes4, bool) {
+        _onlyGovernor(sender);
         Proposal memory proposal = proposals[proposalId];
         (uint256 againstVotes,,) = governor.proposalVotes(proposalId);
 

@@ -75,6 +75,7 @@ interface IMiddleware {
     //////////////////////////////////////////////////////////////*/
 
     function proposalTypes(uint8 proposalTypeId) external view returns (ProposalType memory);
+    function getProposalTypeId(uint256 proposalId) external view returns (uint8);
     function assignedScopes(uint8 proposalTypeId, bytes24 scopeKey) external view returns (Scope[] memory);
     function scopeExists(bytes24 key) external view returns (bool);
 

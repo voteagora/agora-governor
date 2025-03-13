@@ -112,14 +112,16 @@ contract BaseHookMock is BaseHook {
         return (this.afterCancel.selector);
     }
 
-    function beforeQueue(address, address[] memory, uint256[] memory, bytes[] memory, bytes32)
-        external
-        virtual
-        override
-        returns (bytes4, uint256)
-    {
+    function beforeQueue(
+        address,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) external virtual override returns (bytes4, bytes memory) {
         emit BeforeQueue();
-        return (this.beforeQueue.selector, 0);
+        uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
+        return (this.beforeQueue.selector, abi.encode(proposalId, targets, values, calldatas, descriptionHash));
     }
 
     function afterQueue(address, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)
@@ -138,10 +140,10 @@ contract BaseHookMock is BaseHook {
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) external virtual override returns (bytes4, uint256) {
+    ) external virtual override returns (bytes4, bytes memory) {
         emit BeforeExecute();
         uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
-        return (this.beforeExecute.selector, proposalId);
+        return (this.beforeQueue.selector, abi.encode(proposalId, targets, values, calldatas, descriptionHash));
     }
 
     function afterExecute(address, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)

@@ -92,7 +92,7 @@ interface IHooks {
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) external returns (bytes4, uint256);
+    ) external returns (bytes4, bytes memory);
 
     /// @notice The hook called after a proposal is queued
     function afterQueue(
@@ -111,7 +111,7 @@ interface IHooks {
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) external returns (bytes4, uint256);
+    ) external returns (bytes4, bytes memory);
 
     /// @notice The hook called after a proposal is executed
     function afterExecute(
