@@ -9,7 +9,7 @@ import {GovernorVotesQuorumFraction} from
     "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
 import {GovernorVotes} from "@openzeppelin/contracts/governance/extensions/GovernorVotes.sol";
 import {GovernorSettings} from "@openzeppelin/contracts/governance/extensions/GovernorSettings.sol";
-import {GovernorTimelockControl} from "@openzeppelin/contracts/governance/extensions/GovernorTimelockControl.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import {IHooks} from "src/interfaces/IHooks.sol";
 import {Hooks} from "src/libraries/Hooks.sol";
@@ -17,13 +17,7 @@ import {Hooks} from "src/libraries/Hooks.sol";
 /// @title AgoraGovernor
 /// @notice Agora Governor contract
 /// @custom:security-contact security@voteagora.com
-contract AgoraGovernor is
-    Governor,
-    GovernorCountingSimple,
-    GovernorVotesQuorumFraction,
-    GovernorSettings,
-    GovernorTimelockControl
-{
+contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumFraction, GovernorSettings {
     using Hooks for IHooks;
 
     /*//////////////////////////////////////////////////////////////
@@ -32,6 +26,7 @@ contract AgoraGovernor is
 
     event AdminSet(address indexed oldAdmin, address indexed newAdmin);
     event ManagerSet(address indexed oldManager, address indexed newManager);
+    event TimelockChange(address oldTimelock, address newTimelock);
 
     /*//////////////////////////////////////////////////////////////
                                  ERRORS
@@ -53,6 +48,12 @@ contract AgoraGovernor is
     /// @notice The hooks of the governor
     IHooks public hooks;
 
+    /// @notice The timelock of the governor
+    TimelockController internal _timelock;
+
+    /// @notice The timelock ids of the governor
+    mapping(uint256 proposalId => bytes32) internal _timelockIds;
+
     /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
@@ -63,7 +64,7 @@ contract AgoraGovernor is
         uint256 _proposalThreshold,
         uint256 _quorumNumerator,
         IVotes _token,
-        TimelockController _timelock,
+        TimelockController _timelockAddress,
         address _admin,
         address _manager,
         IHooks _hooks
@@ -73,7 +74,6 @@ contract AgoraGovernor is
         GovernorVotes(_token)
         GovernorVotesQuorumFraction(_quorumNumerator)
         GovernorSettings(_votingDelay, _votingPeriod, _proposalThreshold)
-        GovernorTimelockControl(_timelock)
     {
         if (!_hooks.isValidHookAddress()) revert Hooks.HookAddressNotValid(address(_hooks));
 
@@ -83,6 +83,7 @@ contract AgoraGovernor is
         admin = _admin;
         manager = _manager;
         hooks = _hooks;
+        _updateTimelock(_timelockAddress);
 
         _hooks.afterInitialize();
     }
@@ -193,22 +194,23 @@ contract AgoraGovernor is
         hooks.afterQuorumCalculation(proposalId, _quorum);
     }
 
-    function proposalNeedsQueuing(uint256 proposalId)
-        public
-        view
-        override(Governor, GovernorTimelockControl)
-        returns (bool)
-    {
-        return GovernorTimelockControl.proposalNeedsQueuing(proposalId);
-    }
+    function state(uint256 proposalId) public view virtual override returns (ProposalState) {
+        ProposalState currentState = super.state(proposalId);
 
-    function state(uint256 proposalId)
-        public
-        view
-        override(Governor, GovernorTimelockControl)
-        returns (ProposalState)
-    {
-        return GovernorTimelockControl.state(proposalId);
+        if (currentState != ProposalState.Queued) {
+            return currentState;
+        }
+
+        bytes32 queueid = _timelockIds[proposalId];
+        if (_timelock.isOperationPending(queueid)) {
+            return ProposalState.Queued;
+        } else if (_timelock.isOperationDone(queueid)) {
+            // This can happen if the proposal is executed directly on the timelock.
+            return ProposalState.Executed;
+        } else {
+            // This can happen if the proposal is canceled directly on the timelock.
+            return ProposalState.Canceled;
+        }
     }
 
     function proposalThreshold() public view override(GovernorSettings, Governor) returns (uint256) {
@@ -216,9 +218,82 @@ contract AgoraGovernor is
         return _msgSender() == manager ? 0 : GovernorSettings.proposalThreshold();
     }
 
+    function timelock() public view virtual returns (address) {
+        return address(_timelock);
+    }
+
+    function proposalNeedsQueuing(uint256) public view virtual override returns (bool) {
+        return true;
+    }
+
+    function updateTimelock(TimelockController newTimelock) external virtual onlyGovernance {
+        _updateTimelock(newTimelock);
+    }
+
     /*//////////////////////////////////////////////////////////////
                             INTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////*/
+
+    function _queueOperations(
+        uint256 proposalId,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) internal virtual override returns (uint48) {
+        uint256 delay = _timelock.getMinDelay();
+
+        bytes32 salt = _timelockSalt(descriptionHash);
+        _timelockIds[proposalId] = _timelock.hashOperationBatch(targets, values, calldatas, 0, salt);
+        _timelock.scheduleBatch(targets, values, calldatas, 0, salt, delay);
+
+        return SafeCast.toUint48(block.timestamp + delay);
+    }
+
+    function _executeOperations(
+        uint256 proposalId,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) internal virtual override {
+        // execute
+        _timelock.executeBatch{value: msg.value}(targets, values, calldatas, 0, _timelockSalt(descriptionHash));
+        // cleanup for refund
+        delete _timelockIds[proposalId];
+    }
+
+    function _cancel(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) internal virtual override returns (uint256) {
+        uint256 proposalId = super._cancel(targets, values, calldatas, descriptionHash);
+
+        bytes32 timelockId = _timelockIds[proposalId];
+        if (timelockId != 0) {
+            // cancel
+            _timelock.cancel(timelockId);
+            // cleanup
+            delete _timelockIds[proposalId];
+        }
+
+        return proposalId;
+    }
+
+    function _executor() internal view virtual override returns (address) {
+        return address(_timelock);
+    }
+
+    function _updateTimelock(TimelockController newTimelock) private {
+        emit TimelockChange(address(_timelock), address(newTimelock));
+        _timelock = newTimelock;
+    }
+
+    function _timelockSalt(bytes32 descriptionHash) private view returns (bytes32) {
+        return bytes20(address(this)) ^ descriptionHash;
+    }
 
     function _checkGovernance() internal override {
         // Allow the admin to bypass the governor check.
@@ -254,35 +329,6 @@ contract AgoraGovernor is
         _tallyUpdated(proposalId);
     }
 
-    function _cancel(
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory calldatas,
-        bytes32 descriptionHash
-    ) internal override(Governor, GovernorTimelockControl) returns (uint256) {
-        return GovernorTimelockControl._cancel(targets, values, calldatas, descriptionHash);
-    }
-
-    function _queueOperations(
-        uint256 proposalId,
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory calldatas,
-        bytes32 descriptionHash
-    ) internal override(Governor, GovernorTimelockControl) returns (uint48) {
-        return GovernorTimelockControl._queueOperations(proposalId, targets, values, calldatas, descriptionHash);
-    }
-
-    function _executeOperations(
-        uint256 proposalId,
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory calldatas,
-        bytes32 descriptionHash
-    ) internal override(Governor, GovernorTimelockControl) {
-        GovernorTimelockControl._executeOperations(proposalId, targets, values, calldatas, descriptionHash);
-    }
-
     function _quorumReached(uint256 proposalId)
         internal
         view
@@ -313,9 +359,5 @@ contract AgoraGovernor is
         }
 
         hooks.afterVoteSucceeded(proposalId, voteSucceeded);
-    }
-
-    function _executor() internal view override(Governor, GovernorTimelockControl) returns (address) {
-        return GovernorTimelockControl._executor();
     }
 }
