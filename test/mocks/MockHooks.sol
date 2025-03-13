@@ -122,11 +122,11 @@ contract MockHooks is IHooks {
         external
         view
         override
-        returns (bytes4, uint256)
+        returns (bytes4, bytes memory)
     {
         // beforeQueueData = hookData;
         bytes4 selector = MockHooks.beforeQueue.selector;
-        return (returnValues[selector] == bytes4(0) ? selector : returnValues[selector], 0);
+        return (returnValues[selector] == bytes4(0) ? selector : returnValues[selector], new bytes(0));
     }
 
     function afterQueue(address, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)
@@ -144,11 +144,11 @@ contract MockHooks is IHooks {
         external
         view
         override
-        returns (bytes4, uint256)
+        returns (bytes4, bytes memory)
     {
         // beforeExecuteData = hookData;
         bytes4 selector = MockHooks.beforeExecute.selector;
-        return (returnValues[selector] == bytes4(0) ? selector : returnValues[selector], 0);
+        return (returnValues[selector] == bytes4(0) ? selector : returnValues[selector], new bytes(0));
     }
 
     function afterExecute(address, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)

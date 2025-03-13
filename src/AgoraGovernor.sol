@@ -54,6 +54,10 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
     /// @notice The timelock ids of the governor
     mapping(uint256 proposalId => bytes32) internal _timelockIds;
 
+    address[] internal tempTargets;
+    uint256[] internal tempValues;
+    bytes[] internal tempCalldatas;
+
     /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
@@ -123,10 +127,19 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         override
         returns (uint256 proposalId)
     {
-        proposalId = hooks.beforeQueue(targets, values, calldatas, descriptionHash);
+        (proposalId, tempTargets, tempValues, tempCalldatas,) =
+            hooks.beforeQueue(targets, values, calldatas, descriptionHash);
 
         if (proposalId == 0) {
             proposalId = super.queue(targets, values, calldatas, descriptionHash);
+        } else {
+            if (tempTargets.length != 0 && tempValues.length != 0 && tempCalldatas.length != 0) {
+                _queueOperations(proposalId, tempTargets, tempValues, tempCalldatas, descriptionHash);
+            }
+
+            tempTargets = new address[](0);
+            tempValues = new uint256[](0);
+            tempCalldatas = new bytes[](0);
         }
 
         hooks.afterQueue(proposalId, targets, values, calldatas, descriptionHash);
@@ -138,10 +151,19 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         bytes[] memory calldatas,
         bytes32 descriptionHash
     ) public payable virtual override returns (uint256 proposalId) {
-        proposalId = hooks.beforeExecute(targets, values, calldatas, descriptionHash);
+        (proposalId, tempTargets, tempValues, tempCalldatas,) =
+            hooks.beforeExecute(targets, values, calldatas, descriptionHash);
 
         if (proposalId == 0) {
             proposalId = super.execute(targets, values, calldatas, descriptionHash);
+        } else {
+            if (tempTargets.length != 0 && tempValues.length != 0 && tempCalldatas.length != 0) {
+                _executeOperations(proposalId, tempTargets, tempValues, tempCalldatas, descriptionHash);
+            }
+
+            tempTargets = new address[](0);
+            tempValues = new uint256[](0);
+            tempCalldatas = new bytes[](0);
         }
 
         hooks.afterExecute(proposalId, targets, values, calldatas, descriptionHash);

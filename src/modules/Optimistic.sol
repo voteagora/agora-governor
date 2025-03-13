@@ -136,7 +136,7 @@ contract OptimisticModule is BaseHook {
         external
         pure
         override
-        returns (bytes4, uint256)
+        returns (bytes4, bytes memory)
     {
         // TODO: revert or return empty txs
         revert("Not implemented");
