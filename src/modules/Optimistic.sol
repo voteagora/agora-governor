@@ -138,8 +138,7 @@ contract OptimisticModule is BaseHook {
         override
         returns (bytes4, bytes memory)
     {
-        // TODO: revert or return empty txs
-        revert("Not implemented");
+        return (BaseHook.beforeExecute.selector, new bytes(0));
     }
 
     /*//////////////////////////////////////////////////////////////

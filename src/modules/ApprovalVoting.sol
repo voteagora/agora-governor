@@ -224,7 +224,7 @@ contract ApprovalVotingModule is BaseHook {
         uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
 
         (targets, values, calldatas) = _formatExecuteParams(proposalId);
-        return (this.beforeQueue.selector, abi.encode(proposalId, targets, values, calldatas, descriptionHash));
+        return (this.beforeExecute.selector, abi.encode(proposalId, targets, values, calldatas, descriptionHash));
     }
 
     /**
