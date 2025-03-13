@@ -83,7 +83,8 @@ contract OptimisticModule is BaseHook {
             afterExecute: false
         });
     }
-   /// @notice Reverts if the sender of the hook is not the governor
+    /// @notice Reverts if the sender of the hook is not the governor
+
     function _onlyGovernor(address sender) internal view {
         if (sender != address(governor)) revert NotGovernor();
     }
@@ -94,11 +95,11 @@ contract OptimisticModule is BaseHook {
     function afterPropose(
         address sender,
         uint256 proposalId,
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory calldatas,
+        address[] memory,
+        uint256[] memory,
+        bytes[] memory,
         string memory description
-    ) external virtual override returns (bytes4, uint256) {
+    ) external virtual override returns (bytes4) {
         _onlyGovernor(sender);
 
         if (proposals[proposalId].governor != address(0)) {
@@ -123,6 +124,8 @@ contract OptimisticModule is BaseHook {
 
         proposals[proposalId].governor = msg.sender;
         proposals[proposalId].settings = proposalSettings;
+
+        return BaseHook.afterPropose.selector;
     }
 
     /**
