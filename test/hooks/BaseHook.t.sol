@@ -41,7 +41,7 @@ contract BaseHookTest is Test, Deployers {
         );
         vm.expectCall(
             address(hook),
-            abi.encodeCall(hook.afterQuorumCalculation, (0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496, 0, 0))
+            abi.encodeCall(hook.afterQuorumCalculation, (0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496, 0, 100))
         );
         governor.quorum(0);
     }
@@ -115,7 +115,14 @@ contract BaseHookTest is Test, Deployers {
         bytes[] memory calldatas = new bytes[](1);
         calldatas[0] = abi.encodeWithSelector(this.test_initialize_succeeds.selector);
 
-        vm.startPrank(manager);
+        vm.prank(minter);
+        token.mint(admin, 100);
+        vm.startPrank(admin);
+        token.delegate(admin);
+        vm.roll(block.number + 1);
+        vm.stopPrank();
+
+        vm.startPrank(admin);
         governor.propose(targets, values, calldatas, "Test");
 
         vm.roll(block.number + 2);

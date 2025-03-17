@@ -209,12 +209,17 @@ contract ApprovalVotingModule is BaseHook {
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) external virtual override returns (bytes4, bytes memory) {
+    )
+        external
+        virtual
+        override
+        returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)
+    {
         _onlyGovernor(sender);
         uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
 
         (targets, values, calldatas) = _formatExecuteParams(proposalId);
-        return (this.beforeQueue.selector, abi.encode(proposalId, targets, values, calldatas, descriptionHash));
+        return (this.beforeQueue.selector, proposalId, targets, values, calldatas, descriptionHash);
     }
 
     function beforeExecute(
@@ -223,12 +228,17 @@ contract ApprovalVotingModule is BaseHook {
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) external virtual override returns (bytes4, bytes memory) {
+    )
+        external
+        virtual
+        override
+        returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)
+    {
         _onlyGovernor(sender);
         uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
 
         (targets, values, calldatas) = _formatExecuteParams(proposalId);
-        return (this.beforeExecute.selector, abi.encode(proposalId, targets, values, calldatas, descriptionHash));
+        return (this.beforeExecute.selector, proposalId, targets, values, calldatas, descriptionHash);
     }
 
     /**

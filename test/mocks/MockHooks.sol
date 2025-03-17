@@ -118,15 +118,23 @@ contract MockHooks is IHooks {
         return (returnValues[selector] == bytes4(0) ? selector : returnValues[selector]);
     }
 
-    function beforeQueue(address, address[] memory, uint256[] memory, bytes[] memory, bytes32)
-        external
-        view
-        override
-        returns (bytes4, bytes memory)
-    {
+    function beforeQueue(
+        address,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) external view override returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32) {
         // beforeQueueData = hookData;
         bytes4 selector = MockHooks.beforeQueue.selector;
-        return (returnValues[selector] == bytes4(0) ? selector : returnValues[selector], new bytes(0));
+        return (
+            returnValues[selector] == bytes4(0) ? selector : returnValues[selector],
+            0,
+            targets,
+            values,
+            calldatas,
+            descriptionHash
+        );
     }
 
     function afterQueue(address, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)
@@ -140,15 +148,23 @@ contract MockHooks is IHooks {
         return (returnValues[selector] == bytes4(0) ? selector : returnValues[selector]);
     }
 
-    function beforeExecute(address, address[] memory, uint256[] memory, bytes[] memory, bytes32)
-        external
-        view
-        override
-        returns (bytes4, bytes memory)
-    {
+    function beforeExecute(
+        address,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) external view override returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32) {
         // beforeExecuteData = hookData;
         bytes4 selector = MockHooks.beforeExecute.selector;
-        return (returnValues[selector] == bytes4(0) ? selector : returnValues[selector], new bytes(0));
+        return (
+            returnValues[selector] == bytes4(0) ? selector : returnValues[selector],
+            0,
+            targets,
+            values,
+            calldatas,
+            descriptionHash
+        );
     }
 
     function afterExecute(address, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)
