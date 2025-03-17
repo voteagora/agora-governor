@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {Parser} from "src/libraries/Parser.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 contract ParserTest is Test {
     using Parser for string;
@@ -19,9 +20,10 @@ contract ParserTest is Test {
         assertEq(proposalTypeId, 255);
     }
 
+    /// forge-config: default.allow_internal_expect_revert = true
     function test_parse_exceed() public {
         string memory description = "my description is this one#proposalTypeId=256";
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(SafeCast.SafeCastOverflowedUintDowncast.selector, 8, 256));
         description._parseProposalTypeId();
     }
 
