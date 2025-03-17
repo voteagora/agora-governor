@@ -132,13 +132,15 @@ contract OptimisticModule is BaseHook {
      * Format executeParams for a governor, given `proposalId` and `proposalData`.
      * Returns empty `targets`, `values` and `calldatas`.
      */
-    function beforeExecute(address, address[] memory, uint256[] memory, bytes[] memory, bytes32)
-        external
-        pure
-        override
-        returns (bytes4, bytes memory)
-    {
-        return (BaseHook.beforeExecute.selector, new bytes(0));
+    function beforeExecute(
+        address,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) external view override returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32) {
+        uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
+        return (this.beforeExecute.selector, proposalId, targets, values, calldatas, descriptionHash);
     }
 
     /*//////////////////////////////////////////////////////////////

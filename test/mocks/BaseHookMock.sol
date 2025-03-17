@@ -77,7 +77,7 @@ contract BaseHookMock is BaseHook {
         emit BeforePropose();
         uint256 proposalId = governor.hashProposal(targets, values, calldatas, keccak256(abi.encodePacked(description)));
 
-        return (this.beforePropose.selector, proposalId);
+        return (this.beforePropose.selector, 0);
     }
 
     function afterPropose(address, uint256, address[] memory, uint256[] memory, bytes[] memory, string memory)
@@ -118,10 +118,15 @@ contract BaseHookMock is BaseHook {
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) external virtual override returns (bytes4, bytes memory) {
+    )
+        external
+        virtual
+        override
+        returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)
+    {
         emit BeforeQueue();
         uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
-        return (this.beforeQueue.selector, abi.encode(proposalId, targets, values, calldatas, descriptionHash));
+        return (this.beforeQueue.selector, proposalId, targets, values, calldatas, descriptionHash);
     }
 
     function afterQueue(address, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)
@@ -140,10 +145,15 @@ contract BaseHookMock is BaseHook {
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) external virtual override returns (bytes4, bytes memory) {
+    )
+        external
+        virtual
+        override
+        returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)
+    {
         emit BeforeExecute();
         uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
-        return (this.beforeQueue.selector, abi.encode(proposalId, targets, values, calldatas, descriptionHash));
+        return (this.beforeExecute.selector, proposalId, targets, values, calldatas, descriptionHash);
     }
 
     function afterExecute(address, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)
