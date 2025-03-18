@@ -385,9 +385,9 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
             weight = _getVotes(account, proposalSnapshot(proposalId), params);
         }
 
-        hooks.afterVote(weight, proposalId, account, support, reason, params);
-
         _countVote(proposalId, account, support, weight, params);
+
+        hooks.afterVote(weight, proposalId, account, support, reason, params);
 
         if (params.length == 0) {
             emit VoteCast(account, proposalId, support, weight, reason);
