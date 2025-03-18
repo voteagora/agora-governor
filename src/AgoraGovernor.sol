@@ -54,11 +54,6 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
     /// @notice The timelock ids of the governor
     mapping(uint256 proposalId => bytes32) internal _timelockIds;
 
-    // Utilized when a module modifies the queuing and execution lifecycle before sending the data to the Timelock
-    address[] private _tempTargets;
-    uint256[] private _tempValues;
-    bytes[] private _tempCalldatas;
-
     /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
@@ -140,10 +135,14 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         public
         virtual
         override
-        returns (uint256 proposalId)
+        returns (uint256)
     {
-        (proposalId, _tempTargets, _tempValues, _tempCalldatas,) =
-            hooks.beforeQueue(targets, values, calldatas, descriptionHash);
+        (
+            uint256 proposalId,
+            address[] memory _tempTargets,
+            uint256[] memory _tempValues,
+            bytes[] memory _tempCalldatas,
+        ) = hooks.beforeQueue(targets, values, calldatas, descriptionHash);
 
         if (proposalId == 0) {
             proposalId = super.queue(targets, values, calldatas, descriptionHash);
@@ -153,11 +152,9 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
             }
         }
 
-        _tempTargets = new address[](0);
-        _tempValues = new uint256[](0);
-        _tempCalldatas = new bytes[](0);
-
         hooks.afterQueue(proposalId, targets, values, calldatas, descriptionHash);
+
+        return proposalId;
     }
 
     /**
@@ -168,9 +165,13 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) public payable virtual override returns (uint256 proposalId) {
-        (proposalId, _tempTargets, _tempValues, _tempCalldatas,) =
-            hooks.beforeExecute(targets, values, calldatas, descriptionHash);
+    ) public payable virtual override returns (uint256) {
+        (
+            uint256 proposalId,
+            address[] memory _tempTargets,
+            uint256[] memory _tempValues,
+            bytes[] memory _tempCalldatas,
+        ) = hooks.beforeExecute(targets, values, calldatas, descriptionHash);
 
         if (proposalId == 0) {
             proposalId = super.execute(targets, values, calldatas, descriptionHash);
@@ -179,11 +180,10 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
                 _executeOperations(proposalId, _tempTargets, _tempValues, _tempCalldatas, descriptionHash);
             }
         }
-        _tempTargets = new address[](0);
-        _tempValues = new uint256[](0);
-        _tempCalldatas = new bytes[](0);
 
         hooks.afterExecute(proposalId, targets, values, calldatas, descriptionHash);
+
+        return proposalId;
     }
 
     /**
