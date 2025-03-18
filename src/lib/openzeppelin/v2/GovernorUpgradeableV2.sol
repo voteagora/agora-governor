@@ -32,15 +32,15 @@ abstract contract GovernorUpgradeableV2 is
 {
     using DoubleEndedQueueUpgradeable for DoubleEndedQueueUpgradeable.Bytes32Deque;
     using SafeCastUpgradeable for uint256;
-    using TimersUpgradeable for TimersUpgradeable.BlockNumber;
+    using TimersUpgradeable for TimersUpgradeable.Timestamp;
 
     bytes32 public constant BALLOT_TYPEHASH = keccak256("Ballot(uint256 proposalId,uint8 support)");
     bytes32 public constant EXTENDED_BALLOT_TYPEHASH =
         keccak256("ExtendedBallot(uint256 proposalId,uint8 support,string reason,bytes params)");
 
     struct ProposalCore {
-        TimersUpgradeable.BlockNumber voteStart;
-        TimersUpgradeable.BlockNumber voteEnd;
+        TimersUpgradeable.Timestamp voteStart;
+        TimersUpgradeable.Timestamp voteEnd;
         bool executed;
         bool canceled;
         address votingModule;
