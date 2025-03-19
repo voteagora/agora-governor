@@ -20,6 +20,7 @@ contract MultiTokenModule is BaseHook {
     error InvalidToken();
     error TokenAlreadyExists();
     error TokenDoesNotExist();
+    error NotGovernor();
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
@@ -45,14 +46,19 @@ contract MultiTokenModule is BaseHook {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice The hook called before a vote is cast
-    function beforeVote(
-        address sender,
-        uint256 proposalId,
-        address account,
-        uint8 support,
-        string memory reason,
-        bytes memory params
-    ) external override returns (bytes4, uint256) {
+    function beforeVote(address, uint256 proposalId, address account, uint8, string memory, bytes memory)
+        external
+        override
+        returns (bytes4, uint256)
+    {
+        if (msg.sender != address(governor)) revert NotGovernor();
+
+        // Get the proposal snapshot
+        uint256 proposalSnapshot = governor.proposalSnapshot(proposalId);
+
+        // Store weight (voting power)
+        uint256 totalWeight = 0;
+
         // Get the values in the set and iterate over them
         uint256 length = tokens.length();
         for (uint256 i = 0; i < length; i++) {
@@ -62,10 +68,16 @@ contract MultiTokenModule is BaseHook {
             // Extract the token address, selector, and weight
             address token = address(Packing.extract_32_20(value, 0));
             bytes4 selector = bytes4(Packing.extract_32_4(value, 20));
-            uint64 weight = uint64(Packing.extract_32_8(value, 24));
+
+            // Call the token's selector with the account and proposalId as arguments
+            (, bytes memory result) = token.call(abi.encodeWithSelector(selector, account, proposalSnapshot));
+
+            // Apply weight to voting power and add to total
+            uint256 weight = abi.decode(result, (uint256)) * uint64(Packing.extract_32_8(value, 24)) / PERCENT_DIVISOR;
+            totalWeight += weight;
         }
 
-        return (this.beforeVote.selector, 0);
+        return (this.beforeVote.selector, totalWeight);
     }
 
     /// @notice Add a token to the module
