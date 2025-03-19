@@ -23,6 +23,7 @@ contract AgoraGovernor is
     GovernorUpgradeableV2,
     GovernorCountingSimpleUpgradeableV2,
     GovernorVotesUpgradeableV2,
+    GovernorSettingsUpgradeableV2,
     GovernorTimelockControlUpgradeableV2
 {
     /*//////////////////////////////////////////////////////////////
@@ -139,6 +140,7 @@ contract AgoraGovernor is
 
         __Governor_init("Agora");
         __GovernorCountingSimple_init();
+        __GovernorSettings_init({initialVotingDelay: 1 hours, initialVotingPeriod: 2 days, initialProposalThreshold: 0});
         __GovernorVotes_init(_votingToken);
         __GovernorTimelockControl_init(_timelock);
 
@@ -263,13 +265,16 @@ contract AgoraGovernor is
         return uint256(keccak256(abi.encode(address(this), module, proposalData, descriptionHash)));
     }
 
+    /**
+     * @inheritdoc GovernorSettingsUpgradeableV2
+     */
     function proposalThreshold()
         public
         view
-        override(GovernorUpgradeableV2)
+        override(GovernorSettingsUpgradeableV2, GovernorUpgradeableV2)
         returns (uint256)
     {
-        return 0;
+        return GovernorSettingsUpgradeableV2.proposalThreshold();
     }
 
     function _executor()
@@ -330,16 +335,16 @@ contract AgoraGovernor is
         emit ProposalDeadlineUpdated(proposalId, deadline);
     }
 
-    function setVotingDelay(uint256 newVotingDelay) public onlyAdminOrTimelock {
-        // _setVotingDelay(newVotingDelay);
+    function setVotingDelay(uint256 newVotingDelay) public override onlyAdminOrTimelock {
+        _setVotingDelay(newVotingDelay);
     }
 
-    function setVotingPeriod(uint256 newVotingPeriod) public onlyAdminOrTimelock {
-        // _setVotingPeriod(newVotingPeriod);
+    function setVotingPeriod(uint256 newVotingPeriod) public override onlyAdminOrTimelock {
+        _setVotingPeriod(newVotingPeriod);
     }
 
-    function setProposalThreshold(uint256 newProposalThreshold) public onlyAdminOrTimelock {
-        // _setProposalThreshold(newProposalThreshold);
+    function setProposalThreshold(uint256 newProposalThreshold) public override onlyAdminOrTimelock {
+        _setProposalThreshold(newProposalThreshold);
     }
 
     /**
@@ -731,14 +736,5 @@ contract AgoraGovernor is
         _afterExecute(proposalId, targets, values, calldatas, descriptionHash);
 
         return proposalId;
-    }
-
-      function votingDelay() public pure virtual override(IGovernorUpgradeable) returns (uint256) {
-        return 1 days;
-    }
-
-    function votingPeriod() public pure virtual override(IGovernorUpgradeable)
-    returns (uint256) {
-        return 1 weeks;
     }
 }

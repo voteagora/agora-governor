@@ -9,6 +9,7 @@ import {SafeCastUpgradeable} from "@openzeppelin/contracts-upgradeable-v4/utils/
 
 contract TokenMock is ERC20, Ownable, ERC20Permit, ERC20Votes {
     constructor(address initialOwner) ERC20("MyToken", "MTK") Ownable(initialOwner) ERC20Permit("MyToken") {}
+
     using SafeCastUpgradeable for uint256;
 
     function mint(address to, uint256 amount) public onlyOwner {
