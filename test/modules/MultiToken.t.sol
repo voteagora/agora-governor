@@ -3,16 +3,9 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 
-import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
-import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
-import {GovernorCountingSimple} from "@openzeppelin/contracts/governance/extensions/GovernorCountingSimple.sol";
-
 import {Hooks} from "src/libraries/Hooks.sol";
-import {AgoraGovernor} from "src/AgoraGovernor.sol";
-import {AgoraGovernorMock} from "test/mocks/AgoraGovernorMock.sol";
 import {MultiTokenModule} from "src/modules/MultiToken.sol";
 
-import {MockToken} from "test/mocks/MockToken.sol";
 import {Deployers} from "test/utils/Deployers.sol";
 
 contract MultiTokenModuleTest is Test, Deployers {
