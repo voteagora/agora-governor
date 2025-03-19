@@ -173,13 +173,13 @@ abstract contract GovernorUpgradeableV2 is
             revert("Governor: unknown proposal id");
         }
 
-        if (snapshot >= block.number) {
+        if (snapshot >= block.timestamp) {
             return ProposalState.Pending;
         }
 
         uint256 deadline = proposalDeadline(proposalId);
 
-        if (deadline >= block.number) {
+        if (deadline >= block.timestamp) {
             return ProposalState.Active;
         }
 
@@ -259,7 +259,7 @@ abstract contract GovernorUpgradeableV2 is
         string memory description
     ) public virtual override returns (uint256) {
         require(
-            getVotes(_msgSender(), block.number - 1) >= proposalThreshold(),
+            getVotes(_msgSender(), block.timestamp - 1) >= proposalThreshold(),
             "Governor: proposer votes below proposal threshold"
         );
 
@@ -272,7 +272,7 @@ abstract contract GovernorUpgradeableV2 is
         ProposalCore storage proposal = _proposals[proposalId];
         require(proposal.voteStart.isUnset(), "Governor: proposal already exists");
 
-        uint64 snapshot = block.number.toUint64() + votingDelay().toUint64();
+        uint64 snapshot = block.timestamp.toUint64() + votingDelay().toUint64();
         uint64 deadline = snapshot + votingPeriod().toUint64();
 
         proposal.voteStart.setDeadline(snapshot);

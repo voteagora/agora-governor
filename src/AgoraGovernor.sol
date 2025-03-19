@@ -435,7 +435,7 @@ contract AgoraGovernor is
         uint8 proposalTypeId
     ) public virtual returns (uint256 proposalId) {
         address proposer = _msgSender();
-        if (proposer != manager && getVotes(proposer, block.timestamp) < proposalThreshold()) {
+        if (proposer != manager && getVotes(proposer, block.timestamp - 1) < proposalThreshold()) {
             revert InvalidVotesBelowThreshold();
         }
 
@@ -514,7 +514,7 @@ contract AgoraGovernor is
     ) public virtual returns (uint256 proposalId) {
         address proposer = _msgSender();
         if (proposer != manager) {
-            if (getVotes(proposer, block.timestamp) < proposalThreshold()) revert InvalidVotesBelowThreshold();
+            if (getVotes(proposer, block.timestamp - 1) < proposalThreshold()) revert InvalidVotesBelowThreshold();
         }
 
         require(approvedModules[address(module)], "Governor: module not approved");
@@ -534,7 +534,7 @@ contract AgoraGovernor is
         ProposalCore storage proposal = _proposals[proposalId];
         if (!proposal.voteStart.isUnset()) revert InvalidProposalExists();
 
-        uint64 snapshot = block.number.toUint64() + votingDelay().toUint64();
+        uint64 snapshot = block.timestamp.toUint64() + votingDelay().toUint64();
         uint64 deadline = snapshot + votingPeriod().toUint64();
 
         proposal.voteStart.setDeadline(snapshot);
