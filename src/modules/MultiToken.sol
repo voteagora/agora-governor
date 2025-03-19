@@ -24,6 +24,13 @@ contract MultiTokenModule is BaseHook, Ownable {
     error NotGovernor();
 
     /*//////////////////////////////////////////////////////////////
+                                EVENTS
+    //////////////////////////////////////////////////////////////*/
+
+    event TokenAdded(address indexed token, uint64 weight, bytes4 selector);
+    event TokenRemoved(address indexed token);
+
+    /*//////////////////////////////////////////////////////////////
                                 STORAGE
     //////////////////////////////////////////////////////////////*/
 
@@ -84,7 +91,7 @@ contract MultiTokenModule is BaseHook, Ownable {
     /// @param selector The selector of the function to call, which must take (address,uint256) as arguments and return a uint256
     function addToken(address token, uint64 weight, bytes4 selector) external onlyOwner {
         if (token == address(0)) revert InvalidToken();
-        if (weight == 0) revert InvalidWeight();
+        if (weight == 0 || weight > PERCENT_DIVISOR) revert InvalidWeight();
         if (selector == bytes4(0)) revert InvalidSelector();
         if (_tokenExists(token)) revert TokenAlreadyExists();
 
@@ -92,6 +99,8 @@ contract MultiTokenModule is BaseHook, Ownable {
         bytes32 pack = Packing.pack_20_12(bytes20(token), subpack);
 
         tokens.add(pack);
+
+        emit TokenAdded(token, weight, selector);
     }
 
     /// @notice Remove a token from the module
@@ -99,6 +108,8 @@ contract MultiTokenModule is BaseHook, Ownable {
     function removeToken(address token) external onlyOwner {
         uint256 index = _findIndex(token);
         tokens.remove(tokens.at(index));
+
+        emit TokenRemoved(token);
     }
 
     /// @notice Gets the weight of a token

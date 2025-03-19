@@ -77,6 +77,9 @@ contract MultiTokenModuleTest is Test, Deployers {
     function test_addToken_reverts_invalidWeight() public {
         vm.expectRevert(MultiTokenModule.InvalidWeight.selector);
         module.addToken(address(token), 0, bytes4(keccak256("transfer(address,uint256)")));
+
+        vm.expectRevert(MultiTokenModule.InvalidWeight.selector);
+        module.addToken(address(token), 10_001, bytes4(keccak256("transfer(address,uint256)")));
     }
 
     function test_addToken_reverts_invalidSelector() public {
