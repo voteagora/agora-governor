@@ -37,8 +37,8 @@ contract AgoraGovernor is
         uint256[] values,
         string[] signatures,
         bytes[] calldatas,
-        uint256 startBlock,
-        uint256 endBlock,
+        uint256 startTimestamp,
+        uint256 endTimestamp,
         string description,
         uint8 proposalTypeId
     );
@@ -47,8 +47,8 @@ contract AgoraGovernor is
         address indexed proposer,
         address indexed votingModule,
         bytes proposalData,
-        uint256 startBlock,
-        uint256 endBlock,
+        uint256 startTimestamp,
+        uint256 endTimestamp,
         string description,
         uint8 proposalTypeId
     );
@@ -458,7 +458,7 @@ contract AgoraGovernor is
         ProposalCore storage proposal = _proposals[proposalId];
         if (!proposal.voteStart.isUnset()) revert InvalidProposalExists();
 
-        uint64 snapshot = block.number.toUint64() + votingDelay().toUint64();
+        uint64 snapshot = block.timestamp.toUint64() + votingDelay().toUint64();
         uint64 deadline = snapshot + votingPeriod().toUint64();
 
         proposal.voteStart.setDeadline(snapshot);

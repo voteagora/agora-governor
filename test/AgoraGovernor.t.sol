@@ -1835,13 +1835,13 @@ contract CancelWithModule is AgoraGovernorTest {
         uint256 _elapsedAfterQueuing,
         uint256 _actorSeed
     ) public virtual {
-        _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
         _mintAndDelegate(_voter, 100e18);
         bytes memory proposalData = _formatProposalData(_proposalTargetCalldata);
         uint256 snapshot = block.timestamp + governor.votingDelay();
         uint256 deadline = snapshot + governor.votingPeriod();
         string memory reason = "a nice reason";
         vm.deal(address(manager), 100 ether);
+        _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, (type(uint48).max - deadline - 2));
 
         vm.prank(manager);
         uint256 proposalId = governor.proposeWithModule(VotingModule(module), proposalData, description, 1);
@@ -1860,7 +1860,7 @@ contract CancelWithModule is AgoraGovernorTest {
 
         vm.prank(manager);
         governor.queueWithModule(VotingModule(module), proposalData, keccak256(bytes(description)));
-        vm.warp(block.timestamp + timelockDelay);
+        vm.warp(block.timestamp + _elapsedAfterQueuing);
 
         vm.prank(manager);
         vm.expectEmit();
@@ -2038,7 +2038,7 @@ contract CastVote is AgoraGovernorTest {
         vm.prank(manager);
         proposalId = governor.propose(targets, values, calldatas, "Test2");
 
-        snapshot = block.number + governor.votingDelay();
+        snapshot = block.timestamp + governor.votingDelay();
         vm.warp(snapshot + 1);
 
         vm.prank(_voter);
