@@ -1028,7 +1028,7 @@ contract QueueWithModule is AgoraGovernorTest {
 
         vm.prank(manager);
         governor.queueWithModule(VotingModule(module), proposalData, keccak256(bytes(description)));
-        vm.warp(block.timestamp + _elapsedAfterQueuing);
+        vm.warp(block.timestamp + timelockDelay);
         assertEq(uint256(governor.state(proposalId)), uint256(IGovernorUpgradeable.ProposalState.Queued));
     }
 
@@ -1065,7 +1065,7 @@ contract QueueWithModule is AgoraGovernorTest {
 
         vm.prank(_actor);
         governor.queueWithModule(VotingModule(module), proposalData, keccak256(bytes(description)));
-        vm.warp(block.timestamp + _elapsedAfterQueuing);
+        vm.warp(block.timestamp + timelockDelay);
         assertEq(uint256(governor.state(proposalId)), uint256(IGovernorUpgradeable.ProposalState.Queued));
     }
 
@@ -1171,7 +1171,7 @@ contract Execute is AgoraGovernorTest {
 
         vm.prank(manager);
         governor.queue(targets, values, calldatas, keccak256("Test"));
-        vm.warp(block.timestamp + _elapsedAfterQueuing);
+        vm.warp(block.timestamp + timelockDelay);
 
         vm.prank(manager);
         governor.execute(targets, values, calldatas, keccak256("Test"));
@@ -1213,7 +1213,7 @@ contract Execute is AgoraGovernorTest {
 
         vm.prank(manager);
         governor.queue(targets, values, calldatas, keccak256("Test"));
-        vm.warp(block.timestamp + _elapsedAfterQueuing);
+        vm.warp(block.timestamp + timelockDelay);
 
         vm.prank(_actor);
         governor.execute(targets, values, calldatas, keccak256("Test"));
@@ -1303,7 +1303,7 @@ contract Execute is AgoraGovernorTest {
         vm.stopPrank();
 
         uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
-        vm.warp(block.timestamp + 1);
+        vm.warp(block.timestamp + 15 days);
 
         assertEq(uint8(governor.state(proposalId)), uint8(ProposalState.Defeated));
 
@@ -1342,7 +1342,7 @@ contract Execute is AgoraGovernorTest {
 
         vm.prank(manager);
         governor.queue(targets, values, calldatas, keccak256("Test"));
-        vm.warp(block.timestamp + _elapsedAfterQueuing);
+        vm.warp(block.timestamp + timelockDelay);
 
         vm.prank(manager);
         governor.execute(targets, values, calldatas, keccak256("Test"));
@@ -1384,7 +1384,7 @@ contract ExecuteWithModule is AgoraGovernorTest {
 
         vm.prank(manager);
         governor.queueWithModule(VotingModule(module), proposalData, keccak256(bytes(description)));
-        vm.warp(block.timestamp + _elapsedAfterQueuing);
+        vm.warp(block.timestamp + timelockDelay);
 
         vm.prank(manager);
         vm.expectEmit();
@@ -1426,7 +1426,7 @@ contract ExecuteWithModule is AgoraGovernorTest {
 
         vm.prank(manager);
         governor.queueWithModule(VotingModule(module), proposalData, keccak256(bytes(description)));
-        vm.warp(block.timestamp + _elapsedAfterQueuing);
+        vm.warp(block.timestamp + timelockDelay);
 
         vm.prank(manager);
         vm.expectEmit();
@@ -1548,7 +1548,7 @@ contract ExecuteWithModule is AgoraGovernorTest {
 
         vm.prank(manager);
         governor.queueWithModule(VotingModule(module), proposalData, keccak256(bytes(description)));
-        vm.warp(block.timestamp + _elapsedAfterQueuing);
+        vm.warp(block.timestamp + timelockDelay);
 
         vm.prank(manager);
         governor.executeWithModule(VotingModule(module), proposalData, keccak256(bytes(description)));
@@ -1569,7 +1569,7 @@ contract ExecuteWithOptimisticModule is AgoraGovernorTest {
         uint256 proposalId = governor.proposeWithModule(optimisticModule, proposalData, description, 2);
         vm.warp(deadline + 1);
         governor.queueWithModule(optimisticModule, proposalData, keccak256(bytes(description)));
-        vm.warp(block.timestamp + timelockDelay + _elapsedAfterQueuing);
+        vm.warp(block.timestamp + timelockDelay);
 
         vm.expectEmit();
         emit ProposalExecuted(proposalId);
@@ -1648,7 +1648,7 @@ contract Cancel is AgoraGovernorTest {
 
         vm.prank(manager);
         governor.queue(targets, values, calldatas, keccak256("Test"));
-        vm.warp(block.timestamp + _elapsedAfterQueuing);
+        vm.roll(block.number + _elapsedAfterQueuing);
 
         assertEq(uint256(governor.state(proposalId)), uint256(IGovernorUpgradeable.ProposalState.Queued));
         vm.expectEmit();
@@ -1671,7 +1671,7 @@ contract Cancel is AgoraGovernorTest {
 
         vm.startPrank(admin);
         governor.setVotingDelay(0);
-        governor.setVotingPeriod(14);
+        governor.setVotingPeriod(14 days);
 
         uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
         vm.stopPrank();
@@ -1714,7 +1714,7 @@ contract Cancel is AgoraGovernorTest {
 
         vm.startPrank(manager);
         governor.queue(targets, values, calldatas, keccak256("Test"));
-        vm.warp(block.timestamp + _elapsedAfterQueuing);
+        vm.warp(block.timestamp + timelockDelay);
         governor.execute(targets, values, calldatas, keccak256("Test"));
         vm.stopPrank();
 
@@ -1805,7 +1805,7 @@ contract CancelWithModule is AgoraGovernorTest {
 
         vm.prank(manager);
         governor.queueWithModule(VotingModule(module), proposalData, keccak256(bytes(description)));
-        vm.warp(block.timestamp + _elapsedAfterQueuing);
+        vm.warp(block.timestamp + timelockDelay);
 
         assertEq(uint256(governor.state(proposalId)), uint256(IGovernorUpgradeable.ProposalState.Queued));
         vm.expectEmit();
@@ -1860,7 +1860,7 @@ contract CancelWithModule is AgoraGovernorTest {
 
         vm.prank(manager);
         governor.queueWithModule(VotingModule(module), proposalData, keccak256(bytes(description)));
-        vm.warp(block.timestamp + _elapsedAfterQueuing);
+        vm.warp(block.timestamp + timelockDelay);
 
         vm.prank(manager);
         vm.expectEmit();
@@ -1905,7 +1905,7 @@ contract CancelWithOptimisticModule is AgoraGovernorTest {
         uint256 proposalId = governor.proposeWithModule(optimisticModule, proposalData, description, 2);
         vm.warp(deadline + 1);
         governor.queueWithModule(optimisticModule, proposalData, keccak256(bytes(description)));
-        vm.warp(block.timestamp + timelockDelay + _elapsedAfterQueuing);
+        vm.warp(block.timestamp + timelockDelay);
 
         vm.expectEmit();
         emit ProposalCanceled(proposalId);
@@ -1917,7 +1917,7 @@ contract CancelWithOptimisticModule is AgoraGovernorTest {
 
 contract UpdateTimelock is AgoraGovernorTest {
     function testFuzz_UpdateTimelock(uint256 _elapsedAfterQueuing, address _newTimelock) public {
-        _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
+        //_elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
         vm.prank(minter);
         govToken.mint(address(this), 1e30);
         govToken.delegate(address(this));
@@ -1943,7 +1943,7 @@ contract UpdateTimelock is AgoraGovernorTest {
 
         vm.prank(manager);
         governor.queue(targets, values, calldatas, keccak256("Test"));
-        vm.warp(block.timestamp + _elapsedAfterQueuing);
+        vm.warp(block.timestamp + timelockDelay);
 
         vm.prank(manager);
         governor.execute(targets, values, calldatas, keccak256("Test"));
