@@ -97,7 +97,7 @@ contract MultiTokenModule is BaseHook, Ownable {
 
         // Check that selector can be called on token
         (bool success, bytes memory result) = token.call(abi.encodeWithSelector(selector, address(0), 0));
-        if (!success) revert InvalidSelector();
+        if (!success || result.length != 32) revert InvalidSelector();
         abi.decode(result, (uint256));
 
         bytes12 subpack = Packing.pack_4_8(selector, bytes8(weight));
