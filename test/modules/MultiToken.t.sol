@@ -23,10 +23,10 @@ contract MultiTokenModuleTest is Test, Deployers {
     }
 
     function test_addToken() public {
-        module.addToken(address(token), 100, bytes4(keccak256("transfer(address,uint256)")));
+        module.addToken(address(token), 100, bytes4(keccak256("getPastVotes(address,uint256)")));
 
         assertEq(module.getTokenWeight(address(token)), 100);
-        assertEq(module.getTokenSelector(address(token)), bytes4(keccak256("transfer(address,uint256)")));
+        assertEq(module.getTokenSelector(address(token)), bytes4(keccak256("getPastVotes(address,uint256)")));
         assertEq(module.getTokenAddress(0), address(token));
     }
 
