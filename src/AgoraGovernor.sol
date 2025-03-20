@@ -37,8 +37,8 @@ contract AgoraGovernor is
         uint256[] values,
         string[] signatures,
         bytes[] calldatas,
-        uint256 startBlock,
-        uint256 endBlock,
+        uint256 startTimestamp,
+        uint256 endTimestamp,
         string description,
         uint8 proposalTypeId
     );
@@ -47,8 +47,8 @@ contract AgoraGovernor is
         address indexed proposer,
         address indexed votingModule,
         bytes proposalData,
-        uint256 startBlock,
-        uint256 endBlock,
+        uint256 startTimestamp,
+        uint256 endTimestamp,
         string description,
         uint8 proposalTypeId
     );
@@ -80,7 +80,7 @@ contract AgoraGovernor is
     //////////////////////////////////////////////////////////////*/
 
     using SafeCastUpgradeable for uint256;
-    using TimersUpgradeable for TimersUpgradeable.BlockNumber;
+    using TimersUpgradeable for TimersUpgradeable.Timestamp;
 
     /*//////////////////////////////////////////////////////////////
                            IMMUTABLE STORAGE
@@ -140,8 +140,8 @@ contract AgoraGovernor is
 
         __Governor_init("Agora");
         __GovernorCountingSimple_init();
+        __GovernorSettings_init({initialVotingDelay: 1 hours, initialVotingPeriod: 2 days, initialProposalThreshold: 0});
         __GovernorVotes_init(_votingToken);
-        __GovernorSettings_init({initialVotingDelay: 6575, initialVotingPeriod: 46027, initialProposalThreshold: 0});
         __GovernorTimelockControl_init(_timelock);
 
         admin = _admin;
@@ -335,23 +335,14 @@ contract AgoraGovernor is
         emit ProposalDeadlineUpdated(proposalId, deadline);
     }
 
-    /**
-     * @inheritdoc GovernorSettingsUpgradeableV2
-     */
     function setVotingDelay(uint256 newVotingDelay) public override onlyAdminOrTimelock {
         _setVotingDelay(newVotingDelay);
     }
 
-    /**
-     * @inheritdoc GovernorSettingsUpgradeableV2
-     */
     function setVotingPeriod(uint256 newVotingPeriod) public override onlyAdminOrTimelock {
         _setVotingPeriod(newVotingPeriod);
     }
 
-    /**
-     * @inheritdoc GovernorSettingsUpgradeableV2
-     */
     function setProposalThreshold(uint256 newProposalThreshold) public override onlyAdminOrTimelock {
         _setProposalThreshold(newProposalThreshold);
     }
@@ -444,7 +435,7 @@ contract AgoraGovernor is
         uint8 proposalTypeId
     ) public virtual returns (uint256 proposalId) {
         address proposer = _msgSender();
-        if (proposer != manager && getVotes(proposer, block.number - 1) < proposalThreshold()) {
+        if (proposer != manager && getVotes(proposer, block.timestamp - 1) < proposalThreshold()) {
             revert InvalidVotesBelowThreshold();
         }
 
@@ -467,7 +458,7 @@ contract AgoraGovernor is
         ProposalCore storage proposal = _proposals[proposalId];
         if (!proposal.voteStart.isUnset()) revert InvalidProposalExists();
 
-        uint64 snapshot = block.number.toUint64() + votingDelay().toUint64();
+        uint64 snapshot = block.timestamp.toUint64() + votingDelay().toUint64();
         uint64 deadline = snapshot + votingPeriod().toUint64();
 
         proposal.voteStart.setDeadline(snapshot);
@@ -523,7 +514,7 @@ contract AgoraGovernor is
     ) public virtual returns (uint256 proposalId) {
         address proposer = _msgSender();
         if (proposer != manager) {
-            if (getVotes(proposer, block.number - 1) < proposalThreshold()) revert InvalidVotesBelowThreshold();
+            if (getVotes(proposer, block.timestamp - 1) < proposalThreshold()) revert InvalidVotesBelowThreshold();
         }
 
         require(approvedModules[address(module)], "Governor: module not approved");
@@ -543,7 +534,7 @@ contract AgoraGovernor is
         ProposalCore storage proposal = _proposals[proposalId];
         if (!proposal.voteStart.isUnset()) revert InvalidProposalExists();
 
-        uint64 snapshot = block.number.toUint64() + votingDelay().toUint64();
+        uint64 snapshot = block.timestamp.toUint64() + votingDelay().toUint64();
         uint64 deadline = snapshot + votingPeriod().toUint64();
 
         proposal.voteStart.setDeadline(snapshot);
