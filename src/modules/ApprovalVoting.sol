@@ -281,10 +281,10 @@ contract ApprovalVotingModule is BaseHook {
             bool budgetExceeded = false;
 
             // Flatten `options` by filling `executeParams` until budgetAmount is exceeded
-            for (uint256 i; i < succeededOptionsLength;) {
+            for (uint256 i; i < succeededOptionsLength; ++i) {
                 option = sortedOptions[i];
 
-                for (n = 0; n < option.targets.length;) {
+                for (n = 0; n < option.targets.length; n++) {
                     // If `budgetToken` is ETH and value is not zero, add transaction value to `totalValue`
                     if (settings.budgetToken == address(0) && option.values[n] != 0) {
                         if (totalValue + option.values[n] > settings.budgetAmount) {
@@ -294,12 +294,8 @@ contract ApprovalVotingModule is BaseHook {
                         totalValue += option.values[n];
                     }
 
-                    unchecked {
-                        executeParams[executeParamsLength + n] =
-                            ExecuteParams(option.targets[n], option.values[n], option.calldatas[n]);
-
-                        ++n;
-                    }
+                    executeParams[executeParamsLength + n] =
+                        ExecuteParams(option.targets[n], option.values[n], option.calldatas[n]);
                 }
 
                 // If `budgetAmount` for ETH is exceeded, skip option.
@@ -313,11 +309,7 @@ contract ApprovalVotingModule is BaseHook {
                     }
                 }
 
-                unchecked {
-                    executeParamsLength += n;
-
-                    ++i;
-                }
+                executeParamsLength += n;
             }
         }
 
@@ -332,14 +324,10 @@ contract ApprovalVotingModule is BaseHook {
         }
 
         // Set n `targets`, `values` and `calldatas`
-        for (uint256 i; i < executeParamsLength;) {
+        for (uint256 i; i < executeParamsLength; ++i) {
             targets[i] = executeParams[i].targets;
             values[i] = executeParams[i].values;
             calldatas[i] = executeParams[i].calldatas;
-
-            unchecked {
-                ++i;
-            }
         }
 
         // Set `_afterExecute` as last call
@@ -483,7 +471,7 @@ contract ApprovalVotingModule is BaseHook {
     ) internal {
         uint256 option;
         uint256 prevOption;
-        for (uint256 i; i < totalOptions;) {
+        for (uint256 i; i < totalOptions; ++i) {
             option = options[i];
 
             accountVotesSet[proposalId][account].add(option);
@@ -497,10 +485,6 @@ contract ApprovalVotingModule is BaseHook {
 
             /// @dev Revert if `option` is out of bounds
             proposals[proposalId].optionVotes[option] += weight;
-
-            unchecked {
-                ++i;
-            }
         }
 
         if (accountVotesSet[proposalId][account].length() > maxApprovals) {
