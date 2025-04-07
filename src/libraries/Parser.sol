@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.29;
 
 import {LibString} from "@solady/utils/LibString.sol";
 import {JSONParserLib} from "@solady/utils/JSONParserLib.sol";

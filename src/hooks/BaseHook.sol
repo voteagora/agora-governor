@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.29;
 
 import {AgoraGovernor} from "src/AgoraGovernor.sol";
 import {Hooks} from "src/libraries/Hooks.sol";
