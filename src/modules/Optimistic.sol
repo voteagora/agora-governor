@@ -32,7 +32,6 @@ contract Optimistic is BaseHook {
                                  ERRORS
     //////////////////////////////////////////////////////////////*/
 
-    error WrongProposalId();
     error NotOptimisticProposalType();
     error ExistingProposal();
     error InvalidParams();
