@@ -254,10 +254,10 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
             return currentState;
         }
 
-        bytes32 queueid = _timelockIds[proposalId];
-        if (_timelock.isOperationPending(queueid)) {
+        bytes32 queueId = _timelockIds[proposalId];
+        if (_timelock.isOperationPending(queueId)) {
             return ProposalState.Queued;
-        } else if (_timelock.isOperationDone(queueid)) {
+        } else if (_timelock.isOperationDone(queueId)) {
             // This can happen if the proposal is executed directly on the timelock.
             return ProposalState.Executed;
         } else {

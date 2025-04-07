@@ -78,6 +78,16 @@ contract ApprovalVotingModule is BaseHook {
     mapping(uint256 proposalId => mapping(address account => EnumerableSet.UintSet votes)) private accountVotesSet;
 
     /*//////////////////////////////////////////////////////////////
+                               MODIFIERS
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Reverts if the sender of the hook is not the governor
+    modifier onlyGovernor(address sender) {
+        if (sender != address(governor)) revert NotGovernor();
+        _;
+    }
+
+    /*//////////////////////////////////////////////////////////////
                                CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
@@ -108,12 +118,6 @@ contract ApprovalVotingModule is BaseHook {
         });
     }
 
-    /// @notice Reverts if the sender of the hook is not the governor
-
-    function _onlyGovernor(address sender) internal view {
-        if (sender != address(governor)) revert NotGovernor();
-    }
-
     /*//////////////////////////////////////////////////////////////
                                  HOOKS
     //////////////////////////////////////////////////////////////*/
@@ -125,9 +129,7 @@ contract ApprovalVotingModule is BaseHook {
         uint256[] memory, /*values*/
         bytes[] memory, /*calldatas*/
         string memory description
-    ) external virtual override returns (bytes4) {
-        _onlyGovernor(sender);
-
+    ) external virtual override onlyGovernor(sender) returns (bytes4) {
         if (proposals[proposalId].governor != address(0)) {
             revert ExistingProposal();
         }
@@ -184,8 +186,7 @@ contract ApprovalVotingModule is BaseHook {
         uint8 support,
         string memory, /*reason*/
         bytes memory params
-    ) external override returns (bytes4) {
-        _onlyGovernor(sender);
+    ) external override onlyGovernor(sender) returns (bytes4) {
         Proposal memory proposal = proposals[proposalId];
 
         if (support == uint8(VoteType.For)) {
@@ -215,7 +216,6 @@ contract ApprovalVotingModule is BaseHook {
         override
         returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)
     {
-        _onlyGovernor(sender);
         uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
 
         (targets, values, calldatas) = _formatExecuteParams(proposalId);
@@ -232,9 +232,9 @@ contract ApprovalVotingModule is BaseHook {
         external
         virtual
         override
+        onlyGovernor(sender)
         returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)
     {
-        _onlyGovernor(sender);
         uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
 
         (targets, values, calldatas) = _formatExecuteParams(proposalId);
@@ -251,10 +251,9 @@ contract ApprovalVotingModule is BaseHook {
      */
     function _formatExecuteParams(uint256 proposalId)
         public
+        onlyGovernor(msg.sender)
         returns (address[] memory targets, uint256[] memory values, bytes[] memory calldatas)
     {
-        _onlyGovernor(msg.sender);
-
         ProposalOption[] memory options = proposals[proposalId].options;
         ProposalSettings memory settings = proposals[proposalId].settings;
 
@@ -399,8 +398,13 @@ contract ApprovalVotingModule is BaseHook {
      *
      * @param proposalId The id of the proposal.
      */
-    function beforeVoteSucceeded(address sender, uint256 proposalId) external view override returns (bytes4, bool) {
-        _onlyGovernor(sender);
+    function beforeVoteSucceeded(address sender, uint256 proposalId)
+        external
+        view
+        override
+        onlyGovernor(sender)
+        returns (bytes4, bool)
+    {
         Proposal memory proposal = proposals[proposalId];
 
         ProposalOption[] memory options = proposal.options;

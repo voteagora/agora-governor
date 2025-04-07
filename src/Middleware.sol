@@ -141,6 +141,7 @@ contract Middleware is IMiddleware, BaseHook {
             if (!success) revert Hooks.InvalidHookResponse();
         }
 
+        // `this` is required to convert `calldatas` from memory to calldata
         this.validateProposalData(targets, calldatas, proposalTypeId);
 
         uint256 proposalId = governor.hashProposal(targets, values, calldatas, keccak256(bytes(description)));
