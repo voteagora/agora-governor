@@ -27,7 +27,7 @@ struct Proposal {
 }
 
 /// @custom:security-contact security@voteagora.com
-contract OptimisticModule is BaseHook {
+contract Optimistic is BaseHook {
     /*//////////////////////////////////////////////////////////////
                                  ERRORS
     //////////////////////////////////////////////////////////////*/

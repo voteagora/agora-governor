@@ -50,7 +50,7 @@ struct Proposal {
 }
 
 /// @custom:security-contact security@voteagora.com
-contract ApprovalVotingModule is BaseHook {
+contract ApprovalVoting is BaseHook {
     /*//////////////////////////////////////////////////////////////
                                  ERRORS
     //////////////////////////////////////////////////////////////*/

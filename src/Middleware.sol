@@ -12,7 +12,7 @@ import {Bytes} from "@openzeppelin/contracts/utils/Bytes.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Validator} from "src/libraries/Validator.sol";
-import {ApprovalVotingModule} from "src/modules/ApprovalVoting.sol";
+import {ApprovalVoting} from "src/modules/ApprovalVoting.sol";
 
 /// @title Middleware
 /// @notice Middleware contract to handle hooks interface
@@ -197,7 +197,7 @@ contract Middleware is IMiddleware, BaseHook {
         uint8 proposalTypeId = _proposalTypeId[proposalId];
         address votingModule = _proposalTypes[proposalTypeId].module;
         if (votingModule != address(0)) {
-            (bytes4 selector, bool success) = ApprovalVotingModule(votingModule).beforeVoteSucceeded(sender, proposalId);
+            (bytes4 selector, bool success) = ApprovalVoting(votingModule).beforeVoteSucceeded(sender, proposalId);
             return (selector, success);
         }
 
