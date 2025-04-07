@@ -218,7 +218,7 @@ contract ApprovalVotingModule is BaseHook {
     {
         uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
 
-        (targets, values, calldatas) = _formatExecuteParams(proposalId);
+        (targets, values, calldatas) = formatExecuteParams(proposalId);
         return (this.beforeQueue.selector, proposalId, targets, values, calldatas, descriptionHash);
     }
 
@@ -237,7 +237,7 @@ contract ApprovalVotingModule is BaseHook {
     {
         uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
 
-        (targets, values, calldatas) = _formatExecuteParams(proposalId);
+        (targets, values, calldatas) = formatExecuteParams(proposalId);
         return (this.beforeExecute.selector, proposalId, targets, values, calldatas, descriptionHash);
     }
 
@@ -249,7 +249,7 @@ contract ApprovalVotingModule is BaseHook {
      * @return values The values of the proposal.
      * @return calldatas The calldatas of the proposal.
      */
-    function _formatExecuteParams(uint256 proposalId)
+    function formatExecuteParams(uint256 proposalId)
         public
         onlyGovernor(msg.sender)
         returns (address[] memory targets, uint256[] memory values, bytes[] memory calldatas)
@@ -260,7 +260,7 @@ contract ApprovalVotingModule is BaseHook {
         {
             // If budgetToken is not ETH
             if (settings.budgetToken != address(0)) {
-                // Save initBalance to be used as comparison in `_afterExecute`
+                // Save initBalance to be used as comparison in `checkBudget`
                 proposals[proposalId].initBalance = IERC20(settings.budgetToken).balanceOf(governor.timelock());
             }
         }
@@ -314,7 +314,7 @@ contract ApprovalVotingModule is BaseHook {
         }
 
         unchecked {
-            // Increase by one to account for additional `_afterExecute` call
+            // Increase by one to account for additional `checkBudget` call
             uint256 effectiveParamsLength = executeParamsLength + 1;
 
             // Init params lengths
@@ -330,10 +330,10 @@ contract ApprovalVotingModule is BaseHook {
             calldatas[i] = executeParams[i].calldatas;
         }
 
-        // Set `_afterExecute` as last call
+        // Set `checkBudget` as last call
         targets[executeParamsLength] = address(this);
         values[executeParamsLength] = 0;
-        calldatas[executeParamsLength] = abi.encodeCall(this._afterExecute, (proposalId, totalValue));
+        calldatas[executeParamsLength] = abi.encodeCall(this.checkBudget, (proposalId, totalValue));
     }
 
     /**
@@ -343,7 +343,7 @@ contract ApprovalVotingModule is BaseHook {
      * @param proposalId The id of the proposal.
      * @param budgetTokensSpent The total amount of tokens that can be spent.
      */
-    function _afterExecute(uint256 proposalId, uint256 budgetTokensSpent) public view {
+    function checkBudget(uint256 proposalId, uint256 budgetTokensSpent) public view {
         ProposalSettings memory settings = proposals[proposalId].settings;
 
         if (settings.budgetToken != address(0) && settings.budgetAmount > 0) {
