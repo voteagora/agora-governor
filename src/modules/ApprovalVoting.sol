@@ -293,8 +293,10 @@ contract ApprovalVotingModule is BaseHook {
                         if (totalValue + option.values[n] > settings.budgetAmount) {
                             budgetExceeded = true;
                             break; // break inner loop
+                        } else {
+                            // Add to total value only if the new total vaue would be below budget
+                            totalValue += option.values[n];
                         }
-                        totalValue += option.values[n];
                     }
 
                     unchecked {
