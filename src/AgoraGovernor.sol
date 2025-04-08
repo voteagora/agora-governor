@@ -81,10 +81,11 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         // This call is made after the inhereted constructors have been called
         _hooks.beforeInitialize();
 
-        admin = _admin;
-        manager = _manager;
-        hooks = _hooks;
+        _setAdmin(_admin);
+        _setManager(_manager);
         _updateTimelock(_timelockAddress);
+
+        hooks = _hooks;
 
         _hooks.afterInitialize();
     }
@@ -98,8 +99,7 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
      * @param _newAdmin The new admin address.
      */
     function setAdmin(address _newAdmin) external onlyGovernance {
-        admin = _newAdmin;
-        emit AdminSet(admin, _newAdmin);
+        _setAdmin(_newAdmin);
     }
 
     /**
@@ -107,8 +107,7 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
      * @param _newManager The new manager address.
      */
     function setManager(address _newManager) external onlyGovernance {
-        manager = _newManager;
-        emit ManagerSet(manager, _newManager);
+        _setManager(_newManager);
     }
 
     /**
@@ -304,6 +303,16 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
     /*//////////////////////////////////////////////////////////////
                             INTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////*/
+
+    function _setAdmin(address _newAdmin) internal {
+        admin = _newAdmin;
+        emit AdminSet(admin, _newAdmin);
+    }
+
+    function _setManager(address _newManager) internal {
+        manager = _newManager;
+        emit ManagerSet(manager, _newManager);
+    }
 
     function _queueOperations(
         uint256 proposalId,
