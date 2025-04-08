@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 import {Governor} from "@openzeppelin/contracts/governance/Governor.sol";
 import {GovernorCountingSimple} from "@openzeppelin/contracts/governance/extensions/GovernorCountingSimple.sol";
 import {GovernorVotesQuorumFraction} from
@@ -119,6 +120,10 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         bytes[] memory calldatas,
         string memory description
     ) public virtual override returns (uint256 proposalId) {
+        if (targets.length != values.length || targets.length != calldatas.length || targets.length == 0) {
+            revert IGovernor.GovernorInvalidProposalLength(targets.length, calldatas.length, values.length);
+        }
+
         proposalId = hooks.beforePropose(targets, values, calldatas, description);
 
         if (proposalId == 0) {

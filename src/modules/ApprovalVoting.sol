@@ -192,7 +192,9 @@ contract ApprovalVotingModule is BaseHook {
             if (weight != 0) {
                 uint256[] memory options = _decodeVoteParams(params);
                 uint256 totalOptions = options.length;
-                if (totalOptions == 0) revert InvalidParams();
+                if (totalOptions == 0 || totalOptions != proposals[proposalId].optionVotes.length) {
+                    revert InvalidParams();
+                }
 
                 _recordVote(
                     proposalId, account, weight.toUint128(), options, totalOptions, proposal.settings.maxApprovals

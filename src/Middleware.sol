@@ -276,7 +276,7 @@ contract Middleware is IMiddleware, BaseHook {
         if (!_proposalTypes[proposalTypeId].exists) {
             revert InvalidProposalType(proposalTypeId);
         }
-        if (parameters.length != comparators.length) {
+        if (parameters.length != comparators.length || parameters.length != types.length) {
             revert InvalidParameterConditions();
         }
 
