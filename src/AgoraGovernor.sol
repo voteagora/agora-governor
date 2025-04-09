@@ -5,8 +5,7 @@ import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 import {Governor} from "@openzeppelin/contracts/governance/Governor.sol";
 import {GovernorCountingSimple} from "@openzeppelin/contracts/governance/extensions/GovernorCountingSimple.sol";
-import {GovernorVotesQuorumFraction} from
-    "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
+import {GovernorVotesQuorumFraction} from "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
 import {GovernorVotes} from "@openzeppelin/contracts/governance/extensions/GovernorVotes.sol";
 import {GovernorSettings} from "@openzeppelin/contracts/governance/extensions/GovernorSettings.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
@@ -34,6 +33,8 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
 
     error GovernorUnauthorizedCancel();
     error HookAddressNotValid();
+    error ProposalNotSuccessful();
+    error ProposalNotQueued();
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
@@ -53,6 +54,9 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
 
     /// @notice The timelock ids of the governor
     mapping(uint256 proposalId => bytes32) internal _timelockIds;
+    
+    /// @notice Mapping from hook-generated proposal ID to actual proposal ID
+    mapping(uint256 beforeProposalId => uint256) internal _proposalIdMapping;
 
     /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
@@ -118,43 +122,66 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         uint256[] memory values,
         bytes[] memory calldatas,
         string memory description
-    ) public virtual override returns (uint256 proposalId) {
-        proposalId = hooks.beforePropose(targets, values, calldatas, description);
+    ) public virtual override returns (uint256) {
+        bytes4 beforeHookSelector;
+        uint256 beforeProposalId = 0;
 
-        if (proposalId == 0) {
-            proposalId = super.propose(targets, values, calldatas, description);
+        if (address(hooks) != address(0)) {
+            (beforeHookSelector, beforeProposalId) = hooks.beforePropose(
+                address(this),
+                targets,
+                values,
+                calldatas,
+                description
+            );
         }
 
-        hooks.afterPropose(proposalId, targets, values, calldatas, description);
+        uint256 proposalId = super.propose(targets, values, calldatas, description);
+
+        if (address(hooks) != address(0)) {
+            hooks.afterPropose(address(this), proposalId, targets, values, calldatas, description);
+        }
+
+        if (beforeProposalId != 0 && beforeProposalId != proposalId) {
+            _proposalIdMapping[beforeProposalId] = proposalId;
+        }
+
+        return beforeProposalId != 0 ? beforeProposalId : proposalId;
     }
 
     /**
      * @inheritdoc Governor
      */
-    function queue(address[] memory targets, uint256[] memory values, bytes[] memory calldatas, bytes32 descriptionHash)
-        public
-        virtual
-        override
-        returns (uint256)
-    {
-        (
-            uint256 proposalId,
-            address[] memory _tempTargets,
-            uint256[] memory _tempValues,
-            bytes[] memory _tempCalldatas,
-        ) = hooks.beforeQueue(targets, values, calldatas, descriptionHash);
+    function queue(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) public virtual override returns (uint256) {
+        uint256 proposalId = hashProposal(targets, values, calldatas, descriptionHash);
 
-        if (proposalId == 0) {
-            proposalId = super.queue(targets, values, calldatas, descriptionHash);
-        } else {
-            if (_tempTargets.length != 0 && _tempValues.length != 0 && _tempCalldatas.length != 0) {
-                _queueOperations(proposalId, _tempTargets, _tempValues, _tempCalldatas, descriptionHash);
-            }
+        ProposalState currentState = state(proposalId);
+        if (currentState != ProposalState.Succeeded) {
+            revert ProposalNotSuccessful();
         }
 
-        hooks.afterQueue(proposalId, targets, values, calldatas, descriptionHash);
+        if (address(hooks) != address(0)) {
+            (targets, values, calldatas, descriptionHash) = _processQueueHook(
+                targets,
+                values,
+                calldatas,
+                descriptionHash
+            );
+        }
 
-        return proposalId;
+        uint256 queuedProposalId = super.queue(targets, values, calldatas, descriptionHash);
+
+        // Process after hook if hooks are configured
+        if (address(hooks) != address(0)) {
+            _processAfterQueueHook(queuedProposalId, targets, values, calldatas, descriptionHash);
+        }
+
+        return queuedProposalId;
     }
 
     /**
@@ -166,24 +193,29 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         bytes[] memory calldatas,
         bytes32 descriptionHash
     ) public payable virtual override returns (uint256) {
-        (
-            uint256 proposalId,
-            address[] memory _tempTargets,
-            uint256[] memory _tempValues,
-            bytes[] memory _tempCalldatas,
-        ) = hooks.beforeExecute(targets, values, calldatas, descriptionHash);
+        uint256 proposalId = hashProposal(targets, values, calldatas, descriptionHash);
 
-        if (proposalId == 0) {
-            proposalId = super.execute(targets, values, calldatas, descriptionHash);
-        } else {
-            if (_tempTargets.length != 0 && _tempValues.length != 0 && _tempCalldatas.length != 0) {
-                _executeOperations(proposalId, _tempTargets, _tempValues, _tempCalldatas, descriptionHash);
-            }
+        ProposalState currentState = state(proposalId);
+        if (currentState != ProposalState.Queued) {
+            revert ProposalNotQueued();
         }
 
-        hooks.afterExecute(proposalId, targets, values, calldatas, descriptionHash);
+        if (address(hooks) != address(0)) {
+            (targets, values, calldatas, descriptionHash) = _processExecuteHook(
+                targets,
+                values,
+                calldatas,
+                descriptionHash
+            );
+        }
 
-        return proposalId;
+        uint256 executedProposalId = super.execute(targets, values, calldatas, descriptionHash);
+
+        if (address(hooks) != address(0)) {
+            _processAfterExecuteHook(executedProposalId, targets, values, calldatas, descriptionHash);
+        }
+
+        return executedProposalId;
     }
 
     /**
@@ -194,26 +226,35 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) public override returns (uint256 proposalId) {
-        proposalId = hooks.beforeCancel(targets, values, calldatas, descriptionHash);
+    ) public override returns (uint256) {
+        bytes4 beforeHookSelector;
+        uint256 beforeProposalId = 0;
 
-        if (proposalId == 0) {
-            // The proposalId will be recomputed in the `_cancel` call further down. However we need the value before we
-            // do the internal call, because we need to check the proposal state BEFORE the internal `_cancel` call
-            // changes it. The `hashProposal` duplication has a cost that is limited, and that we accept.
-            proposalId = hashProposal(targets, values, calldatas, descriptionHash);
+        if (address(hooks) != address(0)) {
+            (beforeHookSelector, beforeProposalId) = hooks.beforeCancel(
+                address(this),
+                targets,
+                values,
+                calldatas,
+                descriptionHash
+            );
         }
 
+        uint256 proposalId = hashProposal(targets, values, calldatas, descriptionHash);
+
         address sender = _msgSender();
-        // Allow the proposer, admin, or executor (timelock) to cancel.
+
         if (sender != proposalProposer(proposalId) && sender != admin && sender != _executor()) {
             revert GovernorUnauthorizedCancel();
         }
 
-        // Proposals can only be cancelled in any state other than Canceled, Expired, or Executed.
         _cancel(targets, values, calldatas, descriptionHash);
 
-        hooks.afterCancel(proposalId, targets, values, calldatas, descriptionHash);
+        if (address(hooks) != address(0)) {
+            hooks.afterCancel(address(this), proposalId, targets, values, calldatas, descriptionHash);
+        }
+
+        return beforeProposalId != 0 ? beforeProposalId : proposalId;
     }
 
     /**
@@ -228,20 +269,12 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
      * @dev Supply is calculated at the proposal snapshot timepoint.
      * @dev Quorum value is derived from `ProposalTypes` in the `Middleware` and can be changed using the `beforeQuorumCalculation` hook.
      */
-    function quorum(uint256 proposalId)
-        public
-        view
-        override(Governor, GovernorVotesQuorumFraction)
-        returns (uint256 _quorum)
-    {
-        _quorum = hooks.beforeQuorumCalculation(proposalId);
+    function quorum(
+        uint256 _timepoint
+    ) public view override(Governor, GovernorVotesQuorumFraction) returns (uint256 _quorum) {
+        _quorum = (token().getPastTotalSupply(_timepoint) * quorumNumerator(_timepoint)) / quorumDenominator();
 
-        if (_quorum == 0) {
-            uint256 snapshot = proposalSnapshot(proposalId);
-            _quorum = (token().getPastTotalSupply(snapshot) * quorumNumerator(snapshot)) / quorumDenominator();
-        }
-
-        hooks.afterQuorumCalculation(proposalId, _quorum);
+        return _quorum;
     }
 
     /**
@@ -371,12 +404,13 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
     /**
      * @inheritdoc Governor
      */
-    function _castVote(uint256 proposalId, address account, uint8 support, string memory reason, bytes memory params)
-        internal
-        virtual
-        override(Governor)
-        returns (uint256 weight)
-    {
+    function _castVote(
+        uint256 proposalId,
+        address account,
+        uint8 support,
+        string memory reason,
+        bytes memory params
+    ) internal virtual override(Governor) returns (uint256 weight) {
         _validateStateBitmap(proposalId, _encodeStateBitmap(ProposalState.Active));
 
         weight = hooks.beforeVote(proposalId, account, support, reason, params);
@@ -401,12 +435,9 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
     /**
      * @inheritdoc Governor
      */
-    function _quorumReached(uint256 proposalId)
-        internal
-        view
-        override(Governor, GovernorCountingSimple)
-        returns (bool)
-    {
+    function _quorumReached(
+        uint256 proposalId
+    ) internal view override(Governor, GovernorCountingSimple) returns (bool) {
         (uint256 againstVotes, uint256 forVotes, uint256 abstainVotes) = proposalVotes(proposalId);
 
         return quorum(proposalId) <= againstVotes + forVotes + abstainVotes;
@@ -415,13 +446,9 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
     /**
      * @inheritdoc Governor
      */
-    function _voteSucceeded(uint256 proposalId)
-        internal
-        view
-        virtual
-        override(Governor, GovernorCountingSimple)
-        returns (bool voteSucceeded)
-    {
+    function _voteSucceeded(
+        uint256 proposalId
+    ) internal view virtual override(Governor, GovernorCountingSimple) returns (bool voteSucceeded) {
         uint8 beforeVoteSucceeded = hooks.beforeVoteSucceeded(proposalId);
 
         if (beforeVoteSucceeded == 0) {
@@ -431,5 +458,75 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         }
 
         hooks.afterVoteSucceeded(proposalId, voteSucceeded);
+    }
+
+    // Helper function to process the beforeQueue hook
+    function _processQueueHook(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) internal returns (address[] memory, uint256[] memory, bytes[] memory, bytes32) {
+        (
+            bytes4 beforeHookSelector,
+            uint256 beforeProposalId,
+            address[] memory modifiedTargets,
+            uint256[] memory modifiedValues,
+            bytes[] memory modifiedCalldatas,
+            bytes32 modifiedDescriptionHash
+        ) = hooks.beforeQueue(address(this), targets, values, calldatas, descriptionHash);
+
+        // Use modified parameters if provided by the hook
+        if (beforeHookSelector == IHooks.beforeQueue.selector && beforeProposalId != 0) {
+            return (modifiedTargets, modifiedValues, modifiedCalldatas, modifiedDescriptionHash);
+        }
+
+        return (targets, values, calldatas, descriptionHash);
+    }
+
+    // Helper function to process the afterQueue hook
+    function _processAfterQueueHook(
+        uint256 proposalId,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) internal {
+        hooks.afterQueue(address(this), proposalId, targets, values, calldatas, descriptionHash);
+    }
+
+    // Helper function to process the beforeExecute hook
+    function _processExecuteHook(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) internal returns (address[] memory, uint256[] memory, bytes[] memory, bytes32) {
+        (
+            bytes4 beforeHookSelector,
+            uint256 beforeProposalId,
+            address[] memory modifiedTargets,
+            uint256[] memory modifiedValues,
+            bytes[] memory modifiedCalldatas,
+            bytes32 modifiedDescriptionHash
+        ) = hooks.beforeExecute(address(this), targets, values, calldatas, descriptionHash);
+
+        // Use modified parameters if provided by the hook
+        if (beforeHookSelector == IHooks.beforeExecute.selector && beforeProposalId != 0) {
+            return (modifiedTargets, modifiedValues, modifiedCalldatas, modifiedDescriptionHash);
+        }
+
+        return (targets, values, calldatas, descriptionHash);
+    }
+
+    // Helper function to process the afterExecute hook
+    function _processAfterExecuteHook(
+        uint256 proposalId,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) internal {
+        hooks.afterExecute(address(this), proposalId, targets, values, calldatas, descriptionHash);
     }
 }
