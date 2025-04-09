@@ -115,20 +115,16 @@ contract AgoraGovernor is
         bytes4 beforeHookSelector;
         uint256 beforeProposalId = 0;
         
-        // Only call hooks if they're configured
         if (address(hooks) != address(0)) {
             (beforeHookSelector, beforeProposalId) = hooks.beforePropose(address(this), targets, values, calldatas, description);
         }
         
-        // Don't skip the super call; this ensures lifecycle timestamps are properly set
         uint256 proposalId = super.propose(targets, values, calldatas, description);
         
-        // Only call hooks if they're configured
         if (address(hooks) != address(0)) {
             hooks.afterPropose(address(this), proposalId, targets, values, calldatas, description);
         }
         
-        // If hooks need to return a different ID, maintain state mapping between the two
         if(beforeProposalId != 0 && beforeProposalId != proposalId) {
             _proposalIdMapping[beforeProposalId] = proposalId;
         }
@@ -144,20 +140,18 @@ contract AgoraGovernor is
     ) public payable virtual override returns (uint256) {
         uint256 proposalId = hashProposal(targets, values, calldatas, descriptionHash);
         
-        // Get current state to validate
+    
         ProposalState currentState = state(proposalId);
         if(currentState != ProposalState.Queued) {
             revert ProposalNotQueued();
         }
         
-        // Process hook and get potentially modified parameters if hooks are configured
         if (address(hooks) != address(0)) {
             (targets, values, calldatas, descriptionHash) = _processExecuteHook(targets, values, calldatas, descriptionHash);
         }
         
         uint256 executedProposalId = super.execute(targets, values, calldatas, descriptionHash);
         
-        // Process after hook if hooks are configured
         if (address(hooks) != address(0)) {
             _processAfterExecuteHook(executedProposalId, targets, values, calldatas, descriptionHash);
         }
@@ -174,26 +168,20 @@ contract AgoraGovernor is
         bytes4 beforeHookSelector;
         uint256 beforeProposalId = 0;
         
-        // Only call hooks if they're configured
         if (address(hooks) != address(0)) {
             (beforeHookSelector, beforeProposalId) = hooks.beforeCancel(address(this), targets, values, calldatas, descriptionHash);
         }
 
-        // The proposalId will be recomputed in the `_cancel` call further down. However we need the value before we
-        // do the internal call, because we need to check the proposal state BEFORE the internal `_cancel` call
-        // changes it. The `hashProposal` duplication has a cost that is limited, and that we accept.
         uint256 proposalId = hashProposal(targets, values, calldatas, descriptionHash);
 
         address sender = _msgSender();
-        // Allow the proposer, admin, or executor (timelock) to cancel.
+
         if (sender != proposalProposer(proposalId) && sender != admin && sender != _executor()) {
             revert GovernorUnauthorizedCancel();
         }
-
-        // Proposals can only be cancelled in any state other than Canceled, Expired, or Executed.
+ 
         _cancel(targets, values, calldatas, descriptionHash);
 
-        // Only call hooks if they're configured
         if (address(hooks) != address(0)) {
             hooks.afterCancel(address(this), proposalId, targets, values, calldatas, descriptionHash);
         }
@@ -201,7 +189,7 @@ contract AgoraGovernor is
         return beforeProposalId != 0 ? beforeProposalId : proposalId;
     }
 
-    function quorumDenominator() public view override returns (uint256) {
+    function quorumDenominator() public pure override returns (uint256) {
         return 10_000;
     }
 
@@ -249,18 +237,15 @@ contract AgoraGovernor is
     ) public virtual override returns (uint256) {
         uint256 proposalId = hashProposal(targets, values, calldatas, descriptionHash);
         
-        // Get current state to validate 
         ProposalState currentState = state(proposalId);
         if(currentState != ProposalState.Succeeded) {
             revert ProposalNotSuccessful();
         }
         
-        // Process hook and get potentially modified parameters if hooks are configured
         if (address(hooks) != address(0)) {
             (targets, values, calldatas, descriptionHash) = _processQueueHook(targets, values, calldatas, descriptionHash);
         }
         
-        // Do not skip the super call to ensure proper state management
         uint256 queuedProposalId = super.queue(targets, values, calldatas, descriptionHash);
         
         // Process after hook if hooks are configured
@@ -400,7 +385,6 @@ contract AgoraGovernor is
         (bytes4 beforeHookSelector, uint256 beforeProposalId, address[] memory modifiedTargets, uint256[] memory modifiedValues, bytes[] memory modifiedCalldatas, bytes32 modifiedDescriptionHash) = 
             hooks.beforeExecute(address(this), targets, values, calldatas, descriptionHash);
         
-        // Ensure these can modify the targets/values/calldatas but not skip the super call
         if(beforeHookSelector == IHooks.beforeExecute.selector && beforeProposalId != 0) {
             return (modifiedTargets, modifiedValues, modifiedCalldatas, modifiedDescriptionHash);
         }
