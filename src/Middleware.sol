@@ -63,22 +63,22 @@ contract Middleware is IMiddleware, BaseHook {
 
     function getHookPermissions() public pure override returns (Hooks.Permissions memory) {
         return Hooks.Permissions({
-            beforeInitialize: false,
-            afterInitialize: false,
+            beforeInitialize: true,
+            afterInitialize: true,
             beforeVoteSucceeded: true,
-            afterVoteSucceeded: false,
-            beforeQuorumCalculation: false,
+            afterVoteSucceeded: true,
+            beforeQuorumCalculation: true,
             afterQuorumCalculation: true,
-            beforeVote: false,
-            afterVote: false,
+            beforeVote: true,
+            afterVote: true,
             beforePropose: true,
-            afterPropose: true, // set voting threshold
-            beforeCancel: false,
-            afterCancel: false,
-            beforeQueue: false,
-            afterQueue: false,
-            beforeExecute: false,
-            afterExecute: false
+            afterPropose: true,
+            beforeCancel: true,
+            afterCancel: true,
+            beforeQueue: true,
+            afterQueue: true,
+            beforeExecute: true,
+            afterExecute: true
         });
     }
 
@@ -86,37 +86,97 @@ contract Middleware is IMiddleware, BaseHook {
                                HOOKS
     //////////////////////////////////////////////////////////////*/
 
-    /**
-     * @inheritdoc BaseHook
-     * @param sender Hook contract address
-     * @param proposalId the proposal ID used to calculate the quorum
-     */
-    function afterQuorumCalculation(address sender, uint256 proposalId, uint256)
+    function beforeInitialize(address sender) external override returns (bytes4) {
+        return this.beforeInitialize.selector;
+    }
+
+    function afterInitialize(address sender) external override returns (bytes4) {
+        return this.afterInitialize.selector;
+    }
+
+    function beforeVoteSucceeded(address sender, uint256 proposalId)
+        external
+        view
+        override
+        returns (bytes4, bool voteSucceeded)
+    {
+        uint8 proposalTypeId = _proposalTypeId[proposalId];
+        address votingModule = _proposalTypes[proposalTypeId].module;
+        if (votingModule != address(0)) {
+            (bytes4 selector, bool success) = ApprovalVotingModule(votingModule).beforeVoteSucceeded(sender, proposalId);
+            return (selector, success);
+        }
+
+        uint256 approvalThreshold = _proposalTypes[proposalTypeId].approvalThreshold;
+
+        if (approvalThreshold == 0) return (this.beforeVoteSucceeded.selector, true);
+
+        (uint256 againstVotes, uint256 forVotes, uint256 abstainVotes) = governor.proposalVotes(proposalId);
+        uint256 totalVotes = forVotes + againstVotes;
+
+        if (totalVotes != 0) {
+            voteSucceeded = (forVotes * PERCENT_DIVISOR) / totalVotes >= approvalThreshold;
+        }
+
+        return (this.beforeVoteSucceeded.selector, voteSucceeded);
+    }
+
+    function afterVoteSucceeded(address sender, uint256 proposalId, bool voteSucceeded)
         external
         view
         override
         returns (bytes4)
     {
-        // Get the proposalId for the timepoint
-        uint8 proposalTypeId = _proposalTypeId[proposalId];
+        return this.afterVoteSucceeded.selector;
+    }
 
-        // Calculate the quorum using the proposal type
-        uint256 quorum = (
+    function beforeQuorumCalculation(address sender, uint256 proposalId)
+        external
+        view
+        override
+        returns (bytes4, uint256)
+    {
+        return (this.beforeQuorumCalculation.selector, 0);
+    }
+
+    function afterQuorumCalculation(address sender, uint256 proposalId, uint256 quorum)
+        external
+        view
+        override
+        returns (bytes4)
+    {
+        uint8 proposalTypeId = _proposalTypeId[proposalId];
+        uint256 calculatedQuorum = (
             governor.token().getPastTotalSupply(governor.proposalSnapshot(proposalId))
                 * _proposalTypes[proposalTypeId].quorum
         ) / governor.quorumDenominator();
 
-        return (IHooks.afterQuorumCalculation.selector);
+        return this.afterQuorumCalculation.selector;
     }
 
-    /**
-     * @inheritdoc BaseHook
-     * @param sender Hook contract address.
-     * @param targets list of target addresses to execute a transaction upon proposal success
-     * @param values list of eth values to be sent
-     * @param calldatas list of calldatas to be executed at corresponding target address
-     * @param description a string describing the proposal, it must contain a proposalId. See {Parser-_parseProposalTypeId}
-     */
+    function beforeVote(
+        address sender,
+        uint256 proposalId,
+        address account,
+        uint8 support,
+        string memory reason,
+        bytes memory params
+    ) external override returns (bytes4, uint256) {
+        return (this.beforeVote.selector, 0);
+    }
+
+    function afterVote(
+        address sender,
+        uint256 weight,
+        uint256 proposalId,
+        address account,
+        uint8 support,
+        string memory reason,
+        bytes memory params
+    ) external override returns (bytes4) {
+        return this.afterVote.selector;
+    }
+
     function beforePropose(
         address sender,
         address[] memory targets,
@@ -146,18 +206,10 @@ contract Middleware is IMiddleware, BaseHook {
         uint256 proposalId = governor.hashProposal(targets, values, calldatas, keccak256(bytes(description)));
 
         _proposalTypeId[proposalId] = proposalTypeId;
+
         return (this.beforePropose.selector, proposalId);
     }
 
-    /**
-     * @inheritdoc BaseHook
-     * @param proposalId the proposal ID generated by governor propose function
-     * @param sender Hook contract address.
-     * @param targets list of target addresses to execute a transaction upon proposal success
-     * @param values list of eth values to be sent
-     * @param calldatas list of calldatas to be executed at corresponding target address
-     * @param description a string describing the proposal, it must contain a proposalId. See {Parser-_parseProposalTypeId}
-     */
     function afterPropose(
         address sender,
         uint256 proposalId,
@@ -179,39 +231,73 @@ contract Middleware is IMiddleware, BaseHook {
         }
 
         _proposalTypeId[proposalId] = proposalTypeId;
-        return (this.afterPropose.selector);
+        return this.afterPropose.selector;
     }
 
-    /**
-     * @inheritdoc BaseHook
-     * @param proposalId the proposal ID for the vote
-     */
-    function beforeVoteSucceeded(address sender, uint256 proposalId)
-        external
-        view
-        virtual
-        override
-        returns (bytes4, bool voteSucceeded)
-    {
-        uint8 proposalTypeId = _proposalTypeId[proposalId];
-        address votingModule = _proposalTypes[proposalTypeId].module;
-        if (votingModule != address(0)) {
-            (bytes4 selector, bool success) = ApprovalVotingModule(votingModule).beforeVoteSucceeded(sender, proposalId);
-            return (selector, success);
-        }
+    function beforeCancel(
+        address sender,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) external override returns (bytes4, uint256) {
+        uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
+        return (this.beforeCancel.selector, proposalId);
+    }
 
-        uint256 approvalThreshold = _proposalTypes[proposalTypeId].approvalThreshold;
+    function afterCancel(
+        address sender,
+        uint256 proposalId,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) external override returns (bytes4) {
+        return this.afterCancel.selector;
+    }
 
-        if (approvalThreshold == 0) return (this.afterPropose.selector, true);
+    function beforeQueue(
+        address sender,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) external override returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32) {
+        uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
+        return (this.beforeQueue.selector, proposalId, targets, values, calldatas, descriptionHash);
+    }
 
-        (uint256 againstVotes, uint256 forVotes, uint256 abstainVotes) = governor.proposalVotes(proposalId);
-        uint256 totalVotes = forVotes + againstVotes;
+    function afterQueue(
+        address sender,
+        uint256 proposalId,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) external override returns (bytes4) {
+        return this.afterQueue.selector;
+    }
 
-        if (totalVotes != 0) {
-            voteSucceeded = (forVotes * PERCENT_DIVISOR) / totalVotes >= approvalThreshold;
-        }
+    function beforeExecute(
+        address sender,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) external override returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32) {
+        uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
+        return (this.beforeExecute.selector, proposalId, targets, values, calldatas, descriptionHash);
+    }
 
-        return (this.beforeVoteSucceeded.selector, voteSucceeded);
+    function afterExecute(
+        address sender,
+        uint256 proposalId,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) external override returns (bytes4) {
+        return this.afterExecute.selector;
     }
 
     /*//////////////////////////////////////////////////////////////
