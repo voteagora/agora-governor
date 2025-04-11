@@ -9,6 +9,11 @@ fail_on_revert  = false                                 # Not fail the test if t
 evm_version     = 'cancun'                              # The EVM version to use
 solc_version    = '0.8.28'                              # The solc version to use
 
+additional_compiler_profiles = [ { name = "via-ir", via_ir = true } ]
+compilation_restrictions = [
+    { paths = "src/Middleware.sol", via_ir = true },
+]
+
 [fuzz]
 runs           = 2000       # The number of times to run the fuzzing tests
 
