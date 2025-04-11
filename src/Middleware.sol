@@ -86,10 +86,14 @@ contract Middleware is IMiddleware, BaseHook {
                                HOOKS
     //////////////////////////////////////////////////////////////*/
 
+    // @dev Currently a no-op operation, leaving these hooks here in case there are a use case where someone would like to use Hooks without
+    // the middleware contract. This method could be used to set default proposal types or configure make configuration changes to the governor.
     function beforeInitialize(address sender) external override returns (bytes4) {
         return this.beforeInitialize.selector;
     }
 
+    // @dev Currently a no-op operation, leaving these hooks here in case there are a use case where someone would like to use Hooks without
+    // the middleware contract. This method could be used to set default proposal types or configure make configuration changes to the governor.
     function afterInitialize(address sender) external override returns (bytes4) {
         return this.afterInitialize.selector;
     }
@@ -145,7 +149,7 @@ contract Middleware is IMiddleware, BaseHook {
         Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
 
         // Route hook to voting module
-        if (_proposalTypes[proposalTypeId].module != address(0) && hooks.beforeQuorumCalculation) {
+        if (module != address(0) && hooks.beforeQuorumCalculation) {
             (,calculatedQuorum) = BaseHook(module).beforeQuorumCalculation(msg.sender, proposalId);
 
         } else {
@@ -164,6 +168,15 @@ contract Middleware is IMiddleware, BaseHook {
         override
         returns (bytes4)
     {
+        uint8 proposalTypeId = _proposalTypeId[proposalId];
+
+        address module = _proposalTypes[proposalTypeId].module;
+        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
+
+        // Route hook to voting module
+        if (module != address(0) && hooks.afterQuorumCalculation) {
+            BaseHook(module).afterQuorumCalculation(msg.sender, proposalId, quorum);
+        }
 
         return this.afterQuorumCalculation.selector;
     }
@@ -176,7 +189,18 @@ contract Middleware is IMiddleware, BaseHook {
         string memory reason,
         bytes memory params
     ) external override returns (bytes4, uint256) {
-        return (this.beforeVote.selector, 0);
+        uint256 weight = 0;
+        uint8 proposalTypeId = _proposalTypeId[proposalId];
+
+        address module = _proposalTypes[proposalTypeId].module;
+        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
+
+        // Route hook to voting module
+        if (module != address(0) && hooks.beforeVote) {
+            (,weight) = BaseHook(module).beforeVote(msg.sender, proposalId, account, support, reason, params);
+        }
+
+        return (this.beforeVote.selector, weight);
     }
 
     function afterVote(
@@ -188,6 +212,16 @@ contract Middleware is IMiddleware, BaseHook {
         string memory reason,
         bytes memory params
     ) external override returns (bytes4) {
+        uint8 proposalTypeId = _proposalTypeId[proposalId];
+
+        address module = _proposalTypes[proposalTypeId].module;
+        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
+
+        // Route hook to voting module
+        if (module != address(0) && hooks.afterVote) {
+            BaseHook(module).afterVote(msg.sender, weight, proposalId, account, support, reason, params);
+        }
+
         return this.afterVote.selector;
     }
 
@@ -211,7 +245,7 @@ contract Middleware is IMiddleware, BaseHook {
         Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
 
         // Route hook to voting module
-        if (_proposalTypes[proposalTypeId].module != address(0) && hooks.beforePropose) {
+        if (module != address(0) && hooks.beforePropose) {
             string memory proposalData = description._parseProposalData();
             (,proposalId) = BaseHook(module).beforePropose(msg.sender, targets, values, calldatas, proposalData);
         }
@@ -239,7 +273,7 @@ contract Middleware is IMiddleware, BaseHook {
         Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
 
         // Route hook to voting module
-        if (_proposalTypes[proposalTypeId].module != address(0)) {
+        if (module != address(0) && hooks.afterPropose) {
             BaseHook(module).afterPropose(msg.sender, proposalId, targets, values, calldatas, description);
         }
 
@@ -254,6 +288,15 @@ contract Middleware is IMiddleware, BaseHook {
         bytes32 descriptionHash
     ) external override returns (bytes4, uint256) {
         uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
+        uint8 proposalTypeId = _proposalTypeId[proposalId];
+
+        address module = _proposalTypes[proposalTypeId].module;
+        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
+
+        // Route hook to voting module
+        if (module != address(0) && hooks.beforeCancel) {
+            (, proposalId) = BaseHook(module).beforeCancel(msg.sender, targets, values, calldatas, descriptionHash);
+        }
         return (this.beforeCancel.selector, proposalId);
     }
 
@@ -265,6 +308,16 @@ contract Middleware is IMiddleware, BaseHook {
         bytes[] memory calldatas,
         bytes32 descriptionHash
     ) external override returns (bytes4) {
+        uint8 proposalTypeId = _proposalTypeId[proposalId];
+
+        address module = _proposalTypes[proposalTypeId].module;
+        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
+
+        // Route hook to voting module
+        if (module != address(0) && hooks.afterCancel) {
+            BaseHook(module).afterCancel(msg.sender, proposalId, targets, values, calldatas, descriptionHash);
+        }
+
         return this.afterCancel.selector;
     }
 
@@ -276,6 +329,16 @@ contract Middleware is IMiddleware, BaseHook {
         bytes32 descriptionHash
     ) external override returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32) {
         uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
+        uint8 proposalTypeId = _proposalTypeId[proposalId];
+
+        address module = _proposalTypes[proposalTypeId].module;
+        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
+
+        // Route hook to voting module
+        if (module != address(0) && hooks.beforeQueue) {
+            (, proposalId, targets, values, calldatas, descriptionHash) = BaseHook(module).beforeQueue(msg.sender, targets, values, calldatas, descriptionHash);
+        }
+
         return (this.beforeQueue.selector, proposalId, targets, values, calldatas, descriptionHash);
     }
 
@@ -287,6 +350,16 @@ contract Middleware is IMiddleware, BaseHook {
         bytes[] memory calldatas,
         bytes32 descriptionHash
     ) external override returns (bytes4) {
+        uint8 proposalTypeId = _proposalTypeId[proposalId];
+
+        address module = _proposalTypes[proposalTypeId].module;
+        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
+
+        // Route hook to voting module
+        if (module != address(0) && hooks.afterQueue) {
+            BaseHook(module).afterQueue(msg.sender, proposalId, targets, values, calldatas, descriptionHash);
+        }
+
         return this.afterQueue.selector;
     }
 
@@ -298,6 +371,16 @@ contract Middleware is IMiddleware, BaseHook {
         bytes32 descriptionHash
     ) external override returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32) {
         uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
+        uint8 proposalTypeId = _proposalTypeId[proposalId];
+
+        address module = _proposalTypes[proposalTypeId].module;
+        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
+
+        // Route hook to voting module
+        if (module != address(0) && hooks.beforeExecute) {
+            (, proposalId, targets, values, calldatas, descriptionHash) = BaseHook(module).beforeExecute(msg.sender, targets, values, calldatas, descriptionHash);
+        }
+
         return (this.beforeExecute.selector, proposalId, targets, values, calldatas, descriptionHash);
     }
 
@@ -309,6 +392,16 @@ contract Middleware is IMiddleware, BaseHook {
         bytes[] memory calldatas,
         bytes32 descriptionHash
     ) external override returns (bytes4) {
+        uint8 proposalTypeId = _proposalTypeId[proposalId];
+
+        address module = _proposalTypes[proposalTypeId].module;
+        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
+
+        // Route hook to voting module
+        if (module != address(0) && hooks.afterExecute) {
+            BaseHook(module).afterExecute(msg.sender, proposalId, targets, values, calldatas, descriptionHash);
+        }
+
         return this.afterExecute.selector;
     }
 
