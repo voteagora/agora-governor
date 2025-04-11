@@ -104,7 +104,7 @@ library Hooks {
         }
     }
 
-    function parseUint256(bytes memory result) internal pure returns (uint256 output) {
+    function parseUint256(bytes memory result) public pure returns (uint256 output) {
         // equivalent: (, number) = abi.decode(result, (bytes4, uint256));
         assembly ("memory-safe") {
             output := mload(add(result, 0x40))

@@ -270,9 +270,16 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
      * @dev Quorum value is derived from `ProposalTypes` in the `Middleware` and can be changed using the `beforeQuorumCalculation` hook.
      */
     function quorum(
-        uint256 _timepoint
+        uint256 proposalId
     ) public view override(Governor, GovernorVotesQuorumFraction) returns (uint256 _quorum) {
-        _quorum = (token().getPastTotalSupply(_timepoint) * quorumNumerator(_timepoint)) / quorumDenominator();
+         _quorum = hooks.beforeQuorumCalculation(proposalId);
+
+        if (_quorum == 0) {
+            uint256 snapshot = proposalSnapshot(proposalId);
+            _quorum = (token().getPastTotalSupply(snapshot) * quorumNumerator(snapshot)) / quorumDenominator();
+        }
+
+        hooks.afterQuorumCalculation(proposalId, _quorum);
 
         return _quorum;
     }
@@ -468,8 +475,8 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         bytes32 descriptionHash
     ) internal returns (address[] memory, uint256[] memory, bytes[] memory, bytes32) {
         (
-            bytes4 beforeHookSelector,
-            uint256 beforeProposalId,
+            ,
+            ,
             address[] memory modifiedTargets,
             uint256[] memory modifiedValues,
             bytes[] memory modifiedCalldatas,
@@ -477,11 +484,7 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         ) = hooks.beforeQueue(address(this), targets, values, calldatas, descriptionHash);
 
         // Use modified parameters if provided by the hook
-        if (beforeHookSelector == IHooks.beforeQueue.selector && beforeProposalId != 0) {
-            return (modifiedTargets, modifiedValues, modifiedCalldatas, modifiedDescriptionHash);
-        }
-
-        return (targets, values, calldatas, descriptionHash);
+        return (modifiedTargets, modifiedValues, modifiedCalldatas, modifiedDescriptionHash);
     }
 
     // Helper function to process the afterQueue hook
