@@ -100,8 +100,8 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
      * @param _newAdmin The new admin address.
      */
     function setAdmin(address _newAdmin) external onlyGovernance {
-        admin = _newAdmin;
         emit AdminSet(admin, _newAdmin);
+        admin = _newAdmin;
     }
 
     /**
@@ -109,8 +109,8 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
      * @param _newManager The new manager address.
      */
     function setManager(address _newManager) external onlyGovernance {
-        manager = _newManager;
         emit ManagerSet(manager, _newManager);
+        manager = _newManager;
     }
 
     /**
