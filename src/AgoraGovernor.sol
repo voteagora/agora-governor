@@ -420,10 +420,11 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         bytes memory params
     ) internal virtual override(Governor) returns (uint256 weight) {
         _validateStateBitmap(proposalId, _encodeStateBitmap(ProposalState.Active));
+        bool hasUpdated = false;
 
-        weight = hooks.beforeVote(proposalId, account, support, reason, params);
+        (hasUpdated, weight) = hooks.beforeVote(proposalId, account, support, reason, params);
 
-        if (weight == 0) {
+        if (hasUpdated) {
             weight = _getVotes(account, proposalSnapshot(proposalId), params);
         }
 

@@ -188,8 +188,7 @@ contract Middleware is IMiddleware, BaseHook {
         uint8 support,
         string memory reason,
         bytes memory params
-    ) external override returns (bytes4, uint256) {
-        uint256 weight = 0;
+    ) external override returns (bytes4, bool hasUpdated, uint256 weight) {
         uint8 proposalTypeId = _proposalTypeId[proposalId];
 
         address module = _proposalTypes[proposalTypeId].module;
@@ -197,10 +196,10 @@ contract Middleware is IMiddleware, BaseHook {
 
         // Route hook to voting module
         if (module != address(0) && hooks.beforeVote) {
-            (,weight) = BaseHook(module).beforeVote(msg.sender, proposalId, account, support, reason, params);
+            (,hasUpdated, weight) = BaseHook(module).beforeVote(msg.sender, proposalId, account, support, reason, params);
         }
 
-        return (this.beforeVote.selector, weight);
+        return (this.beforeVote.selector, hasUpdated, weight);
     }
 
     function afterVote(

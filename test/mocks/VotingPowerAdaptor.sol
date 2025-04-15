@@ -24,13 +24,13 @@ contract VotingPowerAdaptor is BaseHook {
         external
         virtual
         override
-        returns (bytes4, uint256)
+        returns (bytes4, bool, uint256)
     {
         // Get the proposal snapshot timepoint.
         uint256 snapshot = governor.proposalSnapshot(proposalId);
 
         // Return the voting power of the user at the snapshot timepoint.
-        return (this.beforeVote.selector, token.getLockedVotingPower(voter, snapshot));
+        return (this.beforeVote.selector, true, token.getLockedVotingPower(voter, snapshot));
     }
 
     /// @dev Set `beforeVote` permission to get the call before applying a user's vote.

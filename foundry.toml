@@ -12,6 +12,7 @@ solc_version    = '0.8.28'                              # The solc version to us
 additional_compiler_profiles = [ { name = "via-ir", via_ir = true } ]
 compilation_restrictions = [
     { paths = "src/Middleware.sol", via_ir = true },
+    { paths = "src/modules/MultiToken.sol", via_ir = true }
 ]
 
 [fuzz]
