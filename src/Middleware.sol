@@ -87,13 +87,13 @@ contract Middleware is IMiddleware, BaseHook {
     //////////////////////////////////////////////////////////////*/
 
     // @dev Currently a no-op operation, leaving these hooks here in case there are a use case where someone would like to use Hooks without
-    // the middleware contract. This method could be used to set default proposal types or configure make configuration changes to the governor.
+    // the middleware contract. This method could be used to set default proposal types or make configuration changes to the governor.
     function beforeInitialize(address sender) external override returns (bytes4) {
         return this.beforeInitialize.selector;
     }
 
     // @dev Currently a no-op operation, leaving these hooks here in case there are a use case where someone would like to use Hooks without
-    // the middleware contract. This method could be used to set default proposal types or configure make configuration changes to the governor.
+    // the middleware contract. This method could be used to set default proposal types or make configuration changes to the governor.
     function afterInitialize(address sender) external override returns (bytes4) {
         return this.afterInitialize.selector;
     }
@@ -158,7 +158,7 @@ contract Middleware is IMiddleware, BaseHook {
                     * _proposalTypes[proposalTypeId].quorum
             ) / governor.quorumDenominator();
         }
-
+        // Return the quorum from the proposal type
         return (this.beforeQuorumCalculation.selector, calculatedQuorum);
     }
 
