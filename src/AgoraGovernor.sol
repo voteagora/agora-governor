@@ -35,8 +35,6 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
 
     error GovernorUnauthorizedCancel();
     error HookAddressNotValid();
-    error ProposalNotSuccessful();
-    error ProposalNotQueued();
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
@@ -155,8 +153,7 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
 
         if (proposalId != beforeProposalId) {
             if (_tempTargets.length != 0 && _tempValues.length != 0 && _tempCalldatas.length != 0) {
-                _queueOperations(proposalId, _tempTargets, _tempValues, _tempCalldatas, descriptionHash);
-                return proposalId;
+                etaSeconds = _queueOperations(proposalId, _tempTargets, _tempValues, _tempCalldatas, descriptionHash);
             }
         }
 
@@ -200,7 +197,6 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         if (proposalId != beforeExecuteProposalId) {
             if (_tempTargets.length != 0 && _tempValues.length != 0 && _tempCalldatas.length != 0) {
                 _executeOperations(proposalId, _tempTargets, _tempValues, _tempCalldatas, descriptionHash);
-                return proposalId;
             }
         }
 
@@ -224,6 +220,8 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         }
 
         emit ProposalExecuted(proposalId);
+
+        hooks.afterExecute(proposalId, targets, values, calldatas, descriptionHash);
 
         return proposalId;
     }
