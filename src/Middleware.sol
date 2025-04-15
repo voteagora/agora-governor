@@ -561,6 +561,7 @@ contract Middleware is IMiddleware, BaseHook {
      */
     function disableScope(uint8 proposalTypeId, bytes24 scopeKey, uint8 idx) external override onlyAdminOrTimelock {
         _assignedScopes[proposalTypeId][scopeKey][idx].exists = false;
+        _scopeExists[scopeKey] = false;
         emit ScopeDisabled(proposalTypeId, scopeKey);
     }
 
