@@ -123,11 +123,9 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         bytes[] memory calldatas,
         string memory description
     ) public virtual override returns (uint256 proposalId) {
-        proposalId = hooks.beforePropose(targets, values, calldatas, description);
+        hooks.beforePropose(targets, values, calldatas, description);
 
-        if (proposalId == 0) {
-            proposalId = super.propose(targets, values, calldatas, description);
-        }
+        proposalId = super.propose(targets, values, calldatas, description);
 
         hooks.afterPropose(proposalId, targets, values, calldatas, description);
     }
@@ -200,16 +198,13 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
 
         if (proposalId != beforeExecuteProposalId) {
             if (_tempTargets.length != 0 && _tempValues.length != 0 && _tempCalldatas.length != 0) {
-                // Check that the beforeExecute hook does not modify the calldata that has already been queued for a proposalId
-                bytes memory _queueHook = _modifiedExecutions[proposalId];
-                bytes memory _executeHook = abi.encode(_tempValues, _tempTargets, _tempCalldatas);
-                if (!(_queueHook.length == _executeHook.length && keccak256(_queueHook) == keccak256(_executeHook))) revert InvalidModifiedExecution();
+                if (_modifiedExecutions[proposalId].length == 0) revert InvalidModifiedExecution();
+                (_tempTargets, _tempValues, _tempCalldatas) = abi.decode(_modifiedExecutions[proposalId], (address[], uint256[], bytes[]));
 
                 _executeOperations(proposalId, _tempTargets, _tempValues, _tempCalldatas, descriptionHash);
             }
         }
 
-        _executeOperations(proposalId, targets, values, calldatas, descriptionHash);
 
         // mark as executed before calls to avoid reentrancy
         _proposals[proposalId].executed = true;
@@ -222,6 +217,8 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
                 }
             }
         }
+
+        _executeOperations(proposalId, targets, values, calldatas, descriptionHash);
 
         // after execute: cleanup governance call queue.
         if (_executor() != address(this) && !_governanceCall.empty()) {
@@ -430,7 +427,7 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
 
         (hasUpdated, weight) = hooks.beforeVote(proposalId, account, support, reason, params);
 
-        if (hasUpdated) {
+        if (!hasUpdated) {
             weight = _getVotes(account, proposalSnapshot(proposalId), params);
         }
 

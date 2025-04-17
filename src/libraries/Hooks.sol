@@ -265,7 +265,7 @@ library Hooks {
             // and uint256 (32 bytes) weight value
             if (result.length != 96) revert InvalidHookResponse();
             assembly ("memory-safe") {
-                hasUpdated := eq(1, mload(add(result, 0x20))) // first word is a bool
+                hasUpdated := eq(1, mload(add(result, 0x40))) // first word is a bool
                 returnedWeight := mload(add(result, 0x60)) // second word is a uint256
             }
         }
