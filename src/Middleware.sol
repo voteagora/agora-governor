@@ -105,6 +105,7 @@ contract Middleware is IMiddleware, BaseHook {
         returns (bytes4, bool voteSucceeded)
     {
         uint8 proposalTypeId = _proposalTypeId[proposalId];
+        _proposalTypeExists(proposalTypeId);
 
         address module = _proposalTypes[proposalTypeId].module;
         Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
@@ -124,6 +125,7 @@ contract Middleware is IMiddleware, BaseHook {
         returns (bytes4)
     {
         uint8 proposalTypeId = _proposalTypeId[proposalId];
+        _proposalTypeExists(proposalTypeId);
 
         address module = _proposalTypes[proposalTypeId].module;
         Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
@@ -144,6 +146,7 @@ contract Middleware is IMiddleware, BaseHook {
     {
         uint256 calculatedQuorum;
         uint8 proposalTypeId = _proposalTypeId[proposalId];
+        _proposalTypeExists(proposalTypeId);
 
         address module = _proposalTypes[proposalTypeId].module;
         Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
@@ -169,6 +172,7 @@ contract Middleware is IMiddleware, BaseHook {
         returns (bytes4)
     {
         uint8 proposalTypeId = _proposalTypeId[proposalId];
+        _proposalTypeExists(proposalTypeId);
 
         address module = _proposalTypes[proposalTypeId].module;
         Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
@@ -190,6 +194,7 @@ contract Middleware is IMiddleware, BaseHook {
         bytes memory params
     ) external override returns (bytes4, bool hasUpdated, uint256 weight) {
         uint8 proposalTypeId = _proposalTypeId[proposalId];
+        _proposalTypeExists(proposalTypeId);
 
         address module = _proposalTypes[proposalTypeId].module;
         Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
@@ -212,6 +217,7 @@ contract Middleware is IMiddleware, BaseHook {
         bytes memory params
     ) external override returns (bytes4) {
         uint8 proposalTypeId = _proposalTypeId[proposalId];
+        _proposalTypeExists(proposalTypeId);
 
         address module = _proposalTypes[proposalTypeId].module;
         Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
@@ -233,12 +239,7 @@ contract Middleware is IMiddleware, BaseHook {
     ) external virtual override returns (bytes4, uint256) {
         uint256 proposalId;
         uint8 proposalTypeId = description._parseProposalTypeId();
-
-        // Revert if `proposalType` is unset
-        if (bytes(_proposalTypes[proposalTypeId].name).length == 0) {
-            revert InvalidProposalType(proposalTypeId);
-        }
-
+        _proposalTypeExists(proposalTypeId);
 
         address module = _proposalTypes[proposalTypeId].module;
         Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
@@ -267,6 +268,7 @@ contract Middleware is IMiddleware, BaseHook {
         string memory description
     ) external virtual override returns (bytes4) {
         uint8 proposalTypeId = _proposalTypeId[proposalId];
+        _proposalTypeExists(proposalTypeId);
 
         address module = _proposalTypes[proposalTypeId].module;
         Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
@@ -288,6 +290,7 @@ contract Middleware is IMiddleware, BaseHook {
     ) external override returns (bytes4, uint256) {
         uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
         uint8 proposalTypeId = _proposalTypeId[proposalId];
+        _proposalTypeExists(proposalTypeId);
 
         address module = _proposalTypes[proposalTypeId].module;
         Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
@@ -308,6 +311,7 @@ contract Middleware is IMiddleware, BaseHook {
         bytes32 descriptionHash
     ) external override returns (bytes4) {
         uint8 proposalTypeId = _proposalTypeId[proposalId];
+        _proposalTypeExists(proposalTypeId);
 
         address module = _proposalTypes[proposalTypeId].module;
         Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
@@ -329,6 +333,7 @@ contract Middleware is IMiddleware, BaseHook {
     ) external override returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32) {
         uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
         uint8 proposalTypeId = _proposalTypeId[proposalId];
+        _proposalTypeExists(proposalTypeId);
 
         address module = _proposalTypes[proposalTypeId].module;
         Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
@@ -350,6 +355,7 @@ contract Middleware is IMiddleware, BaseHook {
         bytes32 descriptionHash
     ) external override returns (bytes4) {
         uint8 proposalTypeId = _proposalTypeId[proposalId];
+        _proposalTypeExists(proposalTypeId);
 
         address module = _proposalTypes[proposalTypeId].module;
         Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
@@ -371,6 +377,7 @@ contract Middleware is IMiddleware, BaseHook {
     ) external override returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32) {
         uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
         uint8 proposalTypeId = _proposalTypeId[proposalId];
+        _proposalTypeExists(proposalTypeId);
 
         address module = _proposalTypes[proposalTypeId].module;
         Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
@@ -392,6 +399,7 @@ contract Middleware is IMiddleware, BaseHook {
         bytes32 descriptionHash
     ) external override returns (bytes4) {
         uint8 proposalTypeId = _proposalTypeId[proposalId];
+        _proposalTypeExists(proposalTypeId);
 
         address module = _proposalTypes[proposalTypeId].module;
         Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
@@ -639,4 +647,12 @@ contract Middleware is IMiddleware, BaseHook {
             result := or(left, shr(160, selector))
         }
     }
+
+    function _proposalTypeExists(uint8 proposalTypeId) internal view {
+        // Revert if `proposalType` is unset
+        if (!_proposalTypes[proposalTypeId].exists) {
+            revert InvalidProposalType(proposalTypeId);
+        }
+    }
+
 }
