@@ -129,7 +129,7 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         if (targets.length != values.length || targets.length != calldatas.length || targets.length == 0) {
             revert IGovernor.GovernorInvalidProposalLength(targets.length, calldatas.length, values.length);
         }
-        
+
         hooks.beforePropose(targets, values, calldatas, description);
 
         proposalId = super.propose(targets, values, calldatas, description);
@@ -165,7 +165,7 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
                 etaSeconds = _queueOperations(proposalId, _tempTargets, _tempValues, _tempCalldatas, descriptionHash);
             }
         }
-        
+
         etaSeconds = _queueOperations(proposalId, targets, values, calldatas, descriptionHash);
 
         if (etaSeconds != 0) {
