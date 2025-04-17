@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.29;
 
 import {Hooks} from "src/libraries/Hooks.sol";
 import {BaseHook} from "src/hooks/BaseHook.sol";
@@ -50,7 +50,7 @@ struct Proposal {
 }
 
 /// @custom:security-contact security@voteagora.com
-contract ApprovalVotingModule is BaseHook {
+contract ApprovalVoting is BaseHook {
     /*//////////////////////////////////////////////////////////////
                                  ERRORS
     //////////////////////////////////////////////////////////////*/
@@ -76,6 +76,16 @@ contract ApprovalVotingModule is BaseHook {
 
     mapping(uint256 proposalId => Proposal) public proposals;
     mapping(uint256 proposalId => mapping(address account => EnumerableSet.UintSet votes)) private accountVotesSet;
+
+    /*//////////////////////////////////////////////////////////////
+                               MODIFIERS
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Reverts if the sender of the hook is not the governor
+    modifier onlyGovernor(address sender) {
+        if (sender != address(governor)) revert NotGovernor();
+        _;
+    }
 
     /*//////////////////////////////////////////////////////////////
                                CONSTRUCTOR
@@ -108,12 +118,6 @@ contract ApprovalVotingModule is BaseHook {
         });
     }
 
-    /// @notice Reverts if the sender of the hook is not the governor
-
-    function _onlyGovernor(address sender) internal view {
-        if (sender != address(governor)) revert NotGovernor();
-    }
-
     /*//////////////////////////////////////////////////////////////
                                  HOOKS
     //////////////////////////////////////////////////////////////*/
@@ -125,9 +129,7 @@ contract ApprovalVotingModule is BaseHook {
         uint256[] memory, /*values*/
         bytes[] memory, /*calldatas*/
         string memory description
-    ) external virtual override returns (bytes4) {
-        _onlyGovernor(sender);
-
+    ) external virtual override onlyGovernor(sender) returns (bytes4) {
         if (proposals[proposalId].governor != address(0)) {
             revert ExistingProposal();
         }
@@ -184,8 +186,7 @@ contract ApprovalVotingModule is BaseHook {
         uint8 support,
         string memory, /*reason*/
         bytes memory params
-    ) external override returns (bytes4) {
-        _onlyGovernor(sender);
+    ) external override onlyGovernor(sender) returns (bytes4) {
         Proposal memory proposal = proposals[proposalId];
 
         if (support == uint8(VoteType.For)) {
@@ -217,10 +218,9 @@ contract ApprovalVotingModule is BaseHook {
         override
         returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)
     {
-        _onlyGovernor(sender);
         uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
 
-        (targets, values, calldatas) = _formatExecuteParams(proposalId);
+        (targets, values, calldatas) = formatExecuteParams(proposalId);
         return (this.beforeQueue.selector, proposalId, targets, values, calldatas, descriptionHash);
     }
 
@@ -234,12 +234,12 @@ contract ApprovalVotingModule is BaseHook {
         external
         virtual
         override
+        onlyGovernor(sender)
         returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)
     {
-        _onlyGovernor(sender);
         uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
 
-        (targets, values, calldatas) = _formatExecuteParams(proposalId);
+        (targets, values, calldatas) = formatExecuteParams(proposalId);
         return (this.beforeExecute.selector, proposalId, targets, values, calldatas, descriptionHash);
     }
 
@@ -251,19 +251,18 @@ contract ApprovalVotingModule is BaseHook {
      * @return values The values of the proposal.
      * @return calldatas The calldatas of the proposal.
      */
-    function _formatExecuteParams(uint256 proposalId)
+    function formatExecuteParams(uint256 proposalId)
         public
+        onlyGovernor(msg.sender)
         returns (address[] memory targets, uint256[] memory values, bytes[] memory calldatas)
     {
-        _onlyGovernor(msg.sender);
-
         ProposalOption[] memory options = proposals[proposalId].options;
         ProposalSettings memory settings = proposals[proposalId].settings;
 
         {
             // If budgetToken is not ETH
             if (settings.budgetToken != address(0)) {
-                // Save initBalance to be used as comparison in `_afterExecute`
+                // Save initBalance to be used as comparison in `checkBudget`
                 proposals[proposalId].initBalance = IERC20(settings.budgetToken).balanceOf(governor.timelock());
             }
         }
@@ -284,10 +283,10 @@ contract ApprovalVotingModule is BaseHook {
             bool budgetExceeded = false;
 
             // Flatten `options` by filling `executeParams` until budgetAmount is exceeded
-            for (uint256 i; i < succeededOptionsLength;) {
+            for (uint256 i; i < succeededOptionsLength; ++i) {
                 option = sortedOptions[i];
 
-                for (n = 0; n < option.targets.length;) {
+                for (n = 0; n < option.targets.length; n++) {
                     // If `budgetToken` is ETH and value is not zero, add transaction value to `totalValue`
                     if (settings.budgetToken == address(0) && option.values[n] != 0) {
                         if (totalValue + option.values[n] > settings.budgetAmount) {
@@ -299,12 +298,8 @@ contract ApprovalVotingModule is BaseHook {
                         }
                     }
 
-                    unchecked {
-                        executeParams[executeParamsLength + n] =
-                            ExecuteParams(option.targets[n], option.values[n], option.calldatas[n]);
-
-                        ++n;
-                    }
+                    executeParams[executeParamsLength + n] =
+                        ExecuteParams(option.targets[n], option.values[n], option.calldatas[n]);
                 }
 
                 // If `budgetAmount` for ETH is exceeded, skip option.
@@ -318,16 +313,12 @@ contract ApprovalVotingModule is BaseHook {
                     }
                 }
 
-                unchecked {
-                    executeParamsLength += n;
-
-                    ++i;
-                }
+                executeParamsLength += n;
             }
         }
 
         unchecked {
-            // Increase by one to account for additional `_afterExecute` call
+            // Increase by one to account for additional `checkBudget` call
             uint256 effectiveParamsLength = executeParamsLength + 1;
 
             // Init params lengths
@@ -337,20 +328,16 @@ contract ApprovalVotingModule is BaseHook {
         }
 
         // Set n `targets`, `values` and `calldatas`
-        for (uint256 i; i < executeParamsLength;) {
+        for (uint256 i; i < executeParamsLength; ++i) {
             targets[i] = executeParams[i].targets;
             values[i] = executeParams[i].values;
             calldatas[i] = executeParams[i].calldatas;
-
-            unchecked {
-                ++i;
-            }
         }
 
-        // Set `_afterExecute` as last call
+        // Set `checkBudget` as last call
         targets[executeParamsLength] = address(this);
         values[executeParamsLength] = 0;
-        calldatas[executeParamsLength] = abi.encodeCall(this._afterExecute, (proposalId, totalValue));
+        calldatas[executeParamsLength] = abi.encodeCall(this.checkBudget, (proposalId, totalValue));
     }
 
     /**
@@ -360,7 +347,7 @@ contract ApprovalVotingModule is BaseHook {
      * @param proposalId The id of the proposal.
      * @param budgetTokensSpent The total amount of tokens that can be spent.
      */
-    function _afterExecute(uint256 proposalId, uint256 budgetTokensSpent) public view {
+    function checkBudget(uint256 proposalId, uint256 budgetTokensSpent) public view {
         ProposalSettings memory settings = proposals[proposalId].settings;
 
         if (settings.budgetToken != address(0) && settings.budgetAmount > 0) {
@@ -403,8 +390,13 @@ contract ApprovalVotingModule is BaseHook {
      *
      * @param proposalId The id of the proposal.
      */
-    function beforeVoteSucceeded(address sender, uint256 proposalId) external view override returns (bytes4, bool) {
-        _onlyGovernor(sender);
+    function beforeVoteSucceeded(address sender, uint256 proposalId)
+        external
+        view
+        override
+        onlyGovernor(sender)
+        returns (bytes4, bool)
+    {
         Proposal memory proposal = proposals[proposalId];
 
         ProposalOption[] memory options = proposal.options;
@@ -483,7 +475,7 @@ contract ApprovalVotingModule is BaseHook {
     ) internal {
         uint256 option;
         uint256 prevOption;
-        for (uint256 i; i < totalOptions;) {
+        for (uint256 i; i < totalOptions; ++i) {
             option = options[i];
 
             accountVotesSet[proposalId][account].add(option);
@@ -497,10 +489,6 @@ contract ApprovalVotingModule is BaseHook {
 
             /// @dev Revert if `option` is out of bounds
             proposals[proposalId].optionVotes[option] += weight;
-
-            unchecked {
-                ++i;
-            }
         }
 
         if (accountVotesSet[proposalId][account].length() > maxApprovals) {

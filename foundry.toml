@@ -7,7 +7,7 @@ optimizer_runs  = 200                                   # The number of optimize
 fs_permissions  = [{ access = "read", path = "./"}]     # Gives permission to read files for enviroment files.
 fail_on_revert  = false                                 # Not fail the test if the contract reverts
 evm_version     = 'cancun'                              # The EVM version to use
-solc_version    = '0.8.28'                              # The solc version to use
+solc_version    = '0.8.29'                              # The solc version to use
 
 additional_compiler_profiles = [ { name = "via-ir", via_ir = true } ]
 compilation_restrictions = [

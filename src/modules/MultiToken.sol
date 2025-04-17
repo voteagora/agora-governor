@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.29;
 
 import {Hooks} from "src/libraries/Hooks.sol";
 import {BaseHook} from "src/hooks/BaseHook.sol";
@@ -81,7 +81,7 @@ contract MultiTokenModule is BaseHook, Ownable {
             uint256 weight = abi.decode(result, (uint256)) * uint64(Packing.extract_32_8(value, 24)) / PERCENT_DIVISOR;
             totalWeight += weight;
         }
-
+        
         return (this.beforeVote.selector, true, totalWeight);
     }
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.29;
 
 import {Hooks} from "src/libraries/Hooks.sol";
 import {BaseHook} from "src/hooks/BaseHook.sol";
@@ -27,12 +27,11 @@ struct Proposal {
 }
 
 /// @custom:security-contact security@voteagora.com
-contract OptimisticModule is BaseHook {
+contract Optimistic is BaseHook {
     /*//////////////////////////////////////////////////////////////
                                  ERRORS
     //////////////////////////////////////////////////////////////*/
 
-    error WrongProposalId();
     error NotOptimisticProposalType();
     error ExistingProposal();
     error InvalidParams();

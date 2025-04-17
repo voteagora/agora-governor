@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.29;
 
 import {IMiddleware} from "src/interfaces/IMiddleware.sol";
 import {AgoraGovernor} from "src/AgoraGovernor.sol";
@@ -12,7 +12,7 @@ import {Bytes} from "@openzeppelin/contracts/utils/Bytes.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Validator} from "src/libraries/Validator.sol";
-import {ApprovalVotingModule} from "src/modules/ApprovalVoting.sol";
+import {ApprovalVoting} from "src/modules/ApprovalVoting.sol";
 
 /// @title Middleware
 /// @notice Middleware contract to handle hooks interface
@@ -250,6 +250,7 @@ contract Middleware is IMiddleware, BaseHook {
             (, proposalId) = BaseHook(module).beforePropose(msg.sender, targets, values, calldatas, proposalData);
         }
 
+        // `this` is required to convert `calldatas` from memory to calldata
         this.validateProposalData(targets, calldatas, proposalTypeId);
 
         proposalId = governor.hashProposal(targets, values, calldatas, keccak256(bytes(description)));
@@ -378,6 +379,7 @@ contract Middleware is IMiddleware, BaseHook {
     ) external override returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32) {
         uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
         uint8 proposalTypeId = _proposalTypeId[proposalId];
+        
         _proposalTypeExists(proposalTypeId);
 
         address module = _proposalTypes[proposalTypeId].module;
@@ -541,7 +543,6 @@ contract Middleware is IMiddleware, BaseHook {
         if (scope.parameters.length != scope.comparators.length) {
             revert InvalidParameterConditions();
         }
-        bytes24 scopeKey = scope.key;
 
         _scopeExists[scope.key] = true;
         _assignedScopes[proposalTypeId][scope.key].push(scope);
