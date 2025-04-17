@@ -162,7 +162,7 @@ contract ApprovalVoting is BaseHook {
             }
         }
 
-        proposals[proposalId].governor = msg.sender;
+        proposals[proposalId].governor = sender;
         proposals[proposalId].settings = proposalSettings;
         proposals[proposalId].optionVotes = new uint128[](optionsLength);
 
@@ -193,7 +193,9 @@ contract ApprovalVoting is BaseHook {
             if (weight != 0) {
                 uint256[] memory options = _decodeVoteParams(params);
                 uint256 totalOptions = options.length;
-                if (totalOptions == 0) revert InvalidParams();
+                if (totalOptions == 0 || totalOptions != proposals[proposalId].optionVotes.length) {
+                    revert InvalidParams();
+                }
 
                 _recordVote(
                     proposalId, account, weight.toUint128(), options, totalOptions, proposal.settings.maxApprovals
@@ -290,8 +292,10 @@ contract ApprovalVoting is BaseHook {
                         if (totalValue + option.values[n] > settings.budgetAmount) {
                             budgetExceeded = true;
                             break; // break inner loop
+                        } else {
+                            // Add to total value only if the new total vaue would be below budget
+                            totalValue += option.values[n];
                         }
-                        totalValue += option.values[n];
                     }
 
                     executeParams[executeParamsLength + n] =

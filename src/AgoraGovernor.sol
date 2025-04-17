@@ -3,7 +3,9 @@ pragma solidity ^0.8.29;
 
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 import {Governor} from "@openzeppelin/contracts/governance/Governor.sol";
+import {DoubleEndedQueue} from "@openzeppelin/contracts/utils/structs/DoubleEndedQueue.sol";
 import {GovernorCountingSimple} from "@openzeppelin/contracts/governance/extensions/GovernorCountingSimple.sol";
 import {GovernorVotesQuorumFraction} from
     "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
@@ -18,6 +20,7 @@ import {Hooks} from "src/libraries/Hooks.sol";
 /// @notice Agora Governor contract
 /// @custom:security-contact security@voteagora.com
 contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumFraction, GovernorSettings {
+    using DoubleEndedQueue for DoubleEndedQueue.Bytes32Deque;
     using Hooks for IHooks;
 
     /*//////////////////////////////////////////////////////////////
@@ -34,6 +37,7 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
 
     error GovernorUnauthorizedCancel();
     error HookAddressNotValid();
+    error InvalidModifiedExecution();
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
@@ -53,6 +57,8 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
 
     /// @notice The timelock ids of the governor
     mapping(uint256 proposalId => bytes32) internal _timelockIds;
+
+    mapping(uint256 proposalId => bytes) internal _modifiedExecutions;
 
     /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
@@ -80,10 +86,11 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         // This call is made after the inhereted constructors have been called
         _hooks.beforeInitialize();
 
-        admin = _admin;
-        manager = _manager;
-        hooks = _hooks;
+        _setAdmin(_admin);
+        _setManager(_manager);
         _updateTimelock(_timelockAddress);
+
+        hooks = _hooks;
 
         _hooks.afterInitialize();
     }
@@ -97,8 +104,8 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
      * @param _newAdmin The new admin address.
      */
     function setAdmin(address _newAdmin) external onlyGovernance {
-        admin = _newAdmin;
         emit AdminSet(admin, _newAdmin);
+        admin = _newAdmin;
     }
 
     /**
@@ -106,8 +113,8 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
      * @param _newManager The new manager address.
      */
     function setManager(address _newManager) external onlyGovernance {
-        manager = _newManager;
         emit ManagerSet(manager, _newManager);
+        manager = _newManager;
     }
 
     /**
@@ -119,11 +126,13 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         bytes[] memory calldatas,
         string memory description
     ) public virtual override returns (uint256 proposalId) {
-        proposalId = hooks.beforePropose(targets, values, calldatas, description);
-
-        if (proposalId == 0) {
-            proposalId = super.propose(targets, values, calldatas, description);
+        if (targets.length != values.length || targets.length != calldatas.length || targets.length == 0) {
+            revert IGovernor.GovernorInvalidProposalLength(targets.length, calldatas.length, values.length);
         }
+        
+        hooks.beforePropose(targets, values, calldatas, description);
+
+        proposalId = super.propose(targets, values, calldatas, description);
 
         hooks.afterPropose(proposalId, targets, values, calldatas, description);
     }
@@ -137,19 +146,33 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         override
         returns (uint256)
     {
+        uint256 proposalId = getProposalId(targets, values, calldatas, descriptionHash);
+
+        uint48 etaSeconds;
+
+        _validateStateBitmap(proposalId, _encodeStateBitmap(ProposalState.Succeeded));
+
         (
-            uint256 proposalId,
+            uint256 beforeProposalId,
             address[] memory _tempTargets,
             uint256[] memory _tempValues,
             bytes[] memory _tempCalldatas,
         ) = hooks.beforeQueue(targets, values, calldatas, descriptionHash);
 
-        if (proposalId == 0) {
-            proposalId = super.queue(targets, values, calldatas, descriptionHash);
-        } else {
+        if (proposalId != beforeProposalId) {
             if (_tempTargets.length != 0 && _tempValues.length != 0 && _tempCalldatas.length != 0) {
-                _queueOperations(proposalId, _tempTargets, _tempValues, _tempCalldatas, descriptionHash);
+                _modifiedExecutions[proposalId] = abi.encode(_tempValues, _tempTargets, _tempCalldatas);
+                etaSeconds = _queueOperations(proposalId, _tempTargets, _tempValues, _tempCalldatas, descriptionHash);
             }
+        }
+        
+        etaSeconds = _queueOperations(proposalId, targets, values, calldatas, descriptionHash);
+
+        if (etaSeconds != 0) {
+            _proposals[proposalId].etaSeconds = etaSeconds;
+            emit ProposalQueued(proposalId, etaSeconds);
+        } else {
+            revert GovernorQueueNotImplemented();
         }
 
         hooks.afterQueue(proposalId, targets, values, calldatas, descriptionHash);
@@ -166,20 +189,49 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         bytes[] memory calldatas,
         bytes32 descriptionHash
     ) public payable virtual override returns (uint256) {
+        uint256 proposalId = getProposalId(targets, values, calldatas, descriptionHash);
+
+        _validateStateBitmap(
+            proposalId, _encodeStateBitmap(ProposalState.Succeeded) | _encodeStateBitmap(ProposalState.Queued)
+        );
+
         (
-            uint256 proposalId,
+            uint256 beforeExecuteProposalId,
             address[] memory _tempTargets,
             uint256[] memory _tempValues,
             bytes[] memory _tempCalldatas,
         ) = hooks.beforeExecute(targets, values, calldatas, descriptionHash);
 
-        if (proposalId == 0) {
-            proposalId = super.execute(targets, values, calldatas, descriptionHash);
-        } else {
+        if (proposalId != beforeExecuteProposalId) {
             if (_tempTargets.length != 0 && _tempValues.length != 0 && _tempCalldatas.length != 0) {
+                if (_modifiedExecutions[proposalId].length == 0) revert InvalidModifiedExecution();
+                (_tempTargets, _tempValues, _tempCalldatas) =
+                    abi.decode(_modifiedExecutions[proposalId], (address[], uint256[], bytes[]));
+
                 _executeOperations(proposalId, _tempTargets, _tempValues, _tempCalldatas, descriptionHash);
             }
         }
+
+        // mark as executed before calls to avoid reentrancy
+        _proposals[proposalId].executed = true;
+
+        // before execute: register governance call in queue.
+        if (_executor() != address(this)) {
+            for (uint256 i = 0; i < targets.length; ++i) {
+                if (targets[i] == address(this)) {
+                    _governanceCall.pushBack(keccak256(calldatas[i]));
+                }
+            }
+        }
+
+        _executeOperations(proposalId, targets, values, calldatas, descriptionHash);
+
+        // after execute: cleanup governance call queue.
+        if (_executor() != address(this) && !_governanceCall.empty()) {
+            _governanceCall.clear();
+        }
+
+        emit ProposalExecuted(proposalId);
 
         hooks.afterExecute(proposalId, targets, values, calldatas, descriptionHash);
 
@@ -195,19 +247,17 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         bytes[] memory calldatas,
         bytes32 descriptionHash
     ) public override returns (uint256 proposalId) {
-        proposalId = hooks.beforeCancel(targets, values, calldatas, descriptionHash);
-
-        if (proposalId == 0) {
-            // The proposalId will be recomputed in the `_cancel` call further down. However we need the value before we
-            // do the internal call, because we need to check the proposal state BEFORE the internal `_cancel` call
-            // changes it. The `hashProposal` duplication has a cost that is limited, and that we accept.
-            proposalId = hashProposal(targets, values, calldatas, descriptionHash);
-        }
-
+        uint256 proposalId = getProposalId(targets, values, calldatas, descriptionHash);
         address sender = _msgSender();
         // Allow the proposer, admin, or executor (timelock) to cancel.
         if (sender != proposalProposer(proposalId) && sender != admin && sender != _executor()) {
             revert GovernorUnauthorizedCancel();
+        }
+
+        hooks.beforeCancel(targets, values, calldatas, descriptionHash);
+
+        if (_modifiedExecutions[proposalId].length != 0) {
+            (targets, values, calldatas) = abi.decode(_modifiedExecutions[proposalId], (address[], uint256[], bytes[]));
         }
 
         // Proposals can only be cancelled in any state other than Canceled, Expired, or Executed.
@@ -242,6 +292,8 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         }
 
         hooks.afterQuorumCalculation(proposalId, _quorum);
+
+        return _quorum;
     }
 
     /**
@@ -299,6 +351,16 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
     /*//////////////////////////////////////////////////////////////
                             INTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////*/
+
+    function _setAdmin(address _newAdmin) internal {
+        admin = _newAdmin;
+        emit AdminSet(admin, _newAdmin);
+    }
+
+    function _setManager(address _newManager) internal {
+        manager = _newManager;
+        emit ManagerSet(manager, _newManager);
+    }
 
     function _queueOperations(
         uint256 proposalId,
@@ -378,10 +440,11 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         returns (uint256 weight)
     {
         _validateStateBitmap(proposalId, _encodeStateBitmap(ProposalState.Active));
+        bool hasUpdated = false;
 
-        weight = hooks.beforeVote(proposalId, account, support, reason, params);
+        (hasUpdated, weight) = hooks.beforeVote(proposalId, account, support, reason, params);
 
-        if (weight == 0) {
+        if (!hasUpdated) {
             weight = _getVotes(account, proposalSnapshot(proposalId), params);
         }
 

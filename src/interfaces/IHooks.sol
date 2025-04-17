@@ -34,7 +34,7 @@ interface IHooks {
         uint8 support,
         string memory reason,
         bytes memory params
-    ) external returns (bytes4, uint256);
+    ) external returns (bytes4, bool, uint256);
 
     /// @notice The hook called after a vote is cast
     function afterVote(

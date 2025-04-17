@@ -54,7 +54,7 @@ contract MultiTokenModule is BaseHook, Ownable {
     function beforeVote(address, uint256 proposalId, address account, uint8, string memory, bytes memory)
         external
         override
-        returns (bytes4, uint256)
+        returns (bytes4, bool, uint256)
     {
         if (msg.sender != address(governor)) revert NotGovernor();
 
@@ -81,8 +81,8 @@ contract MultiTokenModule is BaseHook, Ownable {
             uint256 weight = abi.decode(result, (uint256)) * uint64(Packing.extract_32_8(value, 24)) / PERCENT_DIVISOR;
             totalWeight += weight;
         }
-
-        return (this.beforeVote.selector, totalWeight);
+        
+        return (this.beforeVote.selector, true, totalWeight);
     }
 
     /// @notice Add a token to the module

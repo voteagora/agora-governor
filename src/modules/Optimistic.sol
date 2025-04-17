@@ -36,6 +36,7 @@ contract Optimistic is BaseHook {
     error ExistingProposal();
     error InvalidParams();
     error NotGovernor();
+    error InvalidMiddleware();
 
     /*//////////////////////////////////////////////////////////////
                            IMMUTABLE STORAGE
@@ -55,6 +56,7 @@ contract Optimistic is BaseHook {
     //////////////////////////////////////////////////////////////*/
 
     constructor(address payable _governor, address _middleware) BaseHook(_governor) {
+        if (_middleware == address(0)) revert InvalidMiddleware();
         middleware = IMiddleware(_middleware);
     }
 
@@ -121,7 +123,7 @@ contract Optimistic is BaseHook {
             revert InvalidParams();
         }
 
-        proposals[proposalId].governor = msg.sender;
+        proposals[proposalId].governor = sender;
         proposals[proposalId].settings = proposalSettings;
 
         return BaseHook.afterPropose.selector;
