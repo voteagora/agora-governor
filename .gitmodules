@@ -5,3 +5,7 @@
 	path = lib/solady
     url = https://github.com/vectorized/solady
     branch = main
+[submodule "lib/openzeppelin-contracts"]
+	path = lib/openzeppelin-contracts
+	url = https://github.com/voteagora/openzeppelin-contracts
+	branch = ag2
