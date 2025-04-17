@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 import {Governor} from "@openzeppelin/contracts/governance/Governor.sol";
 import {DoubleEndedQueue} from "@openzeppelin/contracts/utils/structs/DoubleEndedQueue.sol";
 import {GovernorCountingSimple} from "@openzeppelin/contracts/governance/extensions/GovernorCountingSimple.sol";
@@ -85,10 +86,11 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         // This call is made after the inhereted constructors have been called
         _hooks.beforeInitialize();
 
-        admin = _admin;
-        manager = _manager;
-        hooks = _hooks;
+        _setAdmin(_admin);
+        _setManager(_manager);
         _updateTimelock(_timelockAddress);
+
+        hooks = _hooks;
 
         _hooks.afterInitialize();
     }
@@ -124,6 +126,10 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         bytes[] memory calldatas,
         string memory description
     ) public virtual override returns (uint256 proposalId) {
+        if (targets.length != values.length || targets.length != calldatas.length || targets.length == 0) {
+            revert IGovernor.GovernorInvalidProposalLength(targets.length, calldatas.length, values.length);
+        }
+        
         hooks.beforePropose(targets, values, calldatas, description);
 
         proposalId = super.propose(targets, values, calldatas, description);
@@ -345,6 +351,16 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
     /*//////////////////////////////////////////////////////////////
                             INTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////*/
+
+    function _setAdmin(address _newAdmin) internal {
+        admin = _newAdmin;
+        emit AdminSet(admin, _newAdmin);
+    }
+
+    function _setManager(address _newManager) internal {
+        manager = _newManager;
+        emit ManagerSet(manager, _newManager);
+    }
 
     function _queueOperations(
         uint256 proposalId,

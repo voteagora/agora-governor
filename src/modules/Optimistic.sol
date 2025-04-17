@@ -37,6 +37,7 @@ contract OptimisticModule is BaseHook {
     error ExistingProposal();
     error InvalidParams();
     error NotGovernor();
+    error InvalidMiddleware();
 
     /*//////////////////////////////////////////////////////////////
                            IMMUTABLE STORAGE
@@ -56,6 +57,7 @@ contract OptimisticModule is BaseHook {
     //////////////////////////////////////////////////////////////*/
 
     constructor(address payable _governor, address _middleware) BaseHook(_governor) {
+        if (_middleware == address(0)) revert InvalidMiddleware();
         middleware = IMiddleware(_middleware);
     }
 
