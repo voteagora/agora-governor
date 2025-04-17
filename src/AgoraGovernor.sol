@@ -6,7 +6,8 @@ import {TimelockController} from "@openzeppelin/contracts/governance/TimelockCon
 import {Governor} from "@openzeppelin/contracts/governance/Governor.sol";
 import {DoubleEndedQueue} from "@openzeppelin/contracts/utils/structs/DoubleEndedQueue.sol";
 import {GovernorCountingSimple} from "@openzeppelin/contracts/governance/extensions/GovernorCountingSimple.sol";
-import {GovernorVotesQuorumFraction} from "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
+import {GovernorVotesQuorumFraction} from
+    "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
 import {GovernorVotes} from "@openzeppelin/contracts/governance/extensions/GovernorVotes.sol";
 import {GovernorSettings} from "@openzeppelin/contracts/governance/extensions/GovernorSettings.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
@@ -133,12 +134,12 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
     /**
      * @inheritdoc Governor
      */
-    function queue(
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory calldatas,
-        bytes32 descriptionHash
-    ) public virtual override returns (uint256) {
+    function queue(address[] memory targets, uint256[] memory values, bytes[] memory calldatas, bytes32 descriptionHash)
+        public
+        virtual
+        override
+        returns (uint256)
+    {
         uint256 proposalId = getProposalId(targets, values, calldatas, descriptionHash);
 
         uint48 etaSeconds;
@@ -185,8 +186,7 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         uint256 proposalId = getProposalId(targets, values, calldatas, descriptionHash);
 
         _validateStateBitmap(
-            proposalId,
-            _encodeStateBitmap(ProposalState.Succeeded) | _encodeStateBitmap(ProposalState.Queued)
+            proposalId, _encodeStateBitmap(ProposalState.Succeeded) | _encodeStateBitmap(ProposalState.Queued)
         );
 
         (
@@ -199,12 +199,12 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         if (proposalId != beforeExecuteProposalId) {
             if (_tempTargets.length != 0 && _tempValues.length != 0 && _tempCalldatas.length != 0) {
                 if (_modifiedExecutions[proposalId].length == 0) revert InvalidModifiedExecution();
-                (_tempTargets, _tempValues, _tempCalldatas) = abi.decode(_modifiedExecutions[proposalId], (address[], uint256[], bytes[]));
+                (_tempTargets, _tempValues, _tempCalldatas) =
+                    abi.decode(_modifiedExecutions[proposalId], (address[], uint256[], bytes[]));
 
                 _executeOperations(proposalId, _tempTargets, _tempValues, _tempCalldatas, descriptionHash);
             }
         }
-
 
         // mark as executed before calls to avoid reentrancy
         _proposals[proposalId].executed = true;
@@ -247,11 +247,10 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         if (sender != proposalProposer(proposalId) && sender != admin && sender != _executor()) {
             revert GovernorUnauthorizedCancel();
         }
-        // If the beforeCancel hook performs a similar transformation to the calldata as beforeQueue/beforeExecute retrieve these values
-        uint256 beforeProposalId = hooks.beforeCancel(targets, values, calldatas, descriptionHash);
 
-        if (proposalId != beforeProposalId || beforeProposalId == 0) {
-            if (_modifiedExecutions[proposalId].length == 0) revert InvalidModifiedExecution();
+        hooks.beforeCancel(targets, values, calldatas, descriptionHash);
+
+        if (_modifiedExecutions[proposalId].length != 0) {
             (targets, values, calldatas) = abi.decode(_modifiedExecutions[proposalId], (address[], uint256[], bytes[]));
         }
 
@@ -273,10 +272,13 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
      * @dev Supply is calculated at the proposal snapshot timepoint.
      * @dev Quorum value is derived from `ProposalTypes` in the `Middleware` and can be changed using the `beforeQuorumCalculation` hook.
      */
-    function quorum(
-        uint256 proposalId
-    ) public view override(Governor, GovernorVotesQuorumFraction) returns (uint256 _quorum) {
-         _quorum = hooks.beforeQuorumCalculation(proposalId);
+    function quorum(uint256 proposalId)
+        public
+        view
+        override(Governor, GovernorVotesQuorumFraction)
+        returns (uint256 _quorum)
+    {
+        _quorum = hooks.beforeQuorumCalculation(proposalId);
 
         if (_quorum == 0) {
             uint256 snapshot = proposalSnapshot(proposalId);
@@ -415,13 +417,12 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
     /**
      * @inheritdoc Governor
      */
-    function _castVote(
-        uint256 proposalId,
-        address account,
-        uint8 support,
-        string memory reason,
-        bytes memory params
-    ) internal virtual override(Governor) returns (uint256 weight) {
+    function _castVote(uint256 proposalId, address account, uint8 support, string memory reason, bytes memory params)
+        internal
+        virtual
+        override(Governor)
+        returns (uint256 weight)
+    {
         _validateStateBitmap(proposalId, _encodeStateBitmap(ProposalState.Active));
         bool hasUpdated = false;
 
@@ -447,9 +448,12 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
     /**
      * @inheritdoc Governor
      */
-    function _quorumReached(
-        uint256 proposalId
-    ) internal view override(Governor, GovernorCountingSimple) returns (bool) {
+    function _quorumReached(uint256 proposalId)
+        internal
+        view
+        override(Governor, GovernorCountingSimple)
+        returns (bool)
+    {
         (uint256 againstVotes, uint256 forVotes, uint256 abstainVotes) = proposalVotes(proposalId);
 
         return quorum(proposalId) <= againstVotes + forVotes + abstainVotes;
@@ -458,9 +462,13 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
     /**
      * @inheritdoc Governor
      */
-    function _voteSucceeded(
-        uint256 proposalId
-    ) internal view virtual override(Governor, GovernorCountingSimple) returns (bool voteSucceeded) {
+    function _voteSucceeded(uint256 proposalId)
+        internal
+        view
+        virtual
+        override(Governor, GovernorCountingSimple)
+        returns (bool voteSucceeded)
+    {
         uint8 beforeVoteSucceeded = hooks.beforeVoteSucceeded(proposalId);
 
         if (beforeVoteSucceeded == 0) {

@@ -112,7 +112,7 @@ contract Middleware is IMiddleware, BaseHook {
 
         // Route hook to voting module
         if (module != address(0) && hooks.beforeVoteSucceeded) {
-            (,voteSucceeded) = BaseHook(module).beforeVoteSucceeded(msg.sender, proposalId);
+            (, voteSucceeded) = BaseHook(module).beforeVoteSucceeded(msg.sender, proposalId);
         }
 
         return (this.beforeVoteSucceeded.selector, voteSucceeded);
@@ -153,8 +153,7 @@ contract Middleware is IMiddleware, BaseHook {
 
         // Route hook to voting module
         if (module != address(0) && hooks.beforeQuorumCalculation) {
-            (,calculatedQuorum) = BaseHook(module).beforeQuorumCalculation(msg.sender, proposalId);
-
+            (, calculatedQuorum) = BaseHook(module).beforeQuorumCalculation(msg.sender, proposalId);
         } else {
             calculatedQuorum = (
                 governor.token().getPastTotalSupply(governor.proposalSnapshot(proposalId))
@@ -201,7 +200,8 @@ contract Middleware is IMiddleware, BaseHook {
 
         // Route hook to voting module
         if (module != address(0) && hooks.beforeVote) {
-            (,hasUpdated, weight) = BaseHook(module).beforeVote(msg.sender, proposalId, account, support, reason, params);
+            (, hasUpdated, weight) =
+                BaseHook(module).beforeVote(msg.sender, proposalId, account, support, reason, params);
         }
 
         return (this.beforeVote.selector, hasUpdated, weight);
@@ -247,7 +247,7 @@ contract Middleware is IMiddleware, BaseHook {
         // Route hook to voting module
         if (module != address(0) && hooks.beforePropose) {
             string memory proposalData = description._parseProposalData();
-            (,proposalId) = BaseHook(module).beforePropose(msg.sender, targets, values, calldatas, proposalData);
+            (, proposalId) = BaseHook(module).beforePropose(msg.sender, targets, values, calldatas, proposalData);
         }
 
         this.validateProposalData(targets, calldatas, proposalTypeId);
@@ -340,7 +340,8 @@ contract Middleware is IMiddleware, BaseHook {
 
         // Route hook to voting module
         if (module != address(0) && hooks.beforeQueue) {
-            (, proposalId, targets, values, calldatas, descriptionHash) = BaseHook(module).beforeQueue(msg.sender, targets, values, calldatas, descriptionHash);
+            (, proposalId, targets, values, calldatas, descriptionHash) =
+                BaseHook(module).beforeQueue(msg.sender, targets, values, calldatas, descriptionHash);
         }
 
         return (this.beforeQueue.selector, proposalId, targets, values, calldatas, descriptionHash);
@@ -384,7 +385,8 @@ contract Middleware is IMiddleware, BaseHook {
 
         // Route hook to voting module
         if (module != address(0) && hooks.beforeExecute) {
-            (, proposalId, targets, values, calldatas, descriptionHash) = BaseHook(module).beforeExecute(msg.sender, targets, values, calldatas, descriptionHash);
+            (, proposalId, targets, values, calldatas, descriptionHash) =
+                BaseHook(module).beforeExecute(msg.sender, targets, values, calldatas, descriptionHash);
         }
 
         return (this.beforeExecute.selector, proposalId, targets, values, calldatas, descriptionHash);
@@ -654,5 +656,4 @@ contract Middleware is IMiddleware, BaseHook {
             revert InvalidProposalType(proposalTypeId);
         }
     }
-
 }

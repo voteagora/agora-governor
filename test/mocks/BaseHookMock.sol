@@ -54,7 +54,7 @@ contract BaseHookMock is BaseHook {
         returns (bytes4, bool, uint256)
     {
         emit BeforeVote();
-        return (this.beforeVote.selector, true, uint256(support));
+        return (this.beforeVote.selector, true, uint256(100));
     }
 
     function afterVote(address, uint256, uint256, address, uint8, string memory, bytes memory)
