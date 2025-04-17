@@ -35,6 +35,7 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
 
     error GovernorUnauthorizedCancel();
     error HookAddressNotValid();
+    error InvalidModifiedExecution();
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
@@ -54,6 +55,8 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
 
     /// @notice The timelock ids of the governor
     mapping(uint256 proposalId => bytes32) internal _timelockIds;
+
+    mapping(uint256 proposalId => bytes) internal _modifiedExecutions;
 
     /*//////////////////////////////////////////////////////////////
                               CONSTRUCTOR
@@ -153,6 +156,7 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
 
         if (proposalId != beforeProposalId) {
             if (_tempTargets.length != 0 && _tempValues.length != 0 && _tempCalldatas.length != 0) {
+                _modifiedExecutions[proposalId] = abi.encode(_tempValues, _tempTargets, _tempCalldatas);
                 etaSeconds = _queueOperations(proposalId, _tempTargets, _tempValues, _tempCalldatas, descriptionHash);
             }
         }
@@ -196,6 +200,11 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
 
         if (proposalId != beforeExecuteProposalId) {
             if (_tempTargets.length != 0 && _tempValues.length != 0 && _tempCalldatas.length != 0) {
+                // Check that the beforeExecute hook does not modify the calldata that has already been queued for a proposalId
+                bytes memory _queueHook = _modifiedExecutions[proposalId];
+                bytes memory _executeHook = abi.encode(_tempValues, _tempTargets, _tempCalldatas);
+                if (!(_queueHook.length == _executeHook.length && keccak256(_queueHook) == keccak256(_executeHook))) revert InvalidModifiedExecution();
+
                 _executeOperations(proposalId, _tempTargets, _tempValues, _tempCalldatas, descriptionHash);
             }
         }
@@ -235,19 +244,18 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         bytes[] memory calldatas,
         bytes32 descriptionHash
     ) public override returns (uint256 proposalId) {
-        proposalId = hooks.beforeCancel(targets, values, calldatas, descriptionHash);
-
-        if (proposalId == 0) {
-            // The proposalId will be recomputed in the `_cancel` call further down. However we need the value before we
-            // do the internal call, because we need to check the proposal state BEFORE the internal `_cancel` call
-            // changes it. The `hashProposal` duplication has a cost that is limited, and that we accept.
-            proposalId = hashProposal(targets, values, calldatas, descriptionHash);
-        }
-
+        uint256 proposalId = getProposalId(targets, values, calldatas, descriptionHash);
         address sender = _msgSender();
         // Allow the proposer, admin, or executor (timelock) to cancel.
         if (sender != proposalProposer(proposalId) && sender != admin && sender != _executor()) {
             revert GovernorUnauthorizedCancel();
+        }
+        // If the beforeCancel hook performs a similar transformation to the calldata as beforeQueue/beforeExecute retrieve these values
+        uint256 beforeProposalId = hooks.beforeCancel(targets, values, calldatas, descriptionHash);
+
+        if (proposalId != beforeProposalId || beforeProposalId == 0) {
+            if (_modifiedExecutions[proposalId].length == 0) revert InvalidModifiedExecution();
+            (targets, values, calldatas) = abi.decode(_modifiedExecutions[proposalId], (address[], uint256[], bytes[]));
         }
 
         // Proposals can only be cancelled in any state other than Canceled, Expired, or Executed.
