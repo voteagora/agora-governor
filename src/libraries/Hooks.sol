@@ -104,7 +104,7 @@ library Hooks {
         }
     }
 
-    function parseUint256(bytes memory result) internal pure returns (uint256 output) {
+    function parseUint256(bytes memory result) public pure returns (uint256 output) {
         // equivalent: (, number) = abi.decode(result, (bytes4, uint256));
         assembly ("memory-safe") {
             output := mload(add(result, 0x40))
@@ -255,17 +255,19 @@ library Hooks {
         uint8 support,
         string memory reason,
         bytes memory params
-    ) internal noSelfCall(self) returns (uint256 returnedWeight) {
+    ) internal noSelfCall(self) returns (bool hasUpdated, uint256 returnedWeight) {
         if (self.hasPermission(BEFORE_VOTE_FLAG)) {
             bytes memory result = self.callHook(
                 abi.encodeCall(IHooks.beforeVote, (msg.sender, proposalId, account, support, reason, params))
             );
 
-            // The length of the result must be 64 bytes to return a bytes4 (padded to 32 bytes) and a uint256 (32 bytes) weight value
-            if (result.length != 64) revert InvalidHookResponse();
-
-            // Extract the weight from the result
-            returnedWeight = parseUint256(result);
+            // The length of the result must be 96 bytes to return a bytes4 (padded to 32 bytes), boolean padded value 32-bytes
+            // and uint256 (32 bytes) weight value
+            if (result.length != 96) revert InvalidHookResponse();
+            assembly ("memory-safe") {
+                hasUpdated := eq(1, mload(add(result, 0x40))) // first word is a bool
+                returnedWeight := mload(add(result, 0x60)) // second word is a uint256
+            }
         }
     }
 

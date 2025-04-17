@@ -63,22 +63,22 @@ contract Middleware is IMiddleware, BaseHook {
 
     function getHookPermissions() public pure override returns (Hooks.Permissions memory) {
         return Hooks.Permissions({
-            beforeInitialize: false,
-            afterInitialize: false,
+            beforeInitialize: true,
+            afterInitialize: true,
             beforeVoteSucceeded: true,
-            afterVoteSucceeded: false,
-            beforeQuorumCalculation: false,
+            afterVoteSucceeded: true,
+            beforeQuorumCalculation: true,
             afterQuorumCalculation: true,
-            beforeVote: false,
-            afterVote: false,
+            beforeVote: true,
+            afterVote: true,
             beforePropose: true,
-            afterPropose: true, // set voting threshold
-            beforeCancel: false,
-            afterCancel: false,
-            beforeQueue: false,
-            afterQueue: false,
-            beforeExecute: false,
-            afterExecute: false
+            afterPropose: true,
+            beforeCancel: true,
+            afterCancel: true,
+            beforeQueue: true,
+            afterQueue: true,
+            beforeExecute: true,
+            afterExecute: true
         });
     }
 
@@ -86,37 +86,150 @@ contract Middleware is IMiddleware, BaseHook {
                                HOOKS
     //////////////////////////////////////////////////////////////*/
 
-    /**
-     * @inheritdoc BaseHook
-     * @param sender Hook contract address
-     * @param proposalId the proposal ID used to calculate the quorum
-     */
-    function afterQuorumCalculation(address sender, uint256 proposalId, uint256)
+    // @dev Currently a no-op operation, leaving these hooks here in case there are a use case where someone would like to use Hooks without
+    // the middleware contract. This method could be used to set default proposal types or make configuration changes to the governor.
+    function beforeInitialize(address sender) external override returns (bytes4) {
+        return this.beforeInitialize.selector;
+    }
+
+    // @dev Currently a no-op operation, leaving these hooks here in case there are a use case where someone would like to use Hooks without
+    // the middleware contract. This method could be used to set default proposal types or make configuration changes to the governor.
+    function afterInitialize(address sender) external override returns (bytes4) {
+        return this.afterInitialize.selector;
+    }
+
+    function beforeVoteSucceeded(address sender, uint256 proposalId)
+        external
+        view
+        override
+        returns (bytes4, bool voteSucceeded)
+    {
+        uint8 proposalTypeId = _proposalTypeId[proposalId];
+        _proposalTypeExists(proposalTypeId);
+
+        address module = _proposalTypes[proposalTypeId].module;
+        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
+
+        // Route hook to voting module
+        if (module != address(0) && hooks.beforeVoteSucceeded) {
+            (, voteSucceeded) = BaseHook(module).beforeVoteSucceeded(msg.sender, proposalId);
+        }
+
+        return (this.beforeVoteSucceeded.selector, voteSucceeded);
+    }
+
+    function afterVoteSucceeded(address sender, uint256 proposalId, bool voteSucceeded)
         external
         view
         override
         returns (bytes4)
     {
-        // Get the proposalId for the timepoint
         uint8 proposalTypeId = _proposalTypeId[proposalId];
+        _proposalTypeExists(proposalTypeId);
 
-        // Calculate the quorum using the proposal type
-        uint256 quorum = (
-            governor.token().getPastTotalSupply(governor.proposalSnapshot(proposalId))
-                * _proposalTypes[proposalTypeId].quorum
-        ) / governor.quorumDenominator();
+        address module = _proposalTypes[proposalTypeId].module;
+        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
 
-        return (IHooks.afterQuorumCalculation.selector);
+        // Route hook to voting module
+        if (module != address(0) && hooks.afterVoteSucceeded) {
+            BaseHook(module).afterVoteSucceeded(msg.sender, proposalId, voteSucceeded);
+        }
+
+        return this.afterVoteSucceeded.selector;
     }
 
-    /**
-     * @inheritdoc BaseHook
-     * @param sender Hook contract address.
-     * @param targets list of target addresses to execute a transaction upon proposal success
-     * @param values list of eth values to be sent
-     * @param calldatas list of calldatas to be executed at corresponding target address
-     * @param description a string describing the proposal, it must contain a proposalId. See {Parser-_parseProposalTypeId}
-     */
+    function beforeQuorumCalculation(address sender, uint256 proposalId)
+        external
+        view
+        override
+        returns (bytes4, uint256)
+    {
+        uint256 calculatedQuorum;
+        uint8 proposalTypeId = _proposalTypeId[proposalId];
+        _proposalTypeExists(proposalTypeId);
+
+        address module = _proposalTypes[proposalTypeId].module;
+        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
+
+        // Route hook to voting module
+        if (module != address(0) && hooks.beforeQuorumCalculation) {
+            (, calculatedQuorum) = BaseHook(module).beforeQuorumCalculation(msg.sender, proposalId);
+        } else {
+            calculatedQuorum = (
+                governor.token().getPastTotalSupply(governor.proposalSnapshot(proposalId))
+                    * _proposalTypes[proposalTypeId].quorum
+            ) / governor.quorumDenominator();
+        }
+        // Return the quorum from the proposal type
+        return (this.beforeQuorumCalculation.selector, calculatedQuorum);
+    }
+
+    function afterQuorumCalculation(address sender, uint256 proposalId, uint256 quorum)
+        external
+        view
+        override
+        returns (bytes4)
+    {
+        uint8 proposalTypeId = _proposalTypeId[proposalId];
+        _proposalTypeExists(proposalTypeId);
+
+        address module = _proposalTypes[proposalTypeId].module;
+        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
+
+        // Route hook to voting module
+        if (module != address(0) && hooks.afterQuorumCalculation) {
+            BaseHook(module).afterQuorumCalculation(msg.sender, proposalId, quorum);
+        }
+
+        return this.afterQuorumCalculation.selector;
+    }
+
+    function beforeVote(
+        address sender,
+        uint256 proposalId,
+        address account,
+        uint8 support,
+        string memory reason,
+        bytes memory params
+    ) external override returns (bytes4, bool hasUpdated, uint256 weight) {
+        uint8 proposalTypeId = _proposalTypeId[proposalId];
+        _proposalTypeExists(proposalTypeId);
+
+        address module = _proposalTypes[proposalTypeId].module;
+        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
+
+        // Route hook to voting module
+        if (module != address(0) && hooks.beforeVote) {
+            (, hasUpdated, weight) =
+                BaseHook(module).beforeVote(msg.sender, proposalId, account, support, reason, params);
+        }
+
+        return (this.beforeVote.selector, hasUpdated, weight);
+    }
+
+    function afterVote(
+        address sender,
+        uint256 weight,
+        uint256 proposalId,
+        address account,
+        uint8 support,
+        string memory reason,
+        bytes memory params
+    ) external override returns (bytes4) {
+        uint8 proposalTypeId = _proposalTypeId[proposalId];
+        _proposalTypeExists(proposalTypeId);
+
+        address module = _proposalTypes[proposalTypeId].module;
+        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
+
+        // Route hook to voting module
+        if (module != address(0) && hooks.afterVote) {
+            BaseHook(module).afterVote(msg.sender, weight, proposalId, account, support, reason, params);
+        }
+
+        return this.afterVote.selector;
+    }
+
     function beforePropose(
         address sender,
         address[] memory targets,
@@ -124,40 +237,28 @@ contract Middleware is IMiddleware, BaseHook {
         bytes[] memory calldatas,
         string memory description
     ) external virtual override returns (bytes4, uint256) {
+        uint256 proposalId;
         uint8 proposalTypeId = description._parseProposalTypeId();
+        _proposalTypeExists(proposalTypeId);
 
-        // Revert if `proposalType` is unset
-        if (bytes(_proposalTypes[proposalTypeId].name).length == 0) {
-            revert InvalidProposalType(proposalTypeId);
-        }
+        address module = _proposalTypes[proposalTypeId].module;
+        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
 
         // Route hook to voting module
-        if (_proposalTypes[proposalTypeId].module != address(0)) {
+        if (module != address(0) && hooks.beforePropose) {
             string memory proposalData = description._parseProposalData();
-            (bool success,) = _proposalTypes[proposalTypeId].module.call(
-                abi.encodeCall(IHooks.beforePropose, (msg.sender, targets, values, calldatas, proposalData))
-            );
-
-            if (!success) revert Hooks.InvalidHookResponse();
+            (, proposalId) = BaseHook(module).beforePropose(msg.sender, targets, values, calldatas, proposalData);
         }
 
         this.validateProposalData(targets, calldatas, proposalTypeId);
 
-        uint256 proposalId = governor.hashProposal(targets, values, calldatas, keccak256(bytes(description)));
+        proposalId = governor.hashProposal(targets, values, calldatas, keccak256(bytes(description)));
 
         _proposalTypeId[proposalId] = proposalTypeId;
+
         return (this.beforePropose.selector, proposalId);
     }
 
-    /**
-     * @inheritdoc BaseHook
-     * @param proposalId the proposal ID generated by governor propose function
-     * @param sender Hook contract address.
-     * @param targets list of target addresses to execute a transaction upon proposal success
-     * @param values list of eth values to be sent
-     * @param calldatas list of calldatas to be executed at corresponding target address
-     * @param description a string describing the proposal, it must contain a proposalId. See {Parser-_parseProposalTypeId}
-     */
     function afterPropose(
         address sender,
         uint256 proposalId,
@@ -166,52 +267,151 @@ contract Middleware is IMiddleware, BaseHook {
         bytes[] memory calldatas,
         string memory description
     ) external virtual override returns (bytes4) {
-        uint8 proposalTypeId = description._parseProposalTypeId();
+        uint8 proposalTypeId = _proposalTypeId[proposalId];
+        _proposalTypeExists(proposalTypeId);
+
+        address module = _proposalTypes[proposalTypeId].module;
+        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
 
         // Route hook to voting module
-        if (_proposalTypes[proposalTypeId].module != address(0)) {
-            string memory proposalData = description._parseProposalData();
-            (bool success,) = _proposalTypes[proposalTypeId].module.call(
-                abi.encodeCall(IHooks.afterPropose, (msg.sender, proposalId, targets, values, calldatas, proposalData))
-            );
-
-            if (!success) revert Hooks.InvalidHookResponse();
+        if (module != address(0) && hooks.afterPropose) {
+            BaseHook(module).afterPropose(msg.sender, proposalId, targets, values, calldatas, description);
         }
 
-        _proposalTypeId[proposalId] = proposalTypeId;
-        return (this.afterPropose.selector);
+        return this.afterPropose.selector;
     }
 
-    /**
-     * @inheritdoc BaseHook
-     * @param proposalId the proposal ID for the vote
-     */
-    function beforeVoteSucceeded(address sender, uint256 proposalId)
-        external
-        view
-        virtual
-        override
-        returns (bytes4, bool voteSucceeded)
-    {
+    function beforeCancel(
+        address sender,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) external override returns (bytes4, uint256) {
+        uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
         uint8 proposalTypeId = _proposalTypeId[proposalId];
-        address votingModule = _proposalTypes[proposalTypeId].module;
-        if (votingModule != address(0)) {
-            (bytes4 selector, bool success) = ApprovalVotingModule(votingModule).beforeVoteSucceeded(sender, proposalId);
-            return (selector, success);
+        _proposalTypeExists(proposalTypeId);
+
+        address module = _proposalTypes[proposalTypeId].module;
+        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
+
+        // Route hook to voting module
+        if (module != address(0) && hooks.beforeCancel) {
+            (, proposalId) = BaseHook(module).beforeCancel(msg.sender, targets, values, calldatas, descriptionHash);
+        }
+        return (this.beforeCancel.selector, proposalId);
+    }
+
+    function afterCancel(
+        address sender,
+        uint256 proposalId,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) external override returns (bytes4) {
+        uint8 proposalTypeId = _proposalTypeId[proposalId];
+        _proposalTypeExists(proposalTypeId);
+
+        address module = _proposalTypes[proposalTypeId].module;
+        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
+
+        // Route hook to voting module
+        if (module != address(0) && hooks.afterCancel) {
+            BaseHook(module).afterCancel(msg.sender, proposalId, targets, values, calldatas, descriptionHash);
         }
 
-        uint256 approvalThreshold = _proposalTypes[proposalTypeId].approvalThreshold;
+        return this.afterCancel.selector;
+    }
 
-        if (approvalThreshold == 0) return (this.afterPropose.selector, true);
+    function beforeQueue(
+        address sender,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) external override returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32) {
+        uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
+        uint8 proposalTypeId = _proposalTypeId[proposalId];
+        _proposalTypeExists(proposalTypeId);
 
-        (uint256 againstVotes, uint256 forVotes, uint256 abstainVotes) = governor.proposalVotes(proposalId);
-        uint256 totalVotes = forVotes + againstVotes;
+        address module = _proposalTypes[proposalTypeId].module;
+        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
 
-        if (totalVotes != 0) {
-            voteSucceeded = (forVotes * PERCENT_DIVISOR) / totalVotes >= approvalThreshold;
+        // Route hook to voting module
+        if (module != address(0) && hooks.beforeQueue) {
+            (, proposalId, targets, values, calldatas, descriptionHash) =
+                BaseHook(module).beforeQueue(msg.sender, targets, values, calldatas, descriptionHash);
         }
 
-        return (this.beforeVoteSucceeded.selector, voteSucceeded);
+        return (this.beforeQueue.selector, proposalId, targets, values, calldatas, descriptionHash);
+    }
+
+    function afterQueue(
+        address sender,
+        uint256 proposalId,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) external override returns (bytes4) {
+        uint8 proposalTypeId = _proposalTypeId[proposalId];
+        _proposalTypeExists(proposalTypeId);
+
+        address module = _proposalTypes[proposalTypeId].module;
+        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
+
+        // Route hook to voting module
+        if (module != address(0) && hooks.afterQueue) {
+            BaseHook(module).afterQueue(msg.sender, proposalId, targets, values, calldatas, descriptionHash);
+        }
+
+        return this.afterQueue.selector;
+    }
+
+    function beforeExecute(
+        address sender,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) external override returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32) {
+        uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
+        uint8 proposalTypeId = _proposalTypeId[proposalId];
+        _proposalTypeExists(proposalTypeId);
+
+        address module = _proposalTypes[proposalTypeId].module;
+        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
+
+        // Route hook to voting module
+        if (module != address(0) && hooks.beforeExecute) {
+            (, proposalId, targets, values, calldatas, descriptionHash) =
+                BaseHook(module).beforeExecute(msg.sender, targets, values, calldatas, descriptionHash);
+        }
+
+        return (this.beforeExecute.selector, proposalId, targets, values, calldatas, descriptionHash);
+    }
+
+    function afterExecute(
+        address sender,
+        uint256 proposalId,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) external override returns (bytes4) {
+        uint8 proposalTypeId = _proposalTypeId[proposalId];
+        _proposalTypeExists(proposalTypeId);
+
+        address module = _proposalTypes[proposalTypeId].module;
+        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
+
+        // Route hook to voting module
+        if (module != address(0) && hooks.afterExecute) {
+            BaseHook(module).afterExecute(msg.sender, proposalId, targets, values, calldatas, descriptionHash);
+        }
+
+        return this.afterExecute.selector;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -370,6 +570,7 @@ contract Middleware is IMiddleware, BaseHook {
      */
     function disableScope(uint8 proposalTypeId, bytes24 scopeKey, uint8 idx) external override onlyAdminOrTimelock {
         _assignedScopes[proposalTypeId][scopeKey][idx].exists = false;
+        _scopeExists[scopeKey] = false;
         emit ScopeDisabled(proposalTypeId, scopeKey);
     }
 
@@ -446,6 +647,13 @@ contract Middleware is IMiddleware, BaseHook {
             left := and(left, shl(96, not(0)))
             selector := and(selector, shl(224, not(0)))
             result := or(left, shr(160, selector))
+        }
+    }
+
+    function _proposalTypeExists(uint8 proposalTypeId) internal view {
+        // Revert if `proposalType` is unset
+        if (!_proposalTypes[proposalTypeId].exists) {
+            revert InvalidProposalType(proposalTypeId);
         }
     }
 }

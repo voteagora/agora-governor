@@ -124,7 +124,7 @@ contract OptimisticModule is BaseHook {
             revert InvalidParams();
         }
 
-        proposals[proposalId].governor = msg.sender;
+        proposals[proposalId].governor = sender;
         proposals[proposalId].settings = proposalSettings;
 
         return BaseHook.afterPropose.selector;

@@ -160,7 +160,7 @@ contract ApprovalVotingModule is BaseHook {
             }
         }
 
-        proposals[proposalId].governor = msg.sender;
+        proposals[proposalId].governor = sender;
         proposals[proposalId].settings = proposalSettings;
         proposals[proposalId].optionVotes = new uint128[](optionsLength);
 
