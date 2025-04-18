@@ -12,11 +12,16 @@ import {Bytes} from "@openzeppelin/contracts/utils/Bytes.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Validator} from "src/libraries/Validator.sol";
-import {ApprovalVoting} from "src/modules/ApprovalVoting.sol";
 
 /// @title Middleware
 /// @notice Middleware contract to handle hooks interface
 /// @custom:security-contact security@voteagora.com
+/// @dev This contract serves as a routing mechanism between proposal types and their corresponding hook modules. It
+//  forwards calls made from the governor to the submodules like ApprovalVoting and ensures the hook actually implements
+//  the function prior to making the call. Furthermore, the middleware contract is responsible for Scopes, a seperate
+//  feature that during the `beforePropose` step validates the targets and calldata supplied and ensures that the
+//  proposal type is allowed to make such a transaction. We assume that scopes will not be configured with certain
+//  modules like Approval which modify execution state.
 contract Middleware is IMiddleware, BaseHook {
     using Hooks for IHooks;
     using Parser for string;
@@ -61,6 +66,7 @@ contract Middleware is IMiddleware, BaseHook {
                                FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
+    /// @inheritdoc BaseHook
     function getHookPermissions() public pure override returns (Hooks.Permissions memory) {
         return Hooks.Permissions({
             beforeInitialize: true,
@@ -88,16 +94,17 @@ contract Middleware is IMiddleware, BaseHook {
 
     // @dev Currently a no-op operation, leaving these hooks here in case there are a use case where someone would like to use Hooks without
     // the middleware contract. This method could be used to set default proposal types or make configuration changes to the governor.
-    function beforeInitialize(address sender) external override returns (bytes4) {
+    function beforeInitialize(address sender) external pure override returns (bytes4) {
         return this.beforeInitialize.selector;
     }
 
     // @dev Currently a no-op operation, leaving these hooks here in case there are a use case where someone would like to use Hooks without
     // the middleware contract. This method could be used to set default proposal types or make configuration changes to the governor.
-    function afterInitialize(address sender) external override returns (bytes4) {
+    function afterInitialize(address sender) external pure override returns (bytes4) {
         return this.afterInitialize.selector;
     }
 
+    /// @inheritdoc IHooks
     function beforeVoteSucceeded(address sender, uint256 proposalId)
         external
         view
@@ -118,6 +125,7 @@ contract Middleware is IMiddleware, BaseHook {
         return (this.beforeVoteSucceeded.selector, voteSucceeded);
     }
 
+    /// @inheritdoc IHooks
     function afterVoteSucceeded(address sender, uint256 proposalId, bool voteSucceeded)
         external
         view
@@ -138,6 +146,7 @@ contract Middleware is IMiddleware, BaseHook {
         return this.afterVoteSucceeded.selector;
     }
 
+    /// @inheritdoc IHooks
     function beforeQuorumCalculation(address sender, uint256 proposalId)
         external
         view
@@ -164,6 +173,7 @@ contract Middleware is IMiddleware, BaseHook {
         return (this.beforeQuorumCalculation.selector, calculatedQuorum);
     }
 
+    /// @inheritdoc IHooks
     function afterQuorumCalculation(address sender, uint256 proposalId, uint256 quorum)
         external
         view
@@ -184,6 +194,7 @@ contract Middleware is IMiddleware, BaseHook {
         return this.afterQuorumCalculation.selector;
     }
 
+    /// @inheritdoc IHooks
     function beforeVote(
         address sender,
         uint256 proposalId,
@@ -207,6 +218,7 @@ contract Middleware is IMiddleware, BaseHook {
         return (this.beforeVote.selector, hasUpdated, weight);
     }
 
+    /// @inheritdoc IHooks
     function afterVote(
         address sender,
         uint256 weight,
@@ -230,6 +242,7 @@ contract Middleware is IMiddleware, BaseHook {
         return this.afterVote.selector;
     }
 
+    /// @inheritdoc IHooks
     function beforePropose(
         address sender,
         address[] memory targets,
@@ -260,6 +273,7 @@ contract Middleware is IMiddleware, BaseHook {
         return (this.beforePropose.selector, proposalId);
     }
 
+    /// @inheritdoc IHooks
     function afterPropose(
         address sender,
         uint256 proposalId,
@@ -282,6 +296,7 @@ contract Middleware is IMiddleware, BaseHook {
         return this.afterPropose.selector;
     }
 
+    /// @inheritdoc IHooks
     function beforeCancel(
         address sender,
         address[] memory targets,
@@ -303,6 +318,7 @@ contract Middleware is IMiddleware, BaseHook {
         return (this.beforeCancel.selector, proposalId);
     }
 
+    /// @inheritdoc IHooks
     function afterCancel(
         address sender,
         uint256 proposalId,
@@ -325,6 +341,7 @@ contract Middleware is IMiddleware, BaseHook {
         return this.afterCancel.selector;
     }
 
+    /// @inheritdoc IHooks
     function beforeQueue(
         address sender,
         address[] memory targets,
@@ -348,6 +365,7 @@ contract Middleware is IMiddleware, BaseHook {
         return (this.beforeQueue.selector, proposalId, targets, values, calldatas, descriptionHash);
     }
 
+    /// @inheritdoc IHooks
     function afterQueue(
         address sender,
         uint256 proposalId,
@@ -370,6 +388,7 @@ contract Middleware is IMiddleware, BaseHook {
         return this.afterQueue.selector;
     }
 
+    /// @inheritdoc IHooks
     function beforeExecute(
         address sender,
         address[] memory targets,
@@ -394,6 +413,7 @@ contract Middleware is IMiddleware, BaseHook {
         return (this.beforeExecute.selector, proposalId, targets, values, calldatas, descriptionHash);
     }
 
+    /// @inheritdoc IHooks
     function afterExecute(
         address sender,
         uint256 proposalId,

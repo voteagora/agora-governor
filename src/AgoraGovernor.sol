@@ -58,6 +58,7 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
     /// @notice The timelock ids of the governor
     mapping(uint256 proposalId => bytes32) internal _timelockIds;
 
+    /// @notice Stores the mappings of successful proposalIds to their modified executions in the timelock
     mapping(uint256 proposalId => bytes) internal _modifiedExecutions;
 
     /*//////////////////////////////////////////////////////////////
@@ -160,6 +161,7 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         ) = hooks.beforeQueue(targets, values, calldatas, descriptionHash);
 
         if (proposalId != beforeProposalId) {
+            // Store the modified execution and queue those values to the timelock
             if (_tempTargets.length != 0 && _tempValues.length != 0 && _tempCalldatas.length != 0) {
                 _modifiedExecutions[proposalId] = abi.encode(_tempValues, _tempTargets, _tempCalldatas);
                 etaSeconds = _queueOperations(proposalId, _tempTargets, _tempValues, _tempCalldatas, descriptionHash);
@@ -203,6 +205,8 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         ) = hooks.beforeExecute(targets, values, calldatas, descriptionHash);
 
         if (proposalId != beforeExecuteProposalId) {
+            // Retrieve the stored executions: we assume the module modifies the calldata the same way as beforeQueue
+            // They must be non-empty however they are unused as the values in storage actually reflect the state of the timelock
             if (_tempTargets.length != 0 && _tempValues.length != 0 && _tempCalldatas.length != 0) {
                 if (_modifiedExecutions[proposalId].length == 0) revert InvalidModifiedExecution();
                 (_tempTargets, _tempValues, _tempCalldatas) =
@@ -257,6 +261,7 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         hooks.beforeCancel(targets, values, calldatas, descriptionHash);
 
         if (_modifiedExecutions[proposalId].length != 0) {
+            // Always check if a proposalId has had modified execution in previous hook calls
             (targets, values, calldatas) = abi.decode(_modifiedExecutions[proposalId], (address[], uint256[], bytes[]));
         }
 
@@ -318,6 +323,9 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         }
     }
 
+    /**
+     * @notice Returns the minimal amount of voting power to create a proposal
+     */
     function proposalThreshold() public view override(GovernorSettings, Governor) returns (uint256) {
         // Return 0 if the caller is the manager to not require voting power when proposing.
         return _msgSender() == manager ? 0 : GovernorSettings.proposalThreshold();
@@ -362,6 +370,7 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         emit ManagerSet(manager, _newManager);
     }
 
+    // @notice See Governor.sol replicates the logic to handle modified calldata from hooks
     function _queueOperations(
         uint256 proposalId,
         address[] memory targets,
@@ -378,6 +387,7 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         return SafeCast.toUint48(block.timestamp + delay);
     }
 
+    // @notice See Governor.sol replicates the logic to handle modified calldata from hooks
     function _executeOperations(
         uint256 proposalId,
         address[] memory targets,
@@ -391,6 +401,7 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         delete _timelockIds[proposalId];
     }
 
+    // @notice See Governor.sol replicates the logic to handle modified calldata from hooks
     function _cancel(
         address[] memory targets,
         uint256[] memory values,

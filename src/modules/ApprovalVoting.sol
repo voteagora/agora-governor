@@ -219,7 +219,8 @@ contract ApprovalVoting is BaseHook {
         returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)
     {
         uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
-
+        // Note: we assume that the beforeExecute will modify the calldata in the same way it is queued. This is to
+        // ensure that the state is correctly reflected in the timelock
         (targets, values, calldatas) = formatExecuteParams(proposalId);
         return (this.beforeQueue.selector, proposalId, targets, values, calldatas, descriptionHash);
     }
@@ -253,7 +254,6 @@ contract ApprovalVoting is BaseHook {
      */
     function formatExecuteParams(uint256 proposalId)
         public
-        onlyGovernor(msg.sender)
         returns (address[] memory targets, uint256[] memory values, bytes[] memory calldatas)
     {
         ProposalOption[] memory options = proposals[proposalId].options;
