@@ -154,17 +154,10 @@ contract MockHooks is IHooks {
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) external view override returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32) {
+    ) external view override returns (bytes4, bool) {
         // beforeExecuteData = hookData;
         bytes4 selector = MockHooks.beforeExecute.selector;
-        return (
-            returnValues[selector] == bytes4(0) ? selector : returnValues[selector],
-            0,
-            targets,
-            values,
-            calldatas,
-            descriptionHash
-        );
+        return (returnValues[selector] == bytes4(0) ? selector : returnValues[selector], true);
     }
 
     function afterExecute(address, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)

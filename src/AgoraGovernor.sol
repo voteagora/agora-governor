@@ -166,7 +166,6 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
             targets = _tempTargets;
             values = _tempValues;
             calldatas = _tempCalldatas;
-
         }
 
         etaSeconds = _queueOperations(proposalId, targets, values, calldatas, descriptionHash);
@@ -198,17 +197,12 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
             proposalId, _encodeStateBitmap(ProposalState.Succeeded) | _encodeStateBitmap(ProposalState.Queued)
         );
 
-        (
-            uint256 beforeExecuteProposalId,
-            address[] memory _tempTargets,
-            uint256[] memory _tempValues,
-            bytes[] memory _tempCalldatas,
-        ) = hooks.beforeExecute(targets, values, calldatas, descriptionHash);
+        hooks.beforeExecute(targets, values, calldatas, descriptionHash);
 
         if (_modifiedExecutions[proposalId].length != 0) {
             // Retrieve the stored executions: we assume the module modifies the calldata the same way as beforeQueue
             // They must be non-empty however they are unused as the values in storage actually reflect the state of the timelock
-            (_tempTargets, _tempValues, _tempCalldatas) =
+            (address[] memory _tempTargets, uint256[] memory _tempValues, bytes[] memory _tempCalldatas) =
                 abi.decode(_modifiedExecutions[proposalId], (address[], uint256[], bytes[]));
 
             targets = _tempTargets;

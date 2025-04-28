@@ -139,9 +139,8 @@ contract Optimistic is BaseHook {
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) external view override returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32) {
-        uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
-        return (this.beforeExecute.selector, proposalId, targets, values, calldatas, descriptionHash);
+    ) external view override returns (bytes4, bool) {
+        return (this.beforeExecute.selector, false);
     }
 
     /*//////////////////////////////////////////////////////////////

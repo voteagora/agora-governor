@@ -113,7 +113,7 @@ contract ApprovalVoting is BaseHook {
             afterCancel: false,
             beforeQueue: true,
             afterQueue: false,
-            beforeExecute: true,
+            beforeExecute: false,
             afterExecute: false
         });
     }
@@ -223,25 +223,6 @@ contract ApprovalVoting is BaseHook {
         // ensure that the state is correctly reflected in the timelock
         (targets, values, calldatas) = formatExecuteParams(proposalId);
         return (this.beforeQueue.selector, proposalId, targets, values, calldatas, descriptionHash);
-    }
-
-    function beforeExecute(
-        address sender,
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory calldatas,
-        bytes32 descriptionHash
-    )
-        external
-        virtual
-        override
-        onlyGovernor(sender)
-        returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)
-    {
-        uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
-
-        (targets, values, calldatas) = formatExecuteParams(proposalId);
-        return (this.beforeExecute.selector, proposalId, targets, values, calldatas, descriptionHash);
     }
 
     /**

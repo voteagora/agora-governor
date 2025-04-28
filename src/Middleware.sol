@@ -40,6 +40,8 @@ contract Middleware is IMiddleware, BaseHook {
     /// @notice Max value of `quorum` and `approvalThreshold` in `ProposalType`
     uint16 public constant PERCENT_DIVISOR = 10_000;
 
+    error BeforeExecuteFailed();
+
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
     //////////////////////////////////////////////////////////////*/
@@ -395,7 +397,8 @@ contract Middleware is IMiddleware, BaseHook {
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) external override returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32) {
+    ) external override returns (bytes4, bool) {
+        bool success = true;
         uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
         uint8 proposalTypeId = _proposalTypeId[proposalId];
 
@@ -406,11 +409,12 @@ contract Middleware is IMiddleware, BaseHook {
 
         // Route hook to voting module
         if (module != address(0) && hooks.beforeExecute) {
-            (, proposalId, targets, values, calldatas, descriptionHash) =
-                BaseHook(module).beforeExecute(msg.sender, targets, values, calldatas, descriptionHash);
+            (, success) = BaseHook(module).beforeExecute(msg.sender, targets, values, calldatas, descriptionHash);
         }
 
-        return (this.beforeExecute.selector, proposalId, targets, values, calldatas, descriptionHash);
+        if (!success) revert BeforeExecuteFailed();
+
+        return (this.beforeExecute.selector, success);
     }
 
     /// @inheritdoc IHooks
