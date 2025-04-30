@@ -4,6 +4,7 @@ pragma solidity ^0.8.29;
 import {Hooks} from "src/libraries/Hooks.sol";
 import {BaseHook} from "src/hooks/BaseHook.sol";
 import {IMiddleware} from "src/interfaces/IMiddleware.sol";
+import {Middleware} from "src/Middleware.sol";
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
@@ -49,7 +50,7 @@ contract Optimistic is BaseHook {
     //////////////////////////////////////////////////////////////*/
 
     mapping(uint256 proposalId => Proposal) public proposals;
-    IMiddleware public middleware;
+    Middleware public middleware;
 
     /*//////////////////////////////////////////////////////////////
                                CONSTRUCTOR
@@ -57,7 +58,7 @@ contract Optimistic is BaseHook {
 
     constructor(address payable _governor, address _middleware) BaseHook(_governor) {
         if (_middleware == address(0)) revert InvalidMiddleware();
-        middleware = IMiddleware(_middleware);
+        middleware = Middleware(_middleware);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -110,7 +111,7 @@ contract Optimistic is BaseHook {
         bytes memory proposalData = abi.encode(description);
         ProposalSettings memory proposalSettings = abi.decode(proposalData, (ProposalSettings));
 
-        uint8 proposalTypeId = middleware.getProposalTypeId(proposalId);
+        uint8 proposalTypeId = middleware._proposalTypeId(proposalId);
         IMiddleware.ProposalType memory proposalType = middleware.proposalTypes(proposalTypeId);
 
         if (proposalType.quorum != 0 || proposalType.approvalThreshold != 0) {

@@ -32,6 +32,7 @@ contract Middleware is IMiddleware, BaseHook {
 
     event ScopeCreated(uint8 indexed proposalTypeId, bytes24 indexed scopeKey, bytes4 selector, string description);
     event ScopeDisabled(uint8 indexed proposalTypeId, bytes24 indexed scopeKey);
+    event ScopeDeleted(uint8 indexed proposalTypeId, bytes24 indexed scopeKey);
 
     /*//////////////////////////////////////////////////////////////
                            IMMUTABLE STORAGE
@@ -43,16 +44,14 @@ contract Middleware is IMiddleware, BaseHook {
     // @notice Max length of the `assignedScopes` array
     uint8 public constant MAX_SCOPE_LENGTH = 5;
 
-    error BeforeExecuteFailed();
-
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
     //////////////////////////////////////////////////////////////*/
 
-    mapping(uint8 proposalTypeId => ProposalType) internal _proposalTypes;
-    mapping(uint8 proposalTypeId => mapping(bytes24 key => Scope[])) internal _assignedScopes;
+    mapping(uint8 proposalTypeId => ProposalType) public _proposalTypes;
+    mapping(uint8 proposalTypeId => mapping(bytes24 key => Scope[])) public _assignedScopes;
     mapping(bytes24 key => bool) internal _scopeExists;
-    mapping(uint256 proposalId => uint8 proposalTypeId) internal _proposalTypeId;
+    mapping(uint256 proposalId => uint8 proposalTypeId) public _proposalTypeId;
 
     /*//////////////////////////////////////////////////////////////
                                MODIFIERS
@@ -390,7 +389,6 @@ contract Middleware is IMiddleware, BaseHook {
         bytes[] memory calldatas,
         bytes32 descriptionHash
     ) external override returns (bytes4, bool) {
-        bool success = true;
         uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
         uint8 proposalTypeId = _proposalTypeId[proposalId];
 
@@ -401,12 +399,11 @@ contract Middleware is IMiddleware, BaseHook {
 
         // Route hook to voting module
         if (module != address(0) && hooks.beforeExecute) {
-            (, success) = BaseHook(module).beforeExecute(msg.sender, targets, values, calldatas, descriptionHash);
+            (, bool success) = BaseHook(module).beforeExecute(msg.sender, targets, values, calldatas, descriptionHash);
+            require(success);
         }
 
-        if (!success) revert BeforeExecuteFailed();
-
-        return (this.beforeExecute.selector, success);
+        return (this.beforeExecute.selector, true);
     }
 
     /// @inheritdoc IHooks
@@ -446,14 +443,6 @@ contract Middleware is IMiddleware, BaseHook {
     }
 
     /**
-     * @notice Get the proposalType for a given proposalId.
-     * @param proposalId Id of the proposal
-     */
-    function getProposalTypeId(uint256 proposalId) external view returns (uint8) {
-        return _proposalTypeId[proposalId];
-    }
-
-    /**
      * @notice Get the scope that is assigned to a given proposal type.
      * @param proposalTypeId Id of the proposal type.
      * @param scopeKey The function selector + contract address that is the key for a scope.
@@ -461,15 +450,6 @@ contract Middleware is IMiddleware, BaseHook {
      */
     function assignedScopes(uint8 proposalTypeId, bytes24 scopeKey) external view returns (Scope[] memory) {
         return _assignedScopes[proposalTypeId][scopeKey];
-    }
-
-    /**
-     * @notice Returns a boolean if a scope exists.
-     * @param key A function selector and contract address that represent the type hash, i.e. 4byte(keccak256("foobar(uint,address)")) + bytes20(contractAddress).
-     * @return boolean returns true if the scope is defined.
-     */
-    function scopeExists(bytes24 key) external view override returns (bool) {
-        return _scopeExists[key];
     }
 
     /**
@@ -551,26 +531,6 @@ contract Middleware is IMiddleware, BaseHook {
     }
 
     /**
-     * @notice Adds an additional scope for a given proposal type.
-     * @param proposalTypeId Id of the proposal type
-     * @param scope An object that contains the scope for a transaction type hash
-     */
-    function addScopeForProposalType(uint8 proposalTypeId, Scope calldata scope)
-        external
-        override
-        onlyAdminOrTimelock
-    {
-        if (!_proposalTypes[proposalTypeId].exists) revert InvalidProposalType();
-        if (scope.parameters.length != scope.comparators.length) revert InvalidParameterConditions();
-        if (_assignedScopes[proposalTypeId][scope.key].length == MAX_SCOPE_LENGTH) revert MaxScopeLengthReached();
-
-        _scopeExists[scope.key] = true;
-        _assignedScopes[proposalTypeId][scope.key].push(scope);
-
-        emit ScopeCreated(proposalTypeId, scope.key, scope.selector, scope.description);
-    }
-
-    /**
      * @notice Disables a scopes for all contract + function signatures.
      * @param proposalTypeId the proposal type ID that has the assigned scope.
      * @param scopeKey the contract and function signature representing the scope key
@@ -580,6 +540,21 @@ contract Middleware is IMiddleware, BaseHook {
         _assignedScopes[proposalTypeId][scopeKey][idx].exists = false;
         _scopeExists[scopeKey] = false;
         emit ScopeDisabled(proposalTypeId, scopeKey);
+    }
+
+    /**
+     * @notice Deletes a scope inside assignedScopes for a proposal type.
+     * @param proposalTypeId the proposal type ID that has the assigned scope.
+     * @param scopeKey the contract and function signature representing the scope key
+     * @param idx the index of the assigned scope.
+     */
+    function deleteScope(uint8 proposalTypeId, bytes24 scopeKey, uint8 idx) external override onlyAdminOrTimelock {
+        Scope[] storage scopeArr = _assignedScopes[proposalTypeId][scopeKey];
+
+        scopeArr[idx] = scopeArr[scopeArr.length - 1];
+        scopeArr.pop();
+
+        emit ScopeDeleted(proposalTypeId, scopeKey);
     }
 
     /**
@@ -596,13 +571,11 @@ contract Middleware is IMiddleware, BaseHook {
     function validateProposedTx(bytes calldata proposedTx, uint8 proposalTypeId, bytes24 key) public view {
         Scope[] memory scopes = _assignedScopes[proposalTypeId][key];
 
-        if (_scopeExists[key]) {
-            for (uint8 i = 0; i < scopes.length; i++) {
-                Scope memory validScope = scopes[i];
-                if (validScope.selector != bytes4(proposedTx[:4])) {
-                    revert Invalid4ByteSelector();
-                }
+        for (uint8 i = 0; i < scopes.length; i++) {
+            Scope memory validScope = scopes[i];
+            if (validScope.selector != bytes4(proposedTx[:4])) revert Invalid4ByteSelector();
 
+            if (validScope.exists) {
                 uint256 startIdx = 4;
                 uint256 endIdx = startIdx;
                 for (uint8 j = 0; j < validScope.parameters.length; j++) {
@@ -632,7 +605,11 @@ contract Middleware is IMiddleware, BaseHook {
         external
         view
     {
+        if (calldatas.length == 0) revert InvalidCalldatasLength();
+
         for (uint8 i = 0; i < calldatas.length; i++) {
+            if (calldatas[i].length < 4) revert InvalidCalldata();
+
             bytes24 scopeKey = _pack(targets[i], bytes4(calldatas[i]));
             if (_assignedScopes[proposalTypeId][scopeKey].length != 0) {
                 validateProposedTx(calldatas[i], proposalTypeId, scopeKey);

@@ -6,6 +6,7 @@ import {IMiddleware} from "src/interfaces/IMiddleware.sol";
 library Validator {
     error InvalidParamNotEqual();
     error InvalidParamRange();
+    error InvalidComparison();
 
     /**
      * @notice Compares two byte32 values of the represented type and reverts if condition is not met.
@@ -16,18 +17,12 @@ library Validator {
     function compare(bytes32 paramA, bytes32 paramB, IMiddleware.Comparators comparison) internal pure {
         if (comparison == IMiddleware.Comparators.EQUAL) {
             if (paramA != paramB) revert InvalidParamNotEqual();
-        }
-
-        if (comparison == IMiddleware.Comparators.LESS_THAN) {
-            if (paramA >= paramB) {
-                revert InvalidParamRange();
-            }
-        }
-
-        if (comparison == IMiddleware.Comparators.GREATER_THAN) {
-            if (paramA <= paramB) {
-                revert InvalidParamRange();
-            }
+        } else if (comparison == IMiddleware.Comparators.LESS_THAN) {
+            if (paramA >= paramB) revert InvalidParamRange();
+        } else if (comparison == IMiddleware.Comparators.GREATER_THAN) {
+            if (paramA <= paramB) revert InvalidParamRange();
+        } else {
+            revert InvalidComparison();
         }
     }
 

@@ -334,3 +334,156 @@ contract SetProposalType is MiddlewareTest {
         vm.stopPrank();
     }
 }
+
+contract ValidateProposedTx is MiddlewareTest {
+    function testFuzz_ValidateProposedTx() public {
+        bytes32 txTypeHash = keccak256("transfer(address,address,uint256)");
+        address contractAddress = makeAddr("contract");
+        bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
+        address _from = makeAddr("from");
+        address _to = makeAddr("to");
+
+        bytes memory proposedTx = abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(15));
+        middleware.validateProposedTx(proposedTx, 0, scopeKey);
+    }
+
+    function testRevert_ValidateProposedTx_Invalid4ByteSelector() public {
+        bytes32 txTypeHash = keccak256("transfer(address,address,uint256)");
+        address contractAddress = makeAddr("contract");
+        bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
+        address _from = makeAddr("from");
+        address _to = makeAddr("to");
+
+        bytes memory proposedTx = abi.encodeWithSignature("foobar(address,address,uint256)", _from, _to, uint256(15));
+        vm.expectRevert(IMiddleware.Invalid4ByteSelector.selector);
+        middleware.validateProposedTx(proposedTx, 0, scopeKey);
+    }
+
+    function testRevert_ValidateProposedTx_InvalidParamNotEqual() public {
+        bytes32 txTypeHash = keccak256("transfer(address,address,uint256)");
+        address contractAddress = makeAddr("contract");
+        bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
+        address _from = makeAddr("from");
+        address _to = makeAddr("to");
+
+        bytes memory proposedTx = abi.encodeWithSignature("transfer(address,address,uint256)", _to, _from, uint256(15));
+        vm.expectRevert(IMiddleware.InvalidParamNotEqual.selector);
+        middleware.validateProposedTx(proposedTx, 0, scopeKey);
+    }
+
+    function testRevert_ValidateProposedTx_InvalidParamRange() public {
+        bytes32 txTypeHash = keccak256("transfer(address,address,uint256)");
+        address contractAddress = makeAddr("contract");
+        bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
+        address _from = makeAddr("from");
+        address _to = makeAddr("to");
+
+        bytes memory proposedTx = abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(5));
+        vm.expectRevert(IMiddleware.InvalidParamRange.selector);
+        middleware.validateProposedTx(proposedTx, 0, scopeKey);
+    }
+}
+
+contract ValidateProposalData is MiddlewareTest {
+    function testRevert_ValidateProposalData_InvalidCalldatas() public {
+        address[] memory targets = new address[](1);
+        bytes[] memory calldatas = new bytes[](1);
+
+        vm.expectRevert(IMiddleware.InvalidCalldata.selector);
+        middleware.validateProposalData(targets, calldatas, 0);
+    }
+
+    function testRevert_ValidateProposalData_InvalidCalldatasLength() public {
+        address[] memory targets = new address[](0);
+        bytes[] memory calldatas = new bytes[](0);
+
+        vm.expectRevert(IMiddleware.InvalidCalldatasLength.selector);
+        middleware.validateProposalData(targets, calldatas, 0);
+    }
+}
+
+contract DisableScope is MiddlewareTest {
+    function testFuzz_DisableScope(uint256 _actorSeed) public {
+        vm.prank(_adminOrTimelock(_actorSeed));
+        bytes32 txTypeHash = keccak256("transfer(address,address,uint256)");
+        address contractAddress = makeAddr("contract");
+        bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
+
+        vm.expectEmit();
+        emit ScopeDisabled(0, scopeKey);
+        middleware.disableScope(0, scopeKey, 0);
+    }
+}
+
+contract DeleteScope is MiddlewareTest {
+    function testFuzz_DeleteScope(uint256 _actorSeed) public {
+        vm.startPrank(_adminOrTimelock(_actorSeed));
+        bytes32 txTypeHash = keccak256("transfer(address,address,uint256)");
+        address contractAddress = makeAddr("contract");
+        bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
+
+        assertEq(middleware.assignedScopes(0, scopeKey).length, 1);
+        vm.expectEmit();
+        emit ScopeDeleted(0, scopeKey);
+        middleware.deleteScope(0, scopeKey, 0);
+        assertEq(middleware.assignedScopes(0, scopeKey).length, 0);
+
+        vm.stopPrank();
+    }
+}
+
+contract MultipleScopeValidation is MiddlewareTest {
+    function testFuzz_MultipleScopeValidationRange(uint256 _actorSeed) public {
+        vm.prank(_adminOrTimelock(_actorSeed));
+        vm.expectEmit();
+        emit ProposalTypeSet(0, 4_000, 6_000, "New Default", "Lorem Ipsum", address(0));
+        middleware.setProposalType(0, 4_000, 6_000, "New Default", "Lorem Ipsum", address(0));
+
+        vm.startPrank(admin);
+        bytes32 txTypeHash = keccak256("transfer(address,address,uint256)");
+        address contractAddress = makeAddr("contract");
+        bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
+        address _from = makeAddr("from");
+        address _to = makeAddr("to");
+        bytes4 txEncoded1 =
+            bytes4(abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(10)));
+
+        bytes[] memory parameters1 = new bytes[](3);
+        parameters1[0] = abi.encode(uint256(uint160(_from)));
+        parameters1[1] = abi.encode(uint256(uint160(_to)));
+        parameters1[2] = abi.encode(uint256(10));
+
+        IMiddleware.Comparators[] memory comparators1 = new IMiddleware.Comparators[](3);
+
+        comparators1[0] = IMiddleware.Comparators(0); // EQ
+        comparators1[1] = IMiddleware.Comparators(0); // EQ
+        comparators1[2] = IMiddleware.Comparators(2); // GREATER THAN
+
+        IMiddleware.SupportedTypes[] memory types = new IMiddleware.SupportedTypes[](3);
+
+        types[0] = IMiddleware.SupportedTypes(7); // address
+        types[1] = IMiddleware.SupportedTypes(7); // address
+        types[2] = IMiddleware.SupportedTypes(6); // uint256
+
+        middleware.setScopeForProposalType(0, scopeKey, txEncoded1, parameters1, comparators1, types, "Lorem");
+
+        bytes[] memory parameters2 = new bytes[](3);
+        parameters2[0] = abi.encode(uint256(uint160(_from)));
+        parameters2[1] = abi.encode(uint256(uint160(_to)));
+        parameters2[2] = abi.encode(uint256(50));
+
+        IMiddleware.Comparators[] memory comparators2 = new IMiddleware.Comparators[](3);
+
+        comparators2[0] = IMiddleware.Comparators(0); // EQ
+        comparators2[1] = IMiddleware.Comparators(0); // EQ
+        comparators2[2] = IMiddleware.Comparators(1); // LESS THAN
+
+        bytes4 txEncoded2 =
+            bytes4(abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(50)));
+        middleware.setScopeForProposalType(0, scopeKey, txEncoded2, parameters2, comparators2, types, "Lorem");
+
+        vm.stopPrank();
+        bytes memory proposedTx = abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(15));
+        middleware.validateProposedTx(proposedTx, 0, scopeKey);
+    }
+}

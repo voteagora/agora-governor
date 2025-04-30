@@ -515,7 +515,7 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         calldatasI[0] = abi.encodeCall(IERC20.transfer, (receiver1, 100));
         targetsI[1] = receiver2;
         valuesI[1] = 0.2 ether;
-        calldatasI[1] = calldatas[0];
+        calldatasI[1] = calldatasI[0];
 
         vm.startPrank(admin);
         governor.setProposalThreshold(0);
