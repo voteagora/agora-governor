@@ -32,7 +32,7 @@ contract OptimisticModuleTest is Test, Deployers {
 
     function setUp() public virtual {
         module = Optimistic(
-            address(uint160(Hooks.BEFORE_VOTE_SUCCEEDED_FLAG | Hooks.AFTER_PROPOSE_FLAG | Hooks.BEFORE_EXECUTE_FLAG))
+            address(uint160(Hooks.BEFORE_VOTE_SUCCEEDED_FLAG | Hooks.AFTER_PROPOSE_FLAG | Hooks.BEFORE_QUEUE_FLAG))
         );
 
         middleware = Middleware(
@@ -243,10 +243,204 @@ contract OptimisticModuleTest is Test, Deployers {
 
         uint256 snapshot = block.number + governor.votingDelay();
         vm.roll(snapshot + 1);
-        (uint256 againstVotes,,) = governor.proposalVotes(proposalId);
 
         assertTrue(governor.voteSucceeded(proposalId));
 
         vm.stopPrank();
+    }
+
+    function testVoteFailed() public {
+        uint256 weight = 100;
+        vm.prank(minter);
+        token.mint(voter, weight);
+
+        vm.startPrank(voter);
+        token.delegate(voter);
+        vm.roll(block.number + 1);
+        vm.stopPrank();
+
+        ProposalSettings memory settings = ProposalSettings({againstThreshold: 50, isRelativeToVotableSupply: false});
+
+        bytes memory proposalData = abi.encode(settings);
+
+        string memory descriptionWithData = string.concat(description, string(proposalData));
+
+        // This is ignored
+        address[] memory targets = new address[](2);
+        uint256[] memory values = new uint256[](2);
+        bytes[] memory calldatas = new bytes[](2);
+        targets[0] = address(token);
+        calldatas[0] = abi.encodeCall(IERC20.transfer, (test1, 100));
+        targets[1] = test2;
+        values[1] = 0.2 ether;
+        calldatas[1] = calldatas[0];
+
+        vm.startPrank(admin);
+        governor.setProposalThreshold(0);
+        uint256 proposalId = governor.propose(targets, values, calldatas, descriptionWithData);
+        vm.stopPrank();
+        vm.roll(block.number + 2);
+
+        vm.startPrank(voter);
+        governor.castVote(proposalId, uint8(VoteType.Against));
+
+        uint256 snapshot = block.number + governor.votingDelay();
+        vm.roll(snapshot + 1);
+
+        assertFalse(governor.voteSucceeded(proposalId));
+
+        vm.stopPrank();
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                                REVERTS
+    //////////////////////////////////////////////////////////////*/
+
+    function testRevert_propose_existingProposal() public {
+        ProposalSettings memory settings = ProposalSettings({againstThreshold: 50, isRelativeToVotableSupply: false});
+
+        bytes memory proposalData = abi.encode(settings);
+
+        string memory descriptionWithData = string.concat(description, string(proposalData));
+
+        // This is ignored
+        address[] memory targets = new address[](2);
+        uint256[] memory values = new uint256[](2);
+        bytes[] memory calldatas = new bytes[](2);
+        targets[0] = address(token);
+        calldatas[0] = abi.encodeCall(IERC20.transfer, (test1, 100));
+        targets[1] = test2;
+        values[1] = 0.2 ether;
+        calldatas[1] = calldatas[0];
+
+        vm.startPrank(admin);
+        governor.setProposalThreshold(0);
+        uint256 proposalId = governor.propose(targets, values, calldatas, descriptionWithData);
+        vm.stopPrank();
+        vm.roll(block.number + 2);
+
+        vm.expectRevert();
+        governor.propose(targets, values, calldatas, descriptionWithData);
+    }
+
+    function testRevert_propose_invalidParamsNoThreshold() public {
+        ProposalSettings memory settings = ProposalSettings({againstThreshold: 0, isRelativeToVotableSupply: true});
+
+        bytes memory proposalData = abi.encode(settings);
+
+        string memory descriptionWithData = string.concat(description, string(proposalData));
+
+        // This is ignored
+        address[] memory targets = new address[](2);
+        uint256[] memory values = new uint256[](2);
+        bytes[] memory calldatas = new bytes[](2);
+        targets[0] = address(token);
+        calldatas[0] = abi.encodeCall(IERC20.transfer, (test1, 100));
+        targets[1] = test2;
+        values[1] = 0.2 ether;
+        calldatas[1] = calldatas[0];
+
+        vm.startPrank(admin);
+        governor.setProposalThreshold(0);
+        vm.expectRevert();
+        uint256 proposalId = governor.propose(targets, values, calldatas, descriptionWithData);
+        vm.stopPrank();
+    }
+
+    function testRevert_propose_invalidParamsExceedsThreshold() public {
+        ProposalSettings memory settings =
+            ProposalSettings({againstThreshold: 10000000000000000000000000000000, isRelativeToVotableSupply: true});
+
+        bytes memory proposalData = abi.encode(settings);
+
+        string memory descriptionWithData = string.concat(description, string(proposalData));
+
+        // This is ignored
+        address[] memory targets = new address[](2);
+        uint256[] memory values = new uint256[](2);
+        bytes[] memory calldatas = new bytes[](2);
+        targets[0] = address(token);
+        calldatas[0] = abi.encodeCall(IERC20.transfer, (test1, 100));
+        targets[1] = test2;
+        values[1] = 0.2 ether;
+        calldatas[1] = calldatas[0];
+
+        vm.startPrank(admin);
+        governor.setProposalThreshold(0);
+        vm.expectRevert();
+        uint256 proposalId = governor.propose(targets, values, calldatas, descriptionWithData);
+        vm.stopPrank();
+    }
+
+    function testRevert_propose_invalidProposalData() public {
+        bytes memory proposalData = abi.encode(0x12345678);
+        string memory descriptionWithData = string.concat(description, string(proposalData));
+
+        // This is ignored
+        address[] memory targets = new address[](2);
+        uint256[] memory values = new uint256[](2);
+        bytes[] memory calldatas = new bytes[](2);
+        targets[0] = address(token);
+        calldatas[0] = abi.encodeCall(IERC20.transfer, (test1, 100));
+        targets[1] = test2;
+        values[1] = 0.2 ether;
+        calldatas[1] = calldatas[0];
+
+        vm.prank(admin);
+        governor.setProposalThreshold(0);
+        vm.expectRevert();
+        governor.propose(targets, values, calldatas, string(proposalData));
+    }
+
+    function testRevert_propose_notOptimisticType() public {
+        ProposalSettings memory settings = ProposalSettings({againstThreshold: 50, isRelativeToVotableSupply: false});
+        bytes memory proposalData = abi.encode(settings);
+        string memory description1 = "my description is this one#proposalTypeId=2#proposalData=";
+
+        string memory descriptionWithData = string.concat(description1, string(proposalData));
+        vm.startPrank(admin);
+        middleware.setProposalType(2, 10_000, 10_000, "Alt1", "Lorem Ipsum", address(module));
+
+        // This is ignored
+        address[] memory targets = new address[](2);
+        uint256[] memory values = new uint256[](2);
+        bytes[] memory calldatas = new bytes[](2);
+        targets[0] = address(token);
+        calldatas[0] = abi.encodeCall(IERC20.transfer, (test1, 100));
+        targets[1] = test2;
+        values[1] = 0.2 ether;
+        calldatas[1] = calldatas[0];
+
+        governor.setProposalThreshold(0);
+
+        vm.expectRevert();
+        uint256 proposalId = governor.propose(targets, values, calldatas, descriptionWithData);
+        vm.stopPrank();
+    }
+
+    function testRevert_queue_signalOnly() public {
+        ProposalSettings memory settings = ProposalSettings({againstThreshold: 50, isRelativeToVotableSupply: false});
+        bytes memory proposalData = abi.encode(settings);
+
+        string memory descriptionWithData = string.concat(description, string(proposalData));
+
+        // This is ignored
+        address[] memory targets = new address[](2);
+        uint256[] memory values = new uint256[](2);
+        bytes[] memory calldatas = new bytes[](2);
+        targets[0] = address(token);
+        calldatas[0] = abi.encodeCall(IERC20.transfer, (test1, 100));
+        targets[1] = test2;
+        values[1] = 0.2 ether;
+        calldatas[1] = calldatas[0];
+
+        vm.startPrank(admin);
+        governor.setProposalThreshold(0);
+        uint256 proposalId = governor.propose(targets, values, calldatas, descriptionWithData);
+        vm.stopPrank();
+        vm.roll(block.number + 17); // after voting period has ended
+
+        vm.expectRevert();
+        governor.queue(targets, values, calldatas, keccak256(bytes(descriptionWithData)));
     }
 }

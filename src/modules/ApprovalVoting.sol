@@ -158,6 +158,13 @@ contract ApprovalVotingModule is BaseHook {
                     revert InvalidParams();
                 }
 
+                // Enforce that non-zero values use native budget token
+                for (uint256 n = 0; n < option.targets.length; ++n) {
+                    if (option.values[n] != 0 && proposalSettings.budgetToken != address(0)) {
+                        revert InvalidParams();
+                    }
+                }
+
                 proposals[proposalId].options.push(option);
             }
         }

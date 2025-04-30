@@ -38,6 +38,7 @@ contract Optimistic is BaseHook {
     error InvalidParams();
     error NotGovernor();
     error InvalidMiddleware();
+    error OptimisticModuleOnlySignal();
 
     /*//////////////////////////////////////////////////////////////
                            IMMUTABLE STORAGE
@@ -79,9 +80,9 @@ contract Optimistic is BaseHook {
             afterPropose: true,
             beforeCancel: false,
             afterCancel: false,
-            beforeQueue: false,
+            beforeQueue: true,
             afterQueue: false,
-            beforeExecute: true,
+            beforeExecute: false,
             afterExecute: false
         });
     }
@@ -131,17 +132,22 @@ contract Optimistic is BaseHook {
     }
 
     /**
-     * Format executeParams for a governor, given `proposalId` and `proposalData`.
-     * Returns empty `targets`, `values` and `calldatas`.
+     * @dev Always reverts since this a signal only vote and nothing is to be executed
      */
-    function beforeExecute(
-        address,
+    function beforeQueue(
+        address sender,
         address[] memory targets,
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) external view override returns (bytes4, bool) {
-        return (this.beforeExecute.selector, false);
+    )
+        external
+        virtual
+        override
+        returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)
+    {
+        revert OptimisticModuleOnlySignal();
+        return (this.beforeQueue.selector, 0, targets, values, calldatas, descriptionHash);
     }
 
     /*//////////////////////////////////////////////////////////////
