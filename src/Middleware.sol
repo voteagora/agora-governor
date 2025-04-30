@@ -341,7 +341,7 @@ contract Middleware is IMiddleware, BaseHook {
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) external override returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32) {
+    ) external override returns (bytes4, address[] memory, uint256[] memory, bytes[] memory, bytes32) {
         uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
         uint8 proposalTypeId = _proposalTypeId[proposalId];
         _proposalTypeExists(proposalTypeId);
@@ -351,11 +351,11 @@ contract Middleware is IMiddleware, BaseHook {
 
         // Route hook to voting module
         if (module != address(0) && hooks.beforeQueue) {
-            (, proposalId, targets, values, calldatas, descriptionHash) =
+            (, targets, values, calldatas, descriptionHash) =
                 BaseHook(module).beforeQueue(msg.sender, targets, values, calldatas, descriptionHash);
         }
 
-        return (this.beforeQueue.selector, proposalId, targets, values, calldatas, descriptionHash);
+        return (this.beforeQueue.selector, targets, values, calldatas, descriptionHash);
     }
 
     /// @inheritdoc IHooks

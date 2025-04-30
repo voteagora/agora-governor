@@ -122,7 +122,7 @@ abstract contract BaseHook is IHooks {
     function beforeQueue(address, address[] memory, uint256[] memory, bytes[] memory, bytes32)
         external
         virtual
-        returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)
+        returns (bytes4, address[] memory, uint256[] memory, bytes[] memory, bytes32)
     {
         revert HookNotImplemented();
     }

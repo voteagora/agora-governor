@@ -140,14 +140,9 @@ contract Optimistic is BaseHook {
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    )
-        external
-        virtual
-        override
-        returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)
-    {
+    ) external virtual override returns (bytes4, address[] memory, uint256[] memory, bytes[] memory, bytes32) {
         revert OptimisticModuleOnlySignal();
-        return (this.beforeQueue.selector, 0, targets, values, calldatas, descriptionHash);
+        return (this.beforeQueue.selector, targets, values, calldatas, descriptionHash);
     }
 
     /*//////////////////////////////////////////////////////////////

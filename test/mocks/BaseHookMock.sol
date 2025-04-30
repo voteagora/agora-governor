@@ -118,15 +118,9 @@ contract BaseHookMock is BaseHook {
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    )
-        external
-        virtual
-        override
-        returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)
-    {
+    ) external virtual override returns (bytes4, address[] memory, uint256[] memory, bytes[] memory, bytes32) {
         emit BeforeQueue();
-        uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
-        return (this.beforeQueue.selector, proposalId, targets, values, calldatas, descriptionHash);
+        return (this.beforeQueue.selector, targets, values, calldatas, descriptionHash);
     }
 
     function afterQueue(address, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)

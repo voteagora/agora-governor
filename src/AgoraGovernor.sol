@@ -153,12 +153,8 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
 
         _validateStateBitmap(proposalId, _encodeStateBitmap(ProposalState.Succeeded));
 
-        (
-            uint256 beforeProposalId,
-            address[] memory _tempTargets,
-            uint256[] memory _tempValues,
-            bytes[] memory _tempCalldatas,
-        ) = hooks.beforeQueue(targets, values, calldatas, descriptionHash);
+        (address[] memory _tempTargets, uint256[] memory _tempValues, bytes[] memory _tempCalldatas,) =
+            hooks.beforeQueue(targets, values, calldatas, descriptionHash);
 
         // Store the modified execution and queue those values to the timelock
         if (_tempTargets.length != 0 && _tempValues.length != 0 && _tempCalldatas.length != 0) {
