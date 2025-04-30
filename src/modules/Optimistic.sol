@@ -108,7 +108,7 @@ contract Optimistic is BaseHook {
             revert ExistingProposal();
         }
 
-        bytes memory proposalData = abi.encode(description);
+        bytes memory proposalData = bytes(description);
         ProposalSettings memory proposalSettings = abi.decode(proposalData, (ProposalSettings));
 
         uint8 proposalTypeId = middleware._proposalTypeId(proposalId);

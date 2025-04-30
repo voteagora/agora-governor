@@ -19,17 +19,6 @@ import {Deployers} from "test/utils/Deployers.sol";
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-enum ProposalState {
-    Pending,
-    Active,
-    Canceled,
-    Defeated,
-    Succeeded,
-    Queued,
-    Expired,
-    Executed
-}
-
 enum VoteType {
     Against,
     For,
@@ -368,60 +357,6 @@ contract ApprovalVotingModuleTest is Test, Deployers {
 
         assertEq(succeededOptionsLength, 1);
         assertEq(executeParamsLength, sortedOptions[0].targets.length);
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                                HELPERS
-    //////////////////////////////////////////////////////////////*/
-
-    function _formatProposalData(bool budgetExceeded, bool isBudgetOp)
-        internal
-        view
-        returns (bytes memory proposalData, ProposalOption[] memory options, ProposalSettings memory settings)
-    {
-        address[] memory targets1 = new address[](1);
-        uint256[] memory values1 = new uint256[](1);
-        bytes[] memory calldatas1 = new bytes[](1);
-        // Send 0.01 ether to receiver1
-        targets1[0] = receiver1;
-        values1[0] = budgetExceeded ? 0.6 ether : 0.01 ether;
-
-        address[] memory targets2 = new address[](2);
-        uint256[] memory values2 = new uint256[](2);
-        bytes[] memory calldatas2 = new bytes[](2);
-        // Transfer 100 OP tokens to receiver2
-        targets2[0] = address(token);
-        calldatas2[0] = abi.encodeCall(IERC20.transfer, (receiver1, budgetExceeded ? 6e17 : 100));
-        targets2[1] = receiver2;
-        values2[1] = (!isBudgetOp && budgetExceeded) ? 0.6 ether : 0;
-        calldatas2[1] = calldatas2[0];
-
-        address[] memory targets3 = new address[](1);
-        uint256[] memory values3 = new uint256[](1);
-        bytes[] memory calldatas3 = new bytes[](1);
-        targets3[0] = address(token);
-        calldatas3[0] = abi.encodeCall(IERC20.transferFrom, (address(governor), receiver1, budgetExceeded ? 6e17 : 100));
-
-        if (isBudgetOp) {
-            options = new ProposalOption[](2);
-            options[0] = ProposalOption(budgetExceeded ? 6e17 : 100, targets2, values2, calldatas2, "option 2");
-            options[1] = ProposalOption(budgetExceeded ? 6e17 : 100, targets3, values3, calldatas3, "option 3");
-        } else {
-            options = new ProposalOption[](3);
-            options[0] = ProposalOption(0, targets1, values1, calldatas1, "option 1");
-            options[1] = ProposalOption(budgetExceeded ? 6e17 : 100, targets2, values2, calldatas2, "option 2");
-            options[2] = ProposalOption(budgetExceeded ? 6e17 : 100, targets3, values3, calldatas3, "option 3");
-        }
-
-        settings = ProposalSettings({
-            maxApprovals: 2,
-            criteria: uint8(PassingCriteria.TopChoices),
-            criteriaValue: 2,
-            budgetToken: isBudgetOp ? address(token) : address(0),
-            budgetAmount: 1e18
-        });
-
-        proposalData = abi.encode(options, settings);
     }
 
     function testFormatExecuteParams() public {
@@ -926,6 +861,60 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         governor.propose(targets, values, calldatas, descriptionWithData);
     }
     */
+
+    /*//////////////////////////////////////////////////////////////
+                                HELPERS
+    //////////////////////////////////////////////////////////////*/
+
+    function _formatProposalData(bool budgetExceeded, bool isBudgetOp)
+        internal
+        view
+        returns (bytes memory proposalData, ProposalOption[] memory options, ProposalSettings memory settings)
+    {
+        address[] memory targets1 = new address[](1);
+        uint256[] memory values1 = new uint256[](1);
+        bytes[] memory calldatas1 = new bytes[](1);
+        // Send 0.01 ether to receiver1
+        targets1[0] = receiver1;
+        values1[0] = budgetExceeded ? 0.6 ether : 0.01 ether;
+
+        address[] memory targets2 = new address[](2);
+        uint256[] memory values2 = new uint256[](2);
+        bytes[] memory calldatas2 = new bytes[](2);
+        // Transfer 100 OP tokens to receiver2
+        targets2[0] = address(token);
+        calldatas2[0] = abi.encodeCall(IERC20.transfer, (receiver1, budgetExceeded ? 6e17 : 100));
+        targets2[1] = receiver2;
+        values2[1] = (!isBudgetOp && budgetExceeded) ? 0.6 ether : 0;
+        calldatas2[1] = calldatas2[0];
+
+        address[] memory targets3 = new address[](1);
+        uint256[] memory values3 = new uint256[](1);
+        bytes[] memory calldatas3 = new bytes[](1);
+        targets3[0] = address(token);
+        calldatas3[0] = abi.encodeCall(IERC20.transferFrom, (address(governor), receiver1, budgetExceeded ? 6e17 : 100));
+
+        if (isBudgetOp) {
+            options = new ProposalOption[](2);
+            options[0] = ProposalOption(budgetExceeded ? 6e17 : 100, targets2, values2, calldatas2, "option 2");
+            options[1] = ProposalOption(budgetExceeded ? 6e17 : 100, targets3, values3, calldatas3, "option 3");
+        } else {
+            options = new ProposalOption[](3);
+            options[0] = ProposalOption(0, targets1, values1, calldatas1, "option 1");
+            options[1] = ProposalOption(budgetExceeded ? 6e17 : 100, targets2, values2, calldatas2, "option 2");
+            options[2] = ProposalOption(budgetExceeded ? 6e17 : 100, targets3, values3, calldatas3, "option 3");
+        }
+
+        settings = ProposalSettings({
+            maxApprovals: 2,
+            criteria: uint8(PassingCriteria.TopChoices),
+            criteriaValue: 2,
+            budgetToken: isBudgetOp ? address(token) : address(0),
+            budgetAmount: 1e18
+        });
+
+        proposalData = abi.encode(options, settings);
+    }
 
     function _formatProposalData()
         internal
