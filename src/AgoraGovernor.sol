@@ -241,7 +241,7 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         bytes[] memory calldatas,
         bytes32 descriptionHash
     ) public override returns (uint256 proposalId) {
-        uint256 proposalId = getProposalId(targets, values, calldatas, descriptionHash);
+        proposalId = getProposalId(targets, values, calldatas, descriptionHash);
         address sender = _msgSender();
         // Allow the proposer, admin, or executor (timelock) to cancel.
         if (sender != proposalProposer(proposalId) && sender != admin && sender != _executor()) {
