@@ -13,10 +13,17 @@ import {Deployers} from "test/utils/Deployers.sol";
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+enum VoteType {
+    Against,
+    For,
+    Abstain
+}
+
 contract OptimisticModuleTest is Test, Deployers {
     Optimistic module;
     Middleware middleware;
     string description = "my description is this one#proposalTypeId=1#proposalData=";
+    address internal voter = makeAddr("voter");
     address test1 = makeAddr("test1");
     address test2 = makeAddr("test2");
     /*//////////////////////////////////////////////////////////////
@@ -77,5 +84,169 @@ contract OptimisticModuleTest is Test, Deployers {
 
         assertEq(moduleSettings.againstThreshold, settings.againstThreshold);
         assertEq(moduleSettings.isRelativeToVotableSupply, settings.isRelativeToVotableSupply);
+    }
+
+    function testVoteFor() public {
+        uint256 weight = 100;
+        vm.prank(minter);
+        token.mint(voter, weight);
+
+        vm.startPrank(voter);
+        token.delegate(voter);
+        vm.roll(block.number + 1);
+        vm.stopPrank();
+
+        ProposalSettings memory settings = ProposalSettings({againstThreshold: 50, isRelativeToVotableSupply: false});
+
+        bytes memory proposalData = abi.encode(settings);
+
+        string memory descriptionWithData = string.concat(description, string(proposalData));
+
+        // This is ignored
+        address[] memory targets = new address[](2);
+        uint256[] memory values = new uint256[](2);
+        bytes[] memory calldatas = new bytes[](2);
+        targets[0] = address(token);
+        calldatas[0] = abi.encodeCall(IERC20.transfer, (test1, 100));
+        targets[1] = test2;
+        values[1] = 0.2 ether;
+        calldatas[1] = calldatas[0];
+
+        vm.startPrank(admin);
+        governor.setProposalThreshold(0);
+        uint256 proposalId = governor.propose(targets, values, calldatas, descriptionWithData);
+        vm.stopPrank();
+        vm.roll(block.number + 2);
+
+        vm.startPrank(voter);
+        governor.castVote(proposalId, uint8(VoteType.For));
+        (uint256 againstVotes, uint256 forVotes, uint256 abstainVotes) = governor.proposalVotes(proposalId);
+
+        vm.stopPrank();
+        assertEq(forVotes, weight);
+    }
+
+    function testVoteAgainst() public {
+        uint256 weight = 100;
+        vm.prank(minter);
+        token.mint(voter, weight);
+
+        vm.startPrank(voter);
+        token.delegate(voter);
+        vm.roll(block.number + 1);
+        vm.stopPrank();
+
+        ProposalSettings memory settings = ProposalSettings({againstThreshold: 50, isRelativeToVotableSupply: false});
+
+        bytes memory proposalData = abi.encode(settings);
+
+        string memory descriptionWithData = string.concat(description, string(proposalData));
+
+        // This is ignored
+        address[] memory targets = new address[](2);
+        uint256[] memory values = new uint256[](2);
+        bytes[] memory calldatas = new bytes[](2);
+        targets[0] = address(token);
+        calldatas[0] = abi.encodeCall(IERC20.transfer, (test1, 100));
+        targets[1] = test2;
+        values[1] = 0.2 ether;
+        calldatas[1] = calldatas[0];
+
+        vm.startPrank(admin);
+        governor.setProposalThreshold(0);
+        uint256 proposalId = governor.propose(targets, values, calldatas, descriptionWithData);
+        vm.stopPrank();
+        vm.roll(block.number + 2);
+
+        vm.startPrank(voter);
+        governor.castVote(proposalId, uint8(VoteType.Against));
+        (uint256 againstVotes, uint256 forVotes, uint256 abstainVotes) = governor.proposalVotes(proposalId);
+
+        vm.stopPrank();
+        assertEq(againstVotes, weight);
+    }
+
+    function testVoteAbstain() public {
+        uint256 weight = 100;
+        vm.prank(minter);
+        token.mint(voter, weight);
+
+        vm.startPrank(voter);
+        token.delegate(voter);
+        vm.roll(block.number + 1);
+        vm.stopPrank();
+
+        ProposalSettings memory settings = ProposalSettings({againstThreshold: 50, isRelativeToVotableSupply: false});
+
+        bytes memory proposalData = abi.encode(settings);
+
+        string memory descriptionWithData = string.concat(description, string(proposalData));
+
+        // This is ignored
+        address[] memory targets = new address[](2);
+        uint256[] memory values = new uint256[](2);
+        bytes[] memory calldatas = new bytes[](2);
+        targets[0] = address(token);
+        calldatas[0] = abi.encodeCall(IERC20.transfer, (test1, 100));
+        targets[1] = test2;
+        values[1] = 0.2 ether;
+        calldatas[1] = calldatas[0];
+
+        vm.startPrank(admin);
+        governor.setProposalThreshold(0);
+        uint256 proposalId = governor.propose(targets, values, calldatas, descriptionWithData);
+        vm.stopPrank();
+        vm.roll(block.number + 2);
+
+        vm.startPrank(voter);
+        governor.castVote(proposalId, uint8(VoteType.Abstain));
+        (uint256 againstVotes, uint256 forVotes, uint256 abstainVotes) = governor.proposalVotes(proposalId);
+
+        vm.stopPrank();
+        assertEq(abstainVotes, weight);
+    }
+
+    function testVoteSucceeded() public {
+        uint256 weight = 100;
+        vm.prank(minter);
+        token.mint(voter, weight);
+
+        vm.startPrank(voter);
+        token.delegate(voter);
+        vm.roll(block.number + 1);
+        vm.stopPrank();
+
+        ProposalSettings memory settings = ProposalSettings({againstThreshold: 50, isRelativeToVotableSupply: false});
+
+        bytes memory proposalData = abi.encode(settings);
+
+        string memory descriptionWithData = string.concat(description, string(proposalData));
+
+        // This is ignored
+        address[] memory targets = new address[](2);
+        uint256[] memory values = new uint256[](2);
+        bytes[] memory calldatas = new bytes[](2);
+        targets[0] = address(token);
+        calldatas[0] = abi.encodeCall(IERC20.transfer, (test1, 100));
+        targets[1] = test2;
+        values[1] = 0.2 ether;
+        calldatas[1] = calldatas[0];
+
+        vm.startPrank(admin);
+        governor.setProposalThreshold(0);
+        uint256 proposalId = governor.propose(targets, values, calldatas, descriptionWithData);
+        vm.stopPrank();
+        vm.roll(block.number + 2);
+
+        vm.startPrank(voter);
+        governor.castVote(proposalId, uint8(VoteType.For));
+
+        uint256 snapshot = block.number + governor.votingDelay();
+        vm.roll(snapshot + 1);
+        (uint256 againstVotes,,) = governor.proposalVotes(proposalId);
+
+        assertTrue(governor.voteSucceeded(proposalId));
+
+        vm.stopPrank();
     }
 }

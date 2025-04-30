@@ -887,7 +887,7 @@ contract CastVote is AgoraGovernorTest {
 }
 
 contract CastVoteWithReasonAndParams is AgoraGovernorTest {
-    function test_castVoteWithReasonAndParams_ucceeds(address _voter) public virtual {
+    function test_castVoteWithReasonAndParams_succeeds(address _voter) public virtual {
         _mintAndDelegate(_voter, 100e18);
         (address[] memory targets, uint256[] memory values, bytes[] memory calldatas) = _formatProposalData(0);
         uint256 snapshot = block.number + governor.votingDelay();
