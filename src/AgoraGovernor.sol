@@ -488,7 +488,7 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
     {
         uint8 beforeVoteSucceeded = hooks.beforeVoteSucceeded(proposalId);
 
-        if (beforeVoteSucceeded == 0) {
+        if (beforeVoteSucceeded == 1) {
             voteSucceeded = super._voteSucceeded(proposalId);
         } else {
             voteSucceeded = beforeVoteSucceeded == 2;

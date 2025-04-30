@@ -103,15 +103,18 @@ contract Middleware is IMiddleware, BaseHook {
         override
         returns (bytes4, bool voteSucceeded)
     {
+        voteSucceeded = false;
         uint8 proposalTypeId = _proposalTypeId[proposalId];
         _proposalTypeExists(proposalTypeId);
 
         address module = _proposalTypes[proposalTypeId].module;
-        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
 
         // Route hook to voting module
-        if (module != address(0) && hooks.beforeVoteSucceeded) {
-            (, voteSucceeded) = BaseHook(module).beforeVoteSucceeded(msg.sender, proposalId);
+        if (module != address(0)) {
+            Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
+            if (hooks.beforeVoteSucceeded) {
+                (, voteSucceeded) = BaseHook(module).beforeVoteSucceeded(msg.sender, proposalId);
+            }
         }
 
         return (this.beforeVoteSucceeded.selector, voteSucceeded);
@@ -128,11 +131,13 @@ contract Middleware is IMiddleware, BaseHook {
         _proposalTypeExists(proposalTypeId);
 
         address module = _proposalTypes[proposalTypeId].module;
-        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
 
         // Route hook to voting module
-        if (module != address(0) && hooks.afterVoteSucceeded) {
-            BaseHook(module).afterVoteSucceeded(msg.sender, proposalId, voteSucceeded);
+        if (module != address(0)) {
+            Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
+            if (hooks.afterVoteSucceeded) {
+                BaseHook(module).afterVoteSucceeded(msg.sender, proposalId, voteSucceeded);
+            }
         }
 
         return this.afterVoteSucceeded.selector;
@@ -150,11 +155,18 @@ contract Middleware is IMiddleware, BaseHook {
         _proposalTypeExists(proposalTypeId);
 
         address module = _proposalTypes[proposalTypeId].module;
-        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
 
         // Route hook to voting module
-        if (module != address(0) && hooks.beforeQuorumCalculation) {
-            (, calculatedQuorum) = BaseHook(module).beforeQuorumCalculation(msg.sender, proposalId);
+        if (module != address(0)) {
+            Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
+            if (hooks.beforeQuorumCalculation) {
+                (, calculatedQuorum) = BaseHook(module).beforeQuorumCalculation(msg.sender, proposalId);
+            } else {
+                calculatedQuorum = (
+                    governor.token().getPastTotalSupply(governor.proposalSnapshot(proposalId))
+                        * _proposalTypes[proposalTypeId].quorum
+                ) / governor.quorumDenominator();
+            }
         } else {
             calculatedQuorum = (
                 governor.token().getPastTotalSupply(governor.proposalSnapshot(proposalId))
@@ -176,11 +188,13 @@ contract Middleware is IMiddleware, BaseHook {
         _proposalTypeExists(proposalTypeId);
 
         address module = _proposalTypes[proposalTypeId].module;
-        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
 
         // Route hook to voting module
-        if (module != address(0) && hooks.afterQuorumCalculation) {
-            BaseHook(module).afterQuorumCalculation(msg.sender, proposalId, quorum);
+        if (module != address(0)) {
+            Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
+            if (hooks.afterQuorumCalculation) {
+                BaseHook(module).afterQuorumCalculation(msg.sender, proposalId, quorum);
+            }
         }
 
         return this.afterQuorumCalculation.selector;
@@ -199,12 +213,14 @@ contract Middleware is IMiddleware, BaseHook {
         _proposalTypeExists(proposalTypeId);
 
         address module = _proposalTypes[proposalTypeId].module;
-        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
 
         // Route hook to voting module
-        if (module != address(0) && hooks.beforeVote) {
-            (, hasUpdated, weight) =
-                BaseHook(module).beforeVote(msg.sender, proposalId, account, support, reason, params);
+        if (module != address(0)) {
+            Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
+            if (hooks.beforeVote) {
+                (, hasUpdated, weight) =
+                    BaseHook(module).beforeVote(msg.sender, proposalId, account, support, reason, params);
+            }
         }
 
         return (this.beforeVote.selector, hasUpdated, weight);
@@ -224,11 +240,13 @@ contract Middleware is IMiddleware, BaseHook {
         _proposalTypeExists(proposalTypeId);
 
         address module = _proposalTypes[proposalTypeId].module;
-        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
 
         // Route hook to voting module
-        if (module != address(0) && hooks.afterVote) {
-            BaseHook(module).afterVote(msg.sender, weight, proposalId, account, support, reason, params);
+        if (module != address(0)) {
+            Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
+            if (hooks.afterVote) {
+                BaseHook(module).afterVote(msg.sender, weight, proposalId, account, support, reason, params);
+            }
         }
 
         return this.afterVote.selector;
@@ -247,12 +265,15 @@ contract Middleware is IMiddleware, BaseHook {
         _proposalTypeExists(proposalTypeId);
 
         address module = _proposalTypes[proposalTypeId].module;
-        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
 
         // Route hook to voting module
-        if (module != address(0) && hooks.beforePropose) {
-            string memory proposalData = description._parseProposalData();
-            (, proposalId) = BaseHook(module).beforePropose(msg.sender, targets, values, calldatas, proposalData);
+        if (module != address(0)) {
+            Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
+
+            if (hooks.beforePropose) {
+                string memory proposalData = description._parseProposalData();
+                (, proposalId) = BaseHook(module).beforePropose(msg.sender, targets, values, calldatas, proposalData);
+            }
         }
 
         // `this` is required to convert `calldatas` from memory to calldata
@@ -278,12 +299,14 @@ contract Middleware is IMiddleware, BaseHook {
         _proposalTypeExists(proposalTypeId);
 
         address module = _proposalTypes[proposalTypeId].module;
-        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
 
         // Route hook to voting module
-        if (module != address(0) && hooks.afterPropose) {
-            string memory proposalData = description._parseProposalData();
-            BaseHook(module).afterPropose(msg.sender, proposalId, targets, values, calldatas, proposalData);
+        if (module != address(0)) {
+            Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
+            if (hooks.afterPropose) {
+                string memory proposalData = description._parseProposalData();
+                BaseHook(module).afterPropose(msg.sender, proposalId, targets, values, calldatas, proposalData);
+            }
         }
 
         return this.afterPropose.selector;
@@ -302,11 +325,13 @@ contract Middleware is IMiddleware, BaseHook {
         _proposalTypeExists(proposalTypeId);
 
         address module = _proposalTypes[proposalTypeId].module;
-        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
 
         // Route hook to voting module
-        if (module != address(0) && hooks.beforeCancel) {
-            (, proposalId) = BaseHook(module).beforeCancel(msg.sender, targets, values, calldatas, descriptionHash);
+        if (module != address(0)) {
+            Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
+            if (hooks.beforeCancel) {
+                (, proposalId) = BaseHook(module).beforeCancel(msg.sender, targets, values, calldatas, descriptionHash);
+            }
         }
         return (this.beforeCancel.selector, proposalId);
     }
@@ -324,11 +349,13 @@ contract Middleware is IMiddleware, BaseHook {
         _proposalTypeExists(proposalTypeId);
 
         address module = _proposalTypes[proposalTypeId].module;
-        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
 
         // Route hook to voting module
-        if (module != address(0) && hooks.afterCancel) {
-            BaseHook(module).afterCancel(msg.sender, proposalId, targets, values, calldatas, descriptionHash);
+        if (module != address(0)) {
+            Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
+            if (hooks.afterCancel) {
+                BaseHook(module).afterCancel(msg.sender, proposalId, targets, values, calldatas, descriptionHash);
+            }
         }
 
         return this.afterCancel.selector;
@@ -347,12 +374,15 @@ contract Middleware is IMiddleware, BaseHook {
         _proposalTypeExists(proposalTypeId);
 
         address module = _proposalTypes[proposalTypeId].module;
-        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
 
         // Route hook to voting module
-        if (module != address(0) && hooks.beforeQueue) {
-            (, targets, values, calldatas, descriptionHash) =
-                BaseHook(module).beforeQueue(msg.sender, targets, values, calldatas, descriptionHash);
+        if (module != address(0)) {
+            Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
+
+            if (hooks.beforeQueue) {
+                (, targets, values, calldatas, descriptionHash) =
+                    BaseHook(module).beforeQueue(msg.sender, targets, values, calldatas, descriptionHash);
+            }
         }
 
         return (this.beforeQueue.selector, targets, values, calldatas, descriptionHash);
@@ -371,11 +401,13 @@ contract Middleware is IMiddleware, BaseHook {
         _proposalTypeExists(proposalTypeId);
 
         address module = _proposalTypes[proposalTypeId].module;
-        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
 
         // Route hook to voting module
-        if (module != address(0) && hooks.afterQueue) {
-            BaseHook(module).afterQueue(msg.sender, proposalId, targets, values, calldatas, descriptionHash);
+        if (module != address(0)) {
+            Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
+            if (hooks.afterQueue) {
+                BaseHook(module).afterQueue(msg.sender, proposalId, targets, values, calldatas, descriptionHash);
+            }
         }
 
         return this.afterQueue.selector;
@@ -395,12 +427,15 @@ contract Middleware is IMiddleware, BaseHook {
         _proposalTypeExists(proposalTypeId);
 
         address module = _proposalTypes[proposalTypeId].module;
-        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
 
         // Route hook to voting module
-        if (module != address(0) && hooks.beforeExecute) {
-            (, bool success) = BaseHook(module).beforeExecute(msg.sender, targets, values, calldatas, descriptionHash);
-            require(success);
+        if (module != address(0)) {
+            Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
+            if (hooks.beforeExecute) {
+                (, bool success) =
+                    BaseHook(module).beforeExecute(msg.sender, targets, values, calldatas, descriptionHash);
+                require(success);
+            }
         }
 
         return (this.beforeExecute.selector, true);
@@ -419,11 +454,13 @@ contract Middleware is IMiddleware, BaseHook {
         _proposalTypeExists(proposalTypeId);
 
         address module = _proposalTypes[proposalTypeId].module;
-        Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
 
         // Route hook to voting module
-        if (module != address(0) && hooks.afterExecute) {
-            BaseHook(module).afterExecute(msg.sender, proposalId, targets, values, calldatas, descriptionHash);
+        if (module != address(0)) {
+            Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
+            if (hooks.afterExecute) {
+                BaseHook(module).afterExecute(msg.sender, proposalId, targets, values, calldatas, descriptionHash);
+            }
         }
 
         return this.afterExecute.selector;
