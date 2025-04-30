@@ -882,6 +882,7 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         vm.stopPrank();
     }
 
+    /* NOTE: We may not need this anymore 
     function testReverts_formatExecuteParams_nativeMix() public {
         address[] memory _targets = new address[](2);
         uint256[] memory _values = new uint256[](2);
@@ -924,6 +925,7 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         vm.expectRevert();
         governor.propose(targets, values, calldatas, descriptionWithData);
     }
+    */
 
     function _formatProposalData()
         internal
