@@ -32,4 +32,12 @@ contract ParserTest is Test {
         uint8 proposalTypeId = description._parseProposalTypeId();
         assertEq(proposalTypeId, 10);
     }
+
+    function test_parse_proposalData() public pure {
+        bytes memory proposalData = abi.encode(0x1234);
+        string memory description = "my description is this one#proposalTypeId=10#proposalData=";
+        string memory descriptionWithData = string.concat(description, string(proposalData));
+        string memory proposalDataStr = descriptionWithData._parseProposalData();
+        assertEq(string(proposalData), proposalDataStr);
+    }
 }
