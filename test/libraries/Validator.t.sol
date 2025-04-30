@@ -9,7 +9,7 @@ contract ValidatorTest is Test {
     address _from = makeAddr("from");
     address _to = makeAddr("to");
 
-    function test_compare_success() public {
+    function test_compare_success() public view {
         bytes[] memory parameters = new bytes[](3);
         parameters[0] = abi.encode(uint256(uint160(_from)));
         parameters[1] = abi.encode(uint256(uint160(_to)));

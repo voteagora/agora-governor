@@ -97,7 +97,7 @@ contract Middleware is IMiddleware, BaseHook {
     //////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IHooks
-    function beforeVoteSucceeded(address sender, uint256 proposalId)
+    function beforeVoteSucceeded(address, /* sender */ uint256 proposalId)
         external
         view
         override
@@ -118,7 +118,7 @@ contract Middleware is IMiddleware, BaseHook {
     }
 
     /// @inheritdoc IHooks
-    function afterVoteSucceeded(address sender, uint256 proposalId, bool voteSucceeded)
+    function afterVoteSucceeded(address, /* sender */ uint256 proposalId, bool voteSucceeded)
         external
         view
         override
@@ -139,7 +139,7 @@ contract Middleware is IMiddleware, BaseHook {
     }
 
     /// @inheritdoc IHooks
-    function beforeQuorumCalculation(address sender, uint256 proposalId)
+    function beforeQuorumCalculation(address, /* sender */ uint256 proposalId)
         external
         view
         override
@@ -166,7 +166,7 @@ contract Middleware is IMiddleware, BaseHook {
     }
 
     /// @inheritdoc IHooks
-    function afterQuorumCalculation(address sender, uint256 proposalId, uint256 quorum)
+    function afterQuorumCalculation(address, /* sender */ uint256 proposalId, uint256 quorum)
         external
         view
         override
@@ -188,7 +188,7 @@ contract Middleware is IMiddleware, BaseHook {
 
     /// @inheritdoc IHooks
     function beforeVote(
-        address sender,
+        address, /* sender */
         uint256 proposalId,
         address account,
         uint8 support,
@@ -212,7 +212,7 @@ contract Middleware is IMiddleware, BaseHook {
 
     /// @inheritdoc IHooks
     function afterVote(
-        address sender,
+        address, /* sender */
         uint256 weight,
         uint256 proposalId,
         address account,
@@ -236,7 +236,7 @@ contract Middleware is IMiddleware, BaseHook {
 
     /// @inheritdoc IHooks
     function beforePropose(
-        address sender,
+        address, /* sender */
         address[] memory targets,
         uint256[] memory values,
         bytes[] memory calldatas,
@@ -267,7 +267,7 @@ contract Middleware is IMiddleware, BaseHook {
 
     /// @inheritdoc IHooks
     function afterPropose(
-        address sender,
+        address, /* sender */
         uint256 proposalId,
         address[] memory targets,
         uint256[] memory values,
@@ -291,7 +291,7 @@ contract Middleware is IMiddleware, BaseHook {
 
     /// @inheritdoc IHooks
     function beforeCancel(
-        address sender,
+        address, /* sender */
         address[] memory targets,
         uint256[] memory values,
         bytes[] memory calldatas,
@@ -313,7 +313,7 @@ contract Middleware is IMiddleware, BaseHook {
 
     /// @inheritdoc IHooks
     function afterCancel(
-        address sender,
+        address, /* sender */
         uint256 proposalId,
         address[] memory targets,
         uint256[] memory values,
@@ -336,7 +336,7 @@ contract Middleware is IMiddleware, BaseHook {
 
     /// @inheritdoc IHooks
     function beforeQueue(
-        address sender,
+        address, /* sender */
         address[] memory targets,
         uint256[] memory values,
         bytes[] memory calldatas,
@@ -360,7 +360,7 @@ contract Middleware is IMiddleware, BaseHook {
 
     /// @inheritdoc IHooks
     function afterQueue(
-        address sender,
+        address, /* sender */
         uint256 proposalId,
         address[] memory targets,
         uint256[] memory values,
@@ -383,7 +383,7 @@ contract Middleware is IMiddleware, BaseHook {
 
     /// @inheritdoc IHooks
     function beforeExecute(
-        address sender,
+        address, /* sender */
         address[] memory targets,
         uint256[] memory values,
         bytes[] memory calldatas,
@@ -408,7 +408,7 @@ contract Middleware is IMiddleware, BaseHook {
 
     /// @inheritdoc IHooks
     function afterExecute(
-        address sender,
+        address, /* sender */
         uint256 proposalId,
         address[] memory targets,
         uint256[] memory values,

@@ -219,7 +219,12 @@ contract ApprovalVotingModule is BaseHook {
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) external virtual override returns (bytes4, address[] memory, uint256[] memory, bytes[] memory, bytes32) {
+    )
+        external
+        override
+        onlyGovernor(sender)
+        returns (bytes4, address[] memory, uint256[] memory, bytes[] memory, bytes32)
+    {
         uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
         // Note: we assume that the beforeExecute will modify the calldata in the same way it is queued. This is to
         // ensure that the state is correctly reflected in the timelock

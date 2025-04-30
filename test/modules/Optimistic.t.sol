@@ -120,7 +120,7 @@ contract OptimisticModuleTest is Test, Deployers {
 
         vm.startPrank(voter);
         governor.castVote(proposalId, uint8(VoteType.For));
-        (uint256 againstVotes, uint256 forVotes, uint256 abstainVotes) = governor.proposalVotes(proposalId);
+        (, uint256 forVotes,) = governor.proposalVotes(proposalId);
 
         vm.stopPrank();
         assertEq(forVotes, weight);
@@ -160,7 +160,7 @@ contract OptimisticModuleTest is Test, Deployers {
 
         vm.startPrank(voter);
         governor.castVote(proposalId, uint8(VoteType.Against));
-        (uint256 againstVotes, uint256 forVotes, uint256 abstainVotes) = governor.proposalVotes(proposalId);
+        (uint256 againstVotes,,) = governor.proposalVotes(proposalId);
 
         vm.stopPrank();
         assertEq(againstVotes, weight);
@@ -200,7 +200,7 @@ contract OptimisticModuleTest is Test, Deployers {
 
         vm.startPrank(voter);
         governor.castVote(proposalId, uint8(VoteType.Abstain));
-        (uint256 againstVotes, uint256 forVotes, uint256 abstainVotes) = governor.proposalVotes(proposalId);
+        (,, uint256 abstainVotes) = governor.proposalVotes(proposalId);
 
         vm.stopPrank();
         assertEq(abstainVotes, weight);
@@ -315,7 +315,7 @@ contract OptimisticModuleTest is Test, Deployers {
 
         vm.startPrank(admin);
         governor.setProposalThreshold(0);
-        uint256 proposalId = governor.propose(targets, values, calldatas, descriptionWithData);
+        governor.propose(targets, values, calldatas, descriptionWithData);
         vm.stopPrank();
         vm.roll(block.number + 2);
 
@@ -343,7 +343,7 @@ contract OptimisticModuleTest is Test, Deployers {
         vm.startPrank(admin);
         governor.setProposalThreshold(0);
         vm.expectRevert();
-        uint256 proposalId = governor.propose(targets, values, calldatas, descriptionWithData);
+        governor.propose(targets, values, calldatas, descriptionWithData);
         vm.stopPrank();
     }
 
@@ -368,13 +368,12 @@ contract OptimisticModuleTest is Test, Deployers {
         vm.startPrank(admin);
         governor.setProposalThreshold(0);
         vm.expectRevert();
-        uint256 proposalId = governor.propose(targets, values, calldatas, descriptionWithData);
+        governor.propose(targets, values, calldatas, descriptionWithData);
         vm.stopPrank();
     }
 
     function testRevert_propose_invalidProposalData() public {
         bytes memory proposalData = abi.encode(0x12345678);
-        string memory descriptionWithData = string.concat(description, string(proposalData));
 
         // This is ignored
         address[] memory targets = new address[](2);
@@ -414,7 +413,7 @@ contract OptimisticModuleTest is Test, Deployers {
         governor.setProposalThreshold(0);
 
         vm.expectRevert();
-        uint256 proposalId = governor.propose(targets, values, calldatas, descriptionWithData);
+        governor.propose(targets, values, calldatas, descriptionWithData);
         vm.stopPrank();
     }
 
@@ -436,7 +435,7 @@ contract OptimisticModuleTest is Test, Deployers {
 
         vm.startPrank(admin);
         governor.setProposalThreshold(0);
-        uint256 proposalId = governor.propose(targets, values, calldatas, descriptionWithData);
+        governor.propose(targets, values, calldatas, descriptionWithData);
         vm.stopPrank();
         vm.roll(block.number + 17); // after voting period has ended
 

@@ -74,8 +74,7 @@ contract ApprovalVotingModuleTest is Test, Deployers {
     }
 
     function createProposal() internal returns (uint256 proposalId) {
-        (bytes memory proposalData, ProposalOption[] memory options, ProposalSettings memory settings) =
-            _formatProposalData();
+        (bytes memory proposalData,,) = _formatProposalData();
 
         string memory descriptionWithData = string.concat(description, string(proposalData));
 
@@ -96,8 +95,7 @@ contract ApprovalVotingModuleTest is Test, Deployers {
     }
 
     function test_createProposal() public {
-        (bytes memory proposalData, ProposalOption[] memory options, ProposalSettings memory settings) =
-            _formatProposalData();
+        (, ProposalOption[] memory options, ProposalSettings memory settings) = _formatProposalData();
 
         uint256 proposalId = createProposal();
         Proposal memory proposal = ApprovalVotingModuleMock(module)._proposals(proposalId);
@@ -133,8 +131,6 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         vm.roll(block.number + 1);
         vm.stopPrank();
 
-        (bytes memory proposalData,,) = _formatProposalData();
-
         uint256 proposalId = createProposal();
         vm.roll(block.number + 2);
 
@@ -165,8 +161,6 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         token.delegate(voter);
         vm.roll(block.number + 1);
         vm.stopPrank();
-
-        (bytes memory proposalData,,) = _formatProposalData();
 
         uint256 proposalId = createProposal();
         vm.roll(block.number + 2);
@@ -200,8 +194,6 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         vm.roll(block.number + 1);
         vm.stopPrank();
 
-        (bytes memory proposalData,,) = _formatProposalData();
-
         uint256 proposalId = createProposal();
         vm.roll(block.number + 2);
 
@@ -232,8 +224,6 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         token.delegate(voter);
         vm.roll(block.number + 1);
         vm.stopPrank();
-
-        (bytes memory proposalData,,) = _formatProposalData();
 
         uint256 proposalId = createProposal();
         vm.roll(block.number + 2);
@@ -266,8 +256,6 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         vm.roll(block.number + 1);
         vm.stopPrank();
 
-        (bytes memory proposalData,,) = _formatProposalData();
-
         uint256 proposalId = createProposal();
         vm.roll(block.number + 2);
 
@@ -282,7 +270,7 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         vm.stopPrank();
     }
 
-    function testSortOptions() public {
+    function testSortOptions() public view {
         (, ProposalOption[] memory options,) = _formatProposalData();
 
         uint128[] memory optionVotes = new uint128[](3);
@@ -301,7 +289,7 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         assertEq(sortedOptions[2].targets[0], options[0].targets[0]);
     }
 
-    function testCountOptions_criteriaTopChoices(uint128[3] memory _optionVotes) public {
+    function testCountOptions_criteriaTopChoices(uint128[3] memory _optionVotes) public view {
         (, ProposalOption[] memory options, ProposalSettings memory settings) = _formatProposalData();
 
         uint128[] memory optionVotes = new uint128[](3);
@@ -334,7 +322,7 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         );
     }
 
-    function testCountOptions_criteriaThreshold() public {
+    function testCountOptions_criteriaThreshold() public view {
         (, ProposalOption[] memory options, ProposalSettings memory settings) = _formatProposalData();
         settings.criteria = uint8(PassingCriteria.Threshold);
 
@@ -369,7 +357,7 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         vm.roll(block.number + 1);
         vm.stopPrank();
 
-        (bytes memory proposalData, ProposalOption[] memory options,) = _formatProposalData();
+        (, ProposalOption[] memory options,) = _formatProposalData();
 
         uint256 proposalId = createProposal();
         vm.roll(block.number + 2);
@@ -567,8 +555,7 @@ contract ApprovalVotingModuleTest is Test, Deployers {
     //////////////////////////////////////////////////////////////*/
 
     function testRevert_propose_existingProposal() public {
-        (bytes memory proposalData, ProposalOption[] memory options, ProposalSettings memory settings) =
-            _formatProposalData();
+        (bytes memory proposalData,,) = _formatProposalData();
 
         string memory descriptionWithData = string.concat(description, string(proposalData));
 

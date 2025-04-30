@@ -136,7 +136,7 @@ contract MiddlewareTest is Test, Deployers {
 }
 
 contract Initialize is MiddlewareTest {
-    function test_SetsGovernor() public {
+    function test_SetsGovernor() public view {
         assertEq(address(governor), address(middleware.governor()));
     }
 }

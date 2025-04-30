@@ -44,11 +44,7 @@ contract AgoraGovernorTest is Test, Deployers {
         token.delegate(_actor);
     }
 
-    function _formatProposalData(uint256 _proposalTargetCalldata)
-        public
-        virtual
-        returns (address[] memory, uint256[] memory, bytes[] memory)
-    {
+    function _formatProposalData() public virtual returns (address[] memory, uint256[] memory, bytes[] memory) {
         address receiver1 = makeAddr("receiver1");
         address receiver2 = makeAddr("receiver2");
 
@@ -259,7 +255,7 @@ contract Queue is AgoraGovernorTest {
         governor.queue(targets, values, calldatas, keccak256("Test"));
     }
 
-    function test_queue_alreadyQueued_reverts(uint256 _proposalTargetCalldata, uint256 _elapsedAfterQueuing) public {
+    function test_queue_alreadyQueued_reverts(uint256 _elapsedAfterQueuing) public {
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
         vm.prank(minter);
         token.mint(address(this), 1e30);
@@ -304,11 +300,7 @@ contract Queue is AgoraGovernorTest {
 }
 
 contract Execute is AgoraGovernorTest {
-    function test_execute_validInput_succeeds(
-        address _actor,
-        uint256 _proposalTargetCalldata,
-        uint256 _elapsedAfterQueuing
-    ) public virtual {
+    function test_execute_validInput_succeeds(address _actor, uint256 _elapsedAfterQueuing) public virtual {
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
         vm.assume(_actor != proxyAdmin);
         vm.prank(minter);
@@ -346,10 +338,7 @@ contract Execute is AgoraGovernorTest {
         assertEq(counter, 1);
     }
 
-    function test_execute_manager_succeeds(uint256 _proposalTargetCalldata, uint256 _elapsedAfterQueuing)
-        public
-        virtual
-    {
+    function test_execute_manager_succeeds(uint256 _elapsedAfterQueuing) public virtual {
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
         vm.prank(minter);
         token.mint(address(this), 1e30);
@@ -386,7 +375,7 @@ contract Execute is AgoraGovernorTest {
         assertEq(counter, 1);
     }
 
-    function test_execute_notQueued_reverts(uint256 _proposalTargetCalldata) public {
+    function test_execute_notQueued_reverts() public {
         vm.prank(minter);
         token.mint(address(this), 1e30);
         token.delegate(address(this));
@@ -426,7 +415,7 @@ contract Execute is AgoraGovernorTest {
         governor.execute(targets, values, calldatas, keccak256("Test"));
     }
 
-    function test_execute_notReady_reverts(uint256 _proposalTargetCalldata, uint256 _elapsedAfterQueuing) public {
+    function test_execute_notReady_reverts(uint256 _elapsedAfterQueuing) public {
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, 0, timelock.getMinDelay() - 1);
         vm.prank(minter);
         token.mint(address(this), 1e30);
@@ -471,7 +460,7 @@ contract Execute is AgoraGovernorTest {
         governor.execute(targets, values, calldatas, keccak256("Test"));
     }
 
-    function test_execute_notSuccessful_reverts(uint256 _proposalTargetCalldata) public {
+    function test_execute_notSuccessful_reverts() public {
         address[] memory targets = new address[](1);
         targets[0] = address(this);
         uint256[] memory values = new uint256[](1);
@@ -497,9 +486,7 @@ contract Execute is AgoraGovernorTest {
         governor.execute(targets, values, calldatas, keccak256("Test"));
     }
 
-    function test_execute_alreadyExecuted_reverts(uint256 _proposalTargetCalldata, uint256 _elapsedAfterQueuing)
-        public
-    {
+    function test_execute_alreadyExecuted_reverts(uint256 _elapsedAfterQueuing) public {
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
         vm.prank(minter);
         token.mint(address(this), 1e30);
@@ -589,11 +576,7 @@ contract Cancel is AgoraGovernorTest {
         assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Pending));
     }
 
-    function test_cancel_beforeQueuing_succeeds(
-        uint256 _proposalTargetCalldata,
-        uint256 _elapsedAfterQueuing,
-        uint256 _actorSeed
-    ) public virtual {
+    function test_cancel_beforeQueuing_succeeds(uint256 _elapsedAfterQueuing, uint256 _actorSeed) public virtual {
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
         vm.prank(minter);
         token.mint(address(this), 1e30);
@@ -625,11 +608,7 @@ contract Cancel is AgoraGovernorTest {
         assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Canceled));
     }
 
-    function test_cancel_afterQueuing_succeeds(
-        uint256 _proposalTargetCalldata,
-        uint256 _elapsedAfterQueuing,
-        uint256 _actorSeed
-    ) public virtual {
+    function test_cancel_afterQueuing_succeeds(uint256 _elapsedAfterQueuing, uint256 _actorSeed) public virtual {
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
         vm.prank(minter);
         token.mint(address(this), 1e30);
@@ -688,11 +667,7 @@ contract Cancel is AgoraGovernorTest {
         assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Canceled));
     }
 
-    function test_cancel_afterExecution_reverts(
-        uint256 _proposalTargetCalldata,
-        uint256 _elapsedAfterQueuing,
-        uint256 _actorSeed
-    ) public virtual {
+    function test_cancel_afterExecution_reverts(uint256 _elapsedAfterQueuing, uint256 _actorSeed) public virtual {
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
         vm.prank(minter);
         token.mint(address(this), 1e30);
@@ -889,7 +864,7 @@ contract CastVote is AgoraGovernorTest {
 contract CastVoteWithReasonAndParams is AgoraGovernorTest {
     function test_castVoteWithReasonAndParams_succeeds(address _voter) public virtual {
         _mintAndDelegate(_voter, 100e18);
-        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas) = _formatProposalData(0);
+        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas) = _formatProposalData();
         uint256 snapshot = block.number + governor.votingDelay();
         string memory reason = "a nice reason";
 
@@ -912,7 +887,7 @@ contract CastVoteWithReasonAndParams is AgoraGovernorTest {
 contract VoteSucceeded is AgoraGovernorTest {
     function test_voteSucceeded_quorum_succeeds(address _voter) public virtual {
         _mintAndDelegate(_voter, 100e18);
-        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas) = _formatProposalData(0);
+        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas) = _formatProposalData();
         uint256 snapshot = block.number + governor.votingDelay();
         string memory reason = "a nice reason";
 
@@ -937,7 +912,7 @@ contract VoteSucceeded is AgoraGovernorTest {
         vm.assume(_voter != _voter2);
         _mintAndDelegate(_voter, 100e18);
         _mintAndDelegate(_voter2, 200e18);
-        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas) = _formatProposalData(0);
+        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas) = _formatProposalData();
         uint256 snapshot = block.number + governor.votingDelay();
         string memory reason = "a nice reason";
 
