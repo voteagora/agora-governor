@@ -161,18 +161,14 @@ contract Middleware is IMiddleware, BaseHook {
             Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
             if (hooks.beforeQuorumCalculation) {
                 (, calculatedQuorum) = BaseHook(module).beforeQuorumCalculation(msg.sender, proposalId);
-            } else {
-                calculatedQuorum = (
-                    governor.token().getPastTotalSupply(governor.proposalSnapshot(proposalId))
-                        * _proposalTypes[proposalTypeId].quorum
-                ) / governor.quorumDenominator();
+                return (this.beforeQuorumCalculation.selector, calculatedQuorum);
             }
-        } else {
-            calculatedQuorum = (
-                governor.token().getPastTotalSupply(governor.proposalSnapshot(proposalId))
-                    * _proposalTypes[proposalTypeId].quorum
-            ) / governor.quorumDenominator();
         }
+
+        calculatedQuorum = (
+            governor.token().getPastTotalSupply(governor.proposalSnapshot(proposalId))
+                * _proposalTypes[proposalTypeId].quorum
+        ) / governor.quorumDenominator();
         // Return the quorum from the proposal type
         return (this.beforeQuorumCalculation.selector, calculatedQuorum);
     }
