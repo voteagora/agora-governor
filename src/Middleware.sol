@@ -71,8 +71,8 @@ contract Middleware is IMiddleware, BaseHook {
     /// @inheritdoc BaseHook
     function getHookPermissions() public pure override returns (Hooks.Permissions memory) {
         return Hooks.Permissions({
-            beforeInitialize: true,
-            afterInitialize: true,
+            beforeInitialize: false,
+            afterInitialize: false,
             beforeVoteSucceeded: true,
             afterVoteSucceeded: true,
             beforeQuorumCalculation: true,
@@ -93,18 +93,6 @@ contract Middleware is IMiddleware, BaseHook {
     /*//////////////////////////////////////////////////////////////
                                HOOKS
     //////////////////////////////////////////////////////////////*/
-
-    // @dev Currently a no-op operation, leaving these hooks here in case there are a use case where someone would like to use Hooks without
-    // the middleware contract. This method could be used to set default proposal types or make configuration changes to the governor.
-    function beforeInitialize(address sender) external pure override returns (bytes4) {
-        return this.beforeInitialize.selector;
-    }
-
-    // @dev Currently a no-op operation, leaving these hooks here in case there are a use case where someone would like to use Hooks without
-    // the middleware contract. This method could be used to set default proposal types or make configuration changes to the governor.
-    function afterInitialize(address sender) external pure override returns (bytes4) {
-        return this.afterInitialize.selector;
-    }
 
     /// @inheritdoc IHooks
     function beforeVoteSucceeded(address sender, uint256 proposalId)
@@ -292,7 +280,8 @@ contract Middleware is IMiddleware, BaseHook {
 
         // Route hook to voting module
         if (module != address(0) && hooks.afterPropose) {
-            BaseHook(module).afterPropose(msg.sender, proposalId, targets, values, calldatas, description);
+            string memory proposalData = description._parseProposalData();
+            BaseHook(module).afterPropose(msg.sender, proposalId, targets, values, calldatas, proposalData);
         }
 
         return this.afterPropose.selector;

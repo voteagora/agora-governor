@@ -50,7 +50,7 @@ struct Proposal {
 }
 
 /// @custom:security-contact security@voteagora.com
-contract ApprovalVoting is BaseHook {
+contract ApprovalVotingModule is BaseHook {
     /*//////////////////////////////////////////////////////////////
                                  ERRORS
     //////////////////////////////////////////////////////////////*/
@@ -134,7 +134,7 @@ contract ApprovalVoting is BaseHook {
             revert ExistingProposal();
         }
 
-        bytes memory proposalData = abi.encode(description);
+        bytes memory proposalData = bytes(description);
 
         (ProposalOption[] memory proposalOptions, ProposalSettings memory proposalSettings) =
             abi.decode(proposalData, (ProposalOption[], ProposalSettings));
@@ -193,7 +193,7 @@ contract ApprovalVoting is BaseHook {
             if (weight != 0) {
                 uint256[] memory options = _decodeVoteParams(params);
                 uint256 totalOptions = options.length;
-                if (totalOptions == 0 || totalOptions != proposals[proposalId].optionVotes.length) {
+                if (totalOptions == 0) {
                     revert InvalidParams();
                 }
 
