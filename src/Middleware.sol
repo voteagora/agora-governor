@@ -40,6 +40,9 @@ contract Middleware is IMiddleware, BaseHook {
     /// @notice Max value of `quorum` and `approvalThreshold` in `ProposalType`
     uint16 public constant PERCENT_DIVISOR = 10_000;
 
+    // @notice Max length of the `assignedScopes` array
+    uint8 public constant MAX_SCOPE_LENGTH = 5;
+
     error BeforeExecuteFailed();
 
     /*//////////////////////////////////////////////////////////////
@@ -470,6 +473,18 @@ contract Middleware is IMiddleware, BaseHook {
     }
 
     /**
+     * @notice Retrives the function selector of a transaction for a given proposal type.
+     * @param proposalTypeId Id of the proposal type
+     * @param key A type signature of a function and contract address that has a limit specified in a scope
+     */
+    function getSelector(uint8 proposalTypeId, bytes24 key) public view returns (bytes4 selector) {
+        if (!_scopeExists[key]) revert InvalidScope();
+        if (!_proposalTypes[proposalTypeId].exists) revert InvalidProposalType();
+        Scope memory validScope = _assignedScopes[proposalTypeId][key][0];
+        return validScope.selector;
+    }
+
+    /**
      * @notice Sets the scope for a given proposal type.
      * @param proposalTypeId Id of the proposal type.
      * @param key A function selector and contract address that represent the type hash, i.e. 4byte(keccak256("foobar(uint,address)")) + bytes20(contractAddress).
@@ -488,12 +503,9 @@ contract Middleware is IMiddleware, BaseHook {
         SupportedTypes[] memory types,
         string calldata description
     ) external override onlyAdminOrTimelock {
-        if (!_proposalTypes[proposalTypeId].exists) {
-            revert InvalidProposalType(proposalTypeId);
-        }
-        if (parameters.length != comparators.length || parameters.length != types.length) {
-            revert InvalidParameterConditions();
-        }
+        if (!_proposalTypes[proposalTypeId].exists) revert InvalidProposalType();
+        if (parameters.length != comparators.length) revert InvalidParameterConditions();
+        if (_assignedScopes[proposalTypeId][key].length == MAX_SCOPE_LENGTH) revert MaxScopeLengthReached();
 
         Scope memory scope = Scope(key, selector, parameters, comparators, types, proposalTypeId, description, true);
         _assignedScopes[proposalTypeId][key].push(scope);
@@ -526,18 +538,16 @@ contract Middleware is IMiddleware, BaseHook {
         uint8 proposalTypeId,
         uint16 quorum,
         uint16 approvalThreshold,
-        string calldata name,
-        string calldata description,
+        string memory name,
+        string memory description,
         address module
     ) internal {
         if (quorum > PERCENT_DIVISOR) revert InvalidQuorum();
-        if (approvalThreshold > PERCENT_DIVISOR) {
-            revert InvalidApprovalThreshold();
-        }
+        if (approvalThreshold > PERCENT_DIVISOR) revert InvalidApprovalThreshold();
 
         _proposalTypes[proposalTypeId] = ProposalType(quorum, approvalThreshold, name, description, module, true);
 
-        emit ProposalTypeSet(proposalTypeId, quorum, approvalThreshold, name, description);
+        emit ProposalTypeSet(proposalTypeId, quorum, approvalThreshold, name, description, module);
     }
 
     /**
@@ -550,30 +560,14 @@ contract Middleware is IMiddleware, BaseHook {
         override
         onlyAdminOrTimelock
     {
-        if (!_proposalTypes[proposalTypeId].exists) {
-            revert InvalidProposalType(proposalTypeId);
-        }
-        if (scope.parameters.length != scope.comparators.length) {
-            revert InvalidParameterConditions();
-        }
+        if (!_proposalTypes[proposalTypeId].exists) revert InvalidProposalType();
+        if (scope.parameters.length != scope.comparators.length) revert InvalidParameterConditions();
+        if (_assignedScopes[proposalTypeId][scope.key].length == MAX_SCOPE_LENGTH) revert MaxScopeLengthReached();
 
         _scopeExists[scope.key] = true;
         _assignedScopes[proposalTypeId][scope.key].push(scope);
 
         emit ScopeCreated(proposalTypeId, scope.key, scope.selector, scope.description);
-    }
-
-    /**
-     * @notice Retrives the function selector of a transaction for a given proposal type.
-     * @param proposalTypeId Id of the proposal type
-     * @param key A type signature of a function and contract address that has a limit specified in a scope
-     */
-    function getSelector(uint8 proposalTypeId, bytes24 key) public view returns (bytes4 selector) {
-        if (!_proposalTypes[proposalTypeId].exists) {
-            revert InvalidProposalType(proposalTypeId);
-        }
-        Scope memory validScope = _assignedScopes[proposalTypeId][key][0];
-        return validScope.selector;
     }
 
     /**
@@ -667,7 +661,7 @@ contract Middleware is IMiddleware, BaseHook {
     function _proposalTypeExists(uint8 proposalTypeId) internal view {
         // Revert if `proposalType` is unset
         if (!_proposalTypes[proposalTypeId].exists) {
-            revert InvalidProposalType(proposalTypeId);
+            revert InvalidProposalType();
         }
     }
 }

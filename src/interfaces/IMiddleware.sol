@@ -17,14 +17,20 @@ interface IMiddleware {
     error InvalidParamNotEqual();
     error InvalidParamRange();
     error InvalidProposedTxForType();
-    error InvalidProposalType(uint8 proposalTypeId);
+    error InvalidProposalType();
+    error MaxScopeLengthReached();
 
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
 
     event ProposalTypeSet(
-        uint8 indexed proposalTypeId, uint16 quorum, uint16 approvalThreshold, string name, string description
+        uint8 indexed proposalTypeId,
+        uint16 quorum,
+        uint16 approvalThreshold,
+        string name,
+        string description,
+        address indexed module
     );
 
     /*//////////////////////////////////////////////////////////////
