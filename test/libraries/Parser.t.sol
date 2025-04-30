@@ -8,8 +8,6 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 contract ParserTest is Test {
     using Parser for string;
 
-    error InvalidDescription();
-
     function test_parse() public pure {
         string memory description = "my description is this one#proposalTypeId=1";
         uint8 proposalTypeId = description._parseProposalTypeId();
@@ -47,7 +45,7 @@ contract ParserTest is Test {
         bytes memory proposalData = abi.encode(0x1234);
         string memory description = "my description is this one#proposalTypeId=10#malformed=";
         string memory descriptionWithData = string.concat(description, string(proposalData));
-        vm.expectRevert(InvalidDescription.selector);
+        vm.expectRevert(Parser.InvalidDescription.selector);
         descriptionWithData._parseProposalData();
     }
 }
