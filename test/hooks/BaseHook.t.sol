@@ -7,6 +7,9 @@ import {BaseHookMock, BaseHookMockReverts} from "test/mocks/BaseHookMock.sol";
 import {GovernorCountingSimple} from "@openzeppelin/contracts/governance/extensions/GovernorCountingSimple.sol";
 import {IHooks} from "src/interfaces/IHooks.sol";
 import {Hooks} from "src/libraries/Hooks.sol";
+import {AgoraGovernorMock} from "test/mocks/AgoraGovernorMock.sol";
+import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {IVotes} from "@openzeppelin/contracts/governance/utils/IVotes.sol";
 
 import {Deployers} from "test/utils/Deployers.sol";
 
@@ -208,5 +211,25 @@ contract BaseHookTest is Test, Deployers {
         );
 
         governor.execute(targets, values, calldatas, keccak256("Test"));
+    }
+
+    function test_hookRevertsNotImplemented() public {
+        uint48 votingDelay = 1;
+        uint32 votingPeriod = 14;
+        uint256 proposalThreshold = 1;
+        uint256 quorumNumerator = 3000;
+
+        vm.expectRevert(Hooks.HookCallFailed.selector);
+        new AgoraGovernorMock(
+            votingDelay,
+            votingPeriod,
+            proposalThreshold,
+            quorumNumerator,
+            IVotes(address(this)),
+            TimelockController(payable(address(this))),
+            address(this),
+            address(this),
+            IHooks(address(hookReverts))
+        );
     }
 }
