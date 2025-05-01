@@ -351,13 +351,13 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
     //////////////////////////////////////////////////////////////*/
 
     function _setAdmin(address _newAdmin) internal {
-        admin = _newAdmin;
         emit AdminSet(admin, _newAdmin);
+        admin = _newAdmin;
     }
 
     function _setManager(address _newManager) internal {
-        manager = _newManager;
         emit ManagerSet(manager, _newManager);
+        manager = _newManager;
     }
 
     // @notice See Governor.sol replicates the logic to handle modified calldata from hooks

@@ -14,6 +14,7 @@ import {
 } from "src/modules/ApprovalVoting.sol";
 import {Middleware} from "src/Middleware.sol";
 import {AgoraGovernor} from "src/AgoraGovernor.sol";
+import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 
 import {MockToken} from "test/mocks/MockToken.sol";
 import {Deployers} from "test/utils/Deployers.sol";
@@ -27,6 +28,7 @@ enum VoteType {
 }
 
 contract ApprovalVotingModuleTest is Test, Deployers {
+    uint256 counter;
     ApprovalVotingModuleMock module;
     Middleware middleware;
     string description = "my description is this one#proposalTypeId=1#proposalData=";
@@ -71,6 +73,10 @@ contract ApprovalVotingModuleTest is Test, Deployers {
 
         vm.prank(address(admin));
         middleware.setProposalType(1, 5_000, 7_000, "Alt", "Lorem Ipsum", address(module));
+    }
+
+    function executeCallback() public payable virtual {
+        counter++;
     }
 
     function createProposal() internal returns (uint256 proposalId) {
@@ -266,6 +272,72 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         governor.castVoteWithReasonAndParams(proposalId, uint8(VoteType.For), "a good reason", params);
 
         assertTrue(governor.voteSucceeded(proposalId));
+
+        vm.stopPrank();
+    }
+
+    function testProposalExecutes(address _actor, uint256 _elapsedAfterQueuing) public {
+        vm.assume(_actor != proxyAdmin);
+        _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
+        uint256 weight = 100;
+        vm.prank(minter);
+        token.mint(voter, weight);
+
+        vm.startPrank(voter);
+        token.delegate(voter);
+        vm.roll(block.number + 1);
+        vm.stopPrank();
+
+        address[] memory targets = new address[](2);
+        uint256[] memory values = new uint256[](2);
+        bytes[] memory calldatas = new bytes[](2);
+        targets[0] = address(this);
+        values[0] = 0;
+        calldatas[0] = abi.encodeWithSelector(this.executeCallback.selector);
+        targets[1] = address(this);
+        values[1] = 0;
+        calldatas[1] = abi.encodeWithSelector(this.executeCallback.selector);
+
+        ProposalOption[] memory options = new ProposalOption[](1);
+        options[0] = ProposalOption(100, targets, values, calldatas, "option 1");
+
+        ProposalSettings memory settings = ProposalSettings({
+            maxApprovals: 2,
+            criteria: uint8(PassingCriteria.TopChoices),
+            criteriaValue: 1,
+            budgetToken: address(token),
+            budgetAmount: 100
+        });
+
+        bytes memory proposalData = abi.encode(options, settings);
+
+        string memory descriptionWithData = string.concat(description, string(proposalData));
+
+        vm.startPrank(admin);
+        governor.setProposalThreshold(0);
+        uint256 proposalId = governor.propose(targets, values, calldatas, descriptionWithData);
+        vm.stopPrank();
+        vm.roll(block.number + 2);
+
+        uint256[] memory votes = new uint256[](1);
+        votes[0] = 0;
+        bytes memory params = abi.encode(votes);
+
+        vm.startPrank(voter);
+        governor.castVoteWithReasonAndParams(proposalId, uint8(VoteType.For), "a good reason", params);
+        vm.stopPrank();
+
+        vm.roll(block.number + 14);
+
+        vm.prank(manager);
+        governor.queue(targets, values, calldatas, keccak256(bytes(descriptionWithData)));
+        vm.warp(block.timestamp + _elapsedAfterQueuing);
+
+        vm.prank(_actor);
+        governor.execute(targets, values, calldatas, keccak256(bytes(descriptionWithData)));
+
+        assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Executed));
+        assertEq(counter, 2);
 
         vm.stopPrank();
     }
