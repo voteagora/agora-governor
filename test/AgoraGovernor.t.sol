@@ -255,6 +255,32 @@ contract Queue is AgoraGovernorTest {
         assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Queued));
     }
 
+    function test_queue_modifiedExecution_updates(address _actor) public {
+        vm.assume(_actor != proxyAdmin);
+        _mintAndDelegate(_actor, 1e30);
+
+        vm.roll(block.number + 1);
+
+        address[] memory targets = new address[](1);
+        targets[0] = address(this);
+        uint256[] memory values = new uint256[](1);
+        bytes[] memory calldatas = new bytes[](1);
+        calldatas[0] = abi.encodeWithSelector(this.executeCallback.selector);
+
+        vm.startPrank(_actor);
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
+        bytes memory modExecution = abi.encode(targets, values, calldatas);
+
+        vm.roll(block.number + 2);
+
+        governor.castVote(proposalId, uint8(GovernorCountingSimple.VoteType.For));
+
+        vm.roll(block.number + 14);
+
+        governor.queue(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
+        assertEq(modExecution, governor.modifiedExecutions(proposalId));
+    }
+
     function test_queue_notSucceeded_reverts() public {
         address[] memory targets = new address[](1);
         targets[0] = address(this);
