@@ -206,6 +206,7 @@ contract Propose is AgoraGovernorTest {
 contract Queue is AgoraGovernorTest {
     function test_queue_validInput_succeeds(address _actor) public {
         vm.assume(_actor != proxyAdmin);
+        vm.assume(_actor != address(middleware));
         _mintAndDelegate(_actor, 1e30);
 
         vm.roll(block.number + 1);
@@ -257,6 +258,7 @@ contract Queue is AgoraGovernorTest {
 
     function test_queue_modifiedExecution_updates(address _actor) public {
         vm.assume(_actor != proxyAdmin);
+        vm.assume(_actor != address(middleware));
         _mintAndDelegate(_actor, 1e30);
 
         vm.roll(block.number + 1);
@@ -351,6 +353,7 @@ contract Execute is AgoraGovernorTest {
     function test_execute_validInput_succeeds(address _actor, uint256 _elapsedAfterQueuing) public virtual {
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
         vm.assume(_actor != proxyAdmin);
+        vm.assume(_actor != address(middleware));
         vm.prank(minter);
         token.mint(address(this), 1e30);
         token.delegate(address(this));

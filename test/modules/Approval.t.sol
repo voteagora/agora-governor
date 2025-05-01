@@ -278,6 +278,7 @@ contract ApprovalVotingModuleTest is Test, Deployers {
 
     function testProposalExecutes(address _actor, uint256 _elapsedAfterQueuing) public {
         vm.assume(_actor != proxyAdmin);
+        vm.assume(_actor != address(middleware));
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
         uint256 weight = 100;
         vm.prank(minter);
