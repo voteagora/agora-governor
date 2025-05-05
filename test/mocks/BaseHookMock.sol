@@ -47,7 +47,7 @@ contract BaseHookMock is BaseHook {
         return (this.afterQuorumCalculation.selector);
     }
 
-    function beforeVote(address, uint256, address, uint8 support, string memory, bytes memory)
+    function beforeVote(address, uint256, address, uint8, string memory, bytes memory)
         external
         virtual
         override
@@ -75,7 +75,7 @@ contract BaseHookMock is BaseHook {
         string memory description
     ) external virtual override returns (bytes4, uint256) {
         emit BeforePropose();
-        uint256 proposalId = governor.hashProposal(targets, values, calldatas, keccak256(abi.encodePacked(description)));
+        governor.hashProposal(targets, values, calldatas, keccak256(abi.encodePacked(description)));
 
         return (this.beforePropose.selector, 0);
     }
@@ -118,15 +118,9 @@ contract BaseHookMock is BaseHook {
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    )
-        external
-        virtual
-        override
-        returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)
-    {
+    ) external virtual override returns (bytes4, address[] memory, uint256[] memory, bytes[] memory, bytes32) {
         emit BeforeQueue();
-        uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
-        return (this.beforeQueue.selector, proposalId, targets, values, calldatas, descriptionHash);
+        return (this.beforeQueue.selector, targets, values, calldatas, descriptionHash);
     }
 
     function afterQueue(address, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)
@@ -141,19 +135,13 @@ contract BaseHookMock is BaseHook {
 
     function beforeExecute(
         address,
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory calldatas,
-        bytes32 descriptionHash
-    )
-        external
-        virtual
-        override
-        returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)
-    {
+        address[] memory, /* targets */
+        uint256[] memory, /* values */
+        bytes[] memory, /* calldatas */
+        bytes32 /* descriptionHash */
+    ) external virtual override returns (bytes4, bool) {
         emit BeforeExecute();
-        uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
-        return (this.beforeExecute.selector, proposalId, targets, values, calldatas, descriptionHash);
+        return (this.beforeExecute.selector, true);
     }
 
     function afterExecute(address, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)

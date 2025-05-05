@@ -17,14 +17,22 @@ interface IMiddleware {
     error InvalidParamNotEqual();
     error InvalidParamRange();
     error InvalidProposedTxForType();
-    error InvalidProposalType(uint8 proposalTypeId);
+    error InvalidProposalType();
+    error MaxScopeLengthReached();
+    error InvalidCalldatasLength();
+    error InvalidCalldata();
 
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
     //////////////////////////////////////////////////////////////*/
 
     event ProposalTypeSet(
-        uint8 indexed proposalTypeId, uint16 quorum, uint16 approvalThreshold, string name, string description
+        uint8 indexed proposalTypeId,
+        uint16 quorum,
+        uint16 approvalThreshold,
+        string name,
+        string description,
+        address indexed module
     );
 
     /*//////////////////////////////////////////////////////////////
@@ -41,7 +49,6 @@ interface IMiddleware {
     }
 
     enum Comparators {
-        EMPTY,
         EQUAL,
         LESS_THAN,
         GREATER_THAN
@@ -75,9 +82,6 @@ interface IMiddleware {
     //////////////////////////////////////////////////////////////*/
 
     function proposalTypes(uint8 proposalTypeId) external view returns (ProposalType memory);
-    function getProposalTypeId(uint256 proposalId) external view returns (uint8);
-    function assignedScopes(uint8 proposalTypeId, bytes24 scopeKey) external view returns (Scope[] memory);
-    function scopeExists(bytes24 key) external view returns (bool);
 
     function setProposalType(
         uint8 proposalTypeId,
@@ -99,8 +103,8 @@ interface IMiddleware {
     ) external;
 
     function getSelector(uint8 proposalTypeId, bytes24 key) external returns (bytes4);
-    function addScopeForProposalType(uint8 proposalTypeId, Scope calldata scope) external;
     function disableScope(uint8 proposalTypeId, bytes24 scopeKey, uint8 idx) external;
+    function deleteScope(uint8 proposalTypeId, bytes24 scopeKey, uint8 idx) external;
     function validateProposedTx(bytes calldata proposedTx, uint8 proposalTypeId, bytes24 key) external;
     function validateProposalData(address[] memory targets, bytes[] memory calldatas, uint8 proposalTypeId) external;
 }

@@ -50,7 +50,7 @@ struct Proposal {
 }
 
 /// @custom:security-contact security@voteagora.com
-contract ApprovalVoting is BaseHook {
+contract ApprovalVotingModule is BaseHook {
     /*//////////////////////////////////////////////////////////////
                                  ERRORS
     //////////////////////////////////////////////////////////////*/
@@ -113,7 +113,7 @@ contract ApprovalVoting is BaseHook {
             afterCancel: false,
             beforeQueue: true,
             afterQueue: false,
-            beforeExecute: true,
+            beforeExecute: false,
             afterExecute: false
         });
     }
@@ -134,7 +134,7 @@ contract ApprovalVoting is BaseHook {
             revert ExistingProposal();
         }
 
-        bytes memory proposalData = abi.encode(description);
+        bytes memory proposalData = bytes(description);
 
         (ProposalOption[] memory proposalOptions, ProposalSettings memory proposalSettings) =
             abi.decode(proposalData, (ProposalOption[], ProposalSettings));
@@ -156,6 +156,13 @@ contract ApprovalVoting is BaseHook {
                 option = proposalOptions[i];
                 if (option.targets.length != option.values.length || option.targets.length != option.calldatas.length) {
                     revert InvalidParams();
+                }
+
+                // Enforce that non-zero values use native budget token
+                for (uint256 n = 0; n < option.targets.length; ++n) {
+                    if (option.values[n] != 0 && proposalSettings.budgetToken != address(0)) {
+                        revert InvalidParams();
+                    }
                 }
 
                 proposals[proposalId].options.push(option);
@@ -193,7 +200,7 @@ contract ApprovalVoting is BaseHook {
             if (weight != 0) {
                 uint256[] memory options = _decodeVoteParams(params);
                 uint256 totalOptions = options.length;
-                if (totalOptions == 0 || totalOptions != proposals[proposalId].optionVotes.length) {
+                if (totalOptions == 0) {
                     revert InvalidParams();
                 }
 
@@ -214,34 +221,15 @@ contract ApprovalVoting is BaseHook {
         bytes32 descriptionHash
     )
         external
-        virtual
         override
-        returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)
+        onlyGovernor(sender)
+        returns (bytes4, address[] memory, uint256[] memory, bytes[] memory, bytes32)
     {
         uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
         // Note: we assume that the beforeExecute will modify the calldata in the same way it is queued. This is to
         // ensure that the state is correctly reflected in the timelock
         (targets, values, calldatas) = formatExecuteParams(proposalId);
-        return (this.beforeQueue.selector, proposalId, targets, values, calldatas, descriptionHash);
-    }
-
-    function beforeExecute(
-        address sender,
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory calldatas,
-        bytes32 descriptionHash
-    )
-        external
-        virtual
-        override
-        onlyGovernor(sender)
-        returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32)
-    {
-        uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
-
-        (targets, values, calldatas) = formatExecuteParams(proposalId);
-        return (this.beforeExecute.selector, proposalId, targets, values, calldatas, descriptionHash);
+        return (this.beforeQueue.selector, targets, values, calldatas, descriptionHash);
     }
 
     /**

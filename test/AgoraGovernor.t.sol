@@ -8,8 +8,10 @@ import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 import {GovernorCountingSimple} from "@openzeppelin/contracts/governance/extensions/GovernorCountingSimple.sol";
 
 import {IHooks} from "src/interfaces/IHooks.sol";
+import {Hooks} from "src/libraries/Hooks.sol";
 import {AgoraGovernor} from "src/AgoraGovernor.sol";
 import {AgoraGovernorMock} from "test/mocks/AgoraGovernorMock.sol";
+import {Middleware} from "src/Middleware.sol";
 
 import {MockToken} from "test/mocks/MockToken.sol";
 import {Deployers} from "test/utils/Deployers.sol";
@@ -17,13 +19,32 @@ import {Deployers} from "test/utils/Deployers.sol";
 contract AgoraGovernorTest is Test, Deployers {
     // Variables
     uint256 counter;
+    Middleware middleware;
 
     /*//////////////////////////////////////////////////////////////
                                  SETUP
     //////////////////////////////////////////////////////////////*/
 
     function setUp() public virtual {
-        deployGovernor(address(0));
+        middleware = Middleware(
+            address(
+                uint160(
+                    Hooks.BEFORE_VOTE_SUCCEEDED_FLAG | Hooks.AFTER_VOTE_SUCCEEDED_FLAG
+                        | Hooks.BEFORE_QUORUM_CALCULATION_FLAG | Hooks.AFTER_QUORUM_CALCULATION_FLAG
+                        | Hooks.BEFORE_VOTE_FLAG | Hooks.AFTER_VOTE_FLAG | Hooks.BEFORE_PROPOSE_FLAG
+                        | Hooks.AFTER_PROPOSE_FLAG | Hooks.BEFORE_CANCEL_FLAG | Hooks.AFTER_CANCEL_FLAG
+                        | Hooks.BEFORE_QUEUE_FLAG | Hooks.AFTER_QUEUE_FLAG | Hooks.BEFORE_EXECUTE_FLAG
+                        | Hooks.AFTER_EXECUTE_FLAG
+                )
+            )
+        );
+
+        deployGovernor(address(middleware));
+        deployCodeTo("src/Middleware.sol:Middleware", abi.encode(address(governor)), address(middleware));
+        vm.startPrank(address(admin));
+        middleware.setProposalType(0, 0, 0, "Default", "Lorem Ipsum", address(0));
+        middleware.setProposalType(1, 0, 0, "Default", "Lorem Ipsum", address(0));
+        vm.stopPrank();
     }
 
     function executeCallback() public payable virtual {
@@ -44,11 +65,7 @@ contract AgoraGovernorTest is Test, Deployers {
         token.delegate(_actor);
     }
 
-    function _formatProposalData(uint256 _proposalTargetCalldata)
-        public
-        virtual
-        returns (address[] memory, uint256[] memory, bytes[] memory)
-    {
+    function _formatProposalData() public virtual returns (address[] memory, uint256[] memory, bytes[] memory) {
         address receiver1 = makeAddr("receiver1");
         address receiver2 = makeAddr("receiver2");
 
@@ -69,6 +86,7 @@ contract AgoraGovernorTest is Test, Deployers {
         values2[0] = 0.01 ether;
         // Call SetNumber on ExecutionTargetFake
         targets2[1] = address(this);
+        calldatas2[0] = abi.encodeWithSelector(this.executeCallback.selector);
         calldatas2[1] = abi.encodeWithSelector(this.executeCallback.selector);
 
         address[] memory targets = new address[](2);
@@ -113,7 +131,7 @@ contract Propose is AgoraGovernorTest {
         vm.roll(block.number + 1);
 
         uint256 proposalId;
-        proposalId = governor.propose(targets, values, calldatas, "Test");
+        proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
         vm.stopPrank();
         assertGt(governor.proposalSnapshot(proposalId), 0);
     }
@@ -131,7 +149,7 @@ contract Propose is AgoraGovernorTest {
 
         uint256 proposalId;
         vm.prank(manager);
-        proposalId = governor.propose(targets, values, calldatas, "Test");
+        proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
         assertGt(governor.proposalSnapshot(proposalId), 0);
     }
 
@@ -162,7 +180,7 @@ contract Propose is AgoraGovernorTest {
                 IGovernor.GovernorInsufficientProposerVotes.selector, _actor, _actorBalance, _proposalThreshold
             )
         );
-        governor.propose(targets, values, calldatas, "Test");
+        governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
     }
 
     function test_propose_alreadyCreated_reverts() public virtual {
@@ -173,14 +191,14 @@ contract Propose is AgoraGovernorTest {
         calldatas[0] = abi.encodeWithSelector(this.executeCallback.selector);
 
         vm.startPrank(manager);
-        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
 
         vm.expectRevert(
             abi.encodeWithSelector(
                 IGovernor.GovernorUnexpectedProposalState.selector, proposalId, governor.state(proposalId), bytes32(0)
             )
         );
-        governor.propose(targets, values, calldatas, "Test");
+        governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
         vm.stopPrank();
     }
 }
@@ -188,6 +206,7 @@ contract Propose is AgoraGovernorTest {
 contract Queue is AgoraGovernorTest {
     function test_queue_validInput_succeeds(address _actor) public {
         vm.assume(_actor != proxyAdmin);
+        vm.assume(_actor != address(middleware));
         _mintAndDelegate(_actor, 1e30);
 
         vm.roll(block.number + 1);
@@ -199,7 +218,7 @@ contract Queue is AgoraGovernorTest {
         calldatas[0] = abi.encodeWithSelector(this.executeCallback.selector);
 
         vm.startPrank(_actor);
-        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
 
         vm.roll(block.number + 2);
 
@@ -208,7 +227,7 @@ contract Queue is AgoraGovernorTest {
         vm.roll(block.number + 14);
 
         assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Succeeded));
-        governor.queue(targets, values, calldatas, keccak256("Test"));
+        governor.queue(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
         assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Queued));
     }
 
@@ -224,7 +243,7 @@ contract Queue is AgoraGovernorTest {
         calldatas[0] = abi.encodeWithSelector(this.executeCallback.selector);
 
         vm.startPrank(manager);
-        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
 
         vm.roll(block.number + 2);
 
@@ -233,8 +252,35 @@ contract Queue is AgoraGovernorTest {
         vm.roll(block.number + 14);
 
         assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Succeeded));
-        governor.queue(targets, values, calldatas, keccak256("Test"));
+        governor.queue(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
         assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Queued));
+    }
+
+    function test_queue_modifiedExecution_updates(address _actor) public {
+        vm.assume(_actor != proxyAdmin);
+        vm.assume(_actor != address(middleware));
+        _mintAndDelegate(_actor, 1e30);
+
+        vm.roll(block.number + 1);
+
+        address[] memory targets = new address[](1);
+        targets[0] = address(this);
+        uint256[] memory values = new uint256[](1);
+        bytes[] memory calldatas = new bytes[](1);
+        calldatas[0] = abi.encodeWithSelector(this.executeCallback.selector);
+
+        vm.startPrank(_actor);
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
+        bytes memory modExecution = abi.encode(targets, values, calldatas);
+
+        vm.roll(block.number + 2);
+
+        governor.castVote(proposalId, uint8(GovernorCountingSimple.VoteType.For));
+
+        vm.roll(block.number + 14);
+
+        governor.queue(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
+        assertEq(modExecution, governor.modifiedExecutions(proposalId));
     }
 
     function test_queue_notSucceeded_reverts() public {
@@ -245,7 +291,7 @@ contract Queue is AgoraGovernorTest {
         calldatas[0] = abi.encodeWithSelector(this.executeCallback.selector);
 
         vm.startPrank(manager);
-        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
 
         assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Pending));
         vm.expectRevert(
@@ -256,10 +302,10 @@ contract Queue is AgoraGovernorTest {
                 bytes32(1 << uint8(IGovernor.ProposalState.Succeeded))
             )
         );
-        governor.queue(targets, values, calldatas, keccak256("Test"));
+        governor.queue(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
     }
 
-    function test_queue_alreadyQueued_reverts(uint256 _proposalTargetCalldata, uint256 _elapsedAfterQueuing) public {
+    function test_queue_alreadyQueued_reverts(uint256 _elapsedAfterQueuing) public {
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
         vm.prank(minter);
         token.mint(address(this), 1e30);
@@ -278,7 +324,7 @@ contract Queue is AgoraGovernorTest {
 
         vm.stopPrank();
         vm.prank(manager);
-        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
 
         vm.roll(block.number + 1);
         governor.castVote(proposalId, 1);
@@ -286,7 +332,7 @@ contract Queue is AgoraGovernorTest {
 
         assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Succeeded));
         vm.prank(manager);
-        governor.queue(targets, values, calldatas, keccak256("Test"));
+        governor.queue(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
         assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Queued));
 
         vm.prank(manager);
@@ -298,19 +344,16 @@ contract Queue is AgoraGovernorTest {
                 bytes32(1 << uint8(IGovernor.ProposalState.Succeeded))
             )
         );
-        governor.queue(targets, values, calldatas, keccak256("Test"));
+        governor.queue(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
         assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Queued));
     }
 }
 
 contract Execute is AgoraGovernorTest {
-    function test_execute_validInput_succeeds(
-        address _actor,
-        uint256 _proposalTargetCalldata,
-        uint256 _elapsedAfterQueuing
-    ) public virtual {
+    function test_execute_validInput_succeeds(address _actor, uint256 _elapsedAfterQueuing) public virtual {
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
         vm.assume(_actor != proxyAdmin);
+        vm.assume(_actor != address(middleware));
         vm.prank(minter);
         token.mint(address(this), 1e30);
         token.delegate(address(this));
@@ -328,7 +371,7 @@ contract Execute is AgoraGovernorTest {
 
         vm.stopPrank();
         vm.prank(manager);
-        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
 
         vm.roll(block.number + 1);
         governor.castVote(proposalId, 1);
@@ -336,20 +379,17 @@ contract Execute is AgoraGovernorTest {
         vm.roll(block.number + 14);
 
         vm.prank(manager);
-        governor.queue(targets, values, calldatas, keccak256("Test"));
+        governor.queue(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
         vm.warp(block.timestamp + _elapsedAfterQueuing);
 
         vm.prank(_actor);
-        governor.execute(targets, values, calldatas, keccak256("Test"));
+        governor.execute(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
 
         assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Executed));
         assertEq(counter, 1);
     }
 
-    function test_execute_manager_succeeds(uint256 _proposalTargetCalldata, uint256 _elapsedAfterQueuing)
-        public
-        virtual
-    {
+    function test_execute_manager_succeeds(uint256 _elapsedAfterQueuing) public virtual {
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
         vm.prank(minter);
         token.mint(address(this), 1e30);
@@ -368,7 +408,7 @@ contract Execute is AgoraGovernorTest {
 
         vm.stopPrank();
         vm.prank(manager);
-        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
 
         vm.roll(block.number + 1);
         governor.castVote(proposalId, 1);
@@ -376,17 +416,17 @@ contract Execute is AgoraGovernorTest {
         vm.roll(block.number + 14);
 
         vm.prank(manager);
-        governor.queue(targets, values, calldatas, keccak256("Test"));
+        governor.queue(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
         vm.warp(block.timestamp + _elapsedAfterQueuing);
 
         vm.prank(manager);
-        governor.execute(targets, values, calldatas, keccak256("Test"));
+        governor.execute(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
 
         assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Executed));
         assertEq(counter, 1);
     }
 
-    function test_execute_notQueued_reverts(uint256 _proposalTargetCalldata) public {
+    function test_execute_notQueued_reverts() public {
         vm.prank(minter);
         token.mint(address(this), 1e30);
         token.delegate(address(this));
@@ -404,7 +444,7 @@ contract Execute is AgoraGovernorTest {
 
         vm.stopPrank();
         vm.prank(manager);
-        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
 
         vm.roll(block.number + 1);
         governor.castVote(proposalId, 1);
@@ -412,7 +452,7 @@ contract Execute is AgoraGovernorTest {
         vm.roll(block.number + 14);
 
         bytes32 id = timelock.hashOperationBatch(
-            targets, values, calldatas, bytes32(0), bytes20(address(governor)) ^ keccak256("Test")
+            targets, values, calldatas, bytes32(0), bytes20(address(governor)) ^ keccak256("Test#proposalTypeId=1")
         );
 
         vm.expectRevert(
@@ -423,10 +463,10 @@ contract Execute is AgoraGovernorTest {
             )
         );
         vm.prank(manager);
-        governor.execute(targets, values, calldatas, keccak256("Test"));
+        governor.execute(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
     }
 
-    function test_execute_notReady_reverts(uint256 _proposalTargetCalldata, uint256 _elapsedAfterQueuing) public {
+    function test_execute_notReady_reverts(uint256 _elapsedAfterQueuing) public {
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, 0, timelock.getMinDelay() - 1);
         vm.prank(minter);
         token.mint(address(this), 1e30);
@@ -445,7 +485,7 @@ contract Execute is AgoraGovernorTest {
 
         vm.stopPrank();
         vm.prank(manager);
-        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
 
         vm.roll(block.number + 1);
         governor.castVote(proposalId, 1);
@@ -453,11 +493,11 @@ contract Execute is AgoraGovernorTest {
         vm.roll(block.number + 14);
 
         vm.prank(manager);
-        governor.queue(targets, values, calldatas, keccak256("Test"));
+        governor.queue(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
         vm.warp(block.timestamp + _elapsedAfterQueuing);
 
         bytes32 id = timelock.hashOperationBatch(
-            targets, values, calldatas, bytes32(0), bytes20(address(governor)) ^ keccak256("Test")
+            targets, values, calldatas, bytes32(0), bytes20(address(governor)) ^ keccak256("Test#proposalTypeId=1")
         );
 
         vm.expectRevert(
@@ -468,10 +508,10 @@ contract Execute is AgoraGovernorTest {
             )
         );
         vm.prank(manager);
-        governor.execute(targets, values, calldatas, keccak256("Test"));
+        governor.execute(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
     }
 
-    function test_execute_notSuccessful_reverts(uint256 _proposalTargetCalldata) public {
+    function test_execute_notSuccessful_reverts() public {
         address[] memory targets = new address[](1);
         targets[0] = address(this);
         uint256[] memory values = new uint256[](1);
@@ -483,7 +523,7 @@ contract Execute is AgoraGovernorTest {
         governor.setVotingPeriod(14);
 
         vm.startPrank(manager);
-        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -494,12 +534,10 @@ contract Execute is AgoraGovernorTest {
                     | bytes32(1 << uint8(IGovernor.ProposalState.Queued))
             )
         );
-        governor.execute(targets, values, calldatas, keccak256("Test"));
+        governor.execute(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
     }
 
-    function test_execute_alreadyExecuted_reverts(uint256 _proposalTargetCalldata, uint256 _elapsedAfterQueuing)
-        public
-    {
+    function test_execute_alreadyExecuted_reverts(uint256 _elapsedAfterQueuing) public {
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
         vm.prank(minter);
         token.mint(address(this), 1e30);
@@ -518,7 +556,7 @@ contract Execute is AgoraGovernorTest {
 
         vm.stopPrank();
         vm.prank(manager);
-        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
 
         vm.roll(block.number + 1);
         governor.castVote(proposalId, 1);
@@ -526,11 +564,11 @@ contract Execute is AgoraGovernorTest {
         vm.roll(block.number + 14);
 
         vm.prank(manager);
-        governor.queue(targets, values, calldatas, keccak256("Test"));
+        governor.queue(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
         vm.warp(block.timestamp + _elapsedAfterQueuing);
 
         vm.prank(manager);
-        governor.execute(targets, values, calldatas, keccak256("Test"));
+        governor.execute(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -542,7 +580,7 @@ contract Execute is AgoraGovernorTest {
             )
         );
         vm.prank(manager);
-        governor.execute(targets, values, calldatas, keccak256("Test"));
+        governor.execute(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
     }
 }
 
@@ -555,7 +593,7 @@ contract Cancel is AgoraGovernorTest {
         calldatas[0] = abi.encodeWithSelector(this.executeCallback.selector);
 
         vm.prank(manager);
-        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
 
         assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Pending));
 
@@ -565,7 +603,7 @@ contract Cancel is AgoraGovernorTest {
         else canceller = manager;
 
         vm.prank(canceller);
-        governor.cancel(targets, values, calldatas, keccak256("Test"));
+        governor.cancel(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
         assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Canceled));
     }
 
@@ -579,21 +617,17 @@ contract Cancel is AgoraGovernorTest {
         calldatas[0] = abi.encodeWithSelector(this.executeCallback.selector);
 
         vm.prank(manager);
-        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
 
         assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Pending));
 
         vm.prank(_actor);
         vm.expectRevert(abi.encodeWithSelector(AgoraGovernor.GovernorUnauthorizedCancel.selector));
-        governor.cancel(targets, values, calldatas, keccak256("Test"));
+        governor.cancel(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
         assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Pending));
     }
 
-    function test_cancel_beforeQueuing_succeeds(
-        uint256 _proposalTargetCalldata,
-        uint256 _elapsedAfterQueuing,
-        uint256 _actorSeed
-    ) public virtual {
+    function test_cancel_beforeQueuing_succeeds(uint256 _elapsedAfterQueuing, uint256 _actorSeed) public virtual {
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
         vm.prank(minter);
         token.mint(address(this), 1e30);
@@ -612,7 +646,7 @@ contract Cancel is AgoraGovernorTest {
 
         vm.stopPrank();
         vm.prank(manager);
-        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
 
         vm.roll(block.number + 1);
         governor.castVote(proposalId, 1);
@@ -621,15 +655,11 @@ contract Cancel is AgoraGovernorTest {
         assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Succeeded));
 
         vm.prank(_adminOrTimelock(_actorSeed));
-        governor.cancel(targets, values, calldatas, keccak256("Test"));
+        governor.cancel(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
         assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Canceled));
     }
 
-    function test_cancel_afterQueuing_succeeds(
-        uint256 _proposalTargetCalldata,
-        uint256 _elapsedAfterQueuing,
-        uint256 _actorSeed
-    ) public virtual {
+    function test_cancel_afterQueuing_succeeds(uint256 _elapsedAfterQueuing, uint256 _actorSeed) public virtual {
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
         vm.prank(minter);
         token.mint(address(this), 1e30);
@@ -648,19 +678,19 @@ contract Cancel is AgoraGovernorTest {
 
         vm.stopPrank();
         vm.prank(manager);
-        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
 
         vm.roll(block.number + 1);
         governor.castVote(proposalId, 1);
         vm.roll(block.number + 14);
 
         vm.prank(manager);
-        governor.queue(targets, values, calldatas, keccak256("Test"));
+        governor.queue(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
         vm.warp(block.timestamp + _elapsedAfterQueuing);
 
         assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Queued));
         vm.prank(_adminOrTimelock(_actorSeed));
-        governor.cancel(targets, values, calldatas, keccak256("Test"));
+        governor.cancel(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
         assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Canceled));
     }
 
@@ -681,18 +711,14 @@ contract Cancel is AgoraGovernorTest {
         vm.stopPrank();
 
         vm.prank(manager);
-        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
 
         vm.prank(_adminOrTimelock(_actorSeed));
-        governor.cancel(targets, values, calldatas, keccak256("Test"));
+        governor.cancel(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
         assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Canceled));
     }
 
-    function test_cancel_afterExecution_reverts(
-        uint256 _proposalTargetCalldata,
-        uint256 _elapsedAfterQueuing,
-        uint256 _actorSeed
-    ) public virtual {
+    function test_cancel_afterExecution_reverts(uint256 _elapsedAfterQueuing, uint256 _actorSeed) public virtual {
         _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
         vm.prank(minter);
         token.mint(address(this), 1e30);
@@ -711,16 +737,16 @@ contract Cancel is AgoraGovernorTest {
 
         vm.stopPrank();
         vm.prank(manager);
-        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
 
         vm.roll(block.number + 1);
         governor.castVote(proposalId, 1);
         vm.roll(block.number + 14);
 
         vm.startPrank(manager);
-        governor.queue(targets, values, calldatas, keccak256("Test"));
+        governor.queue(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
         vm.warp(block.timestamp + _elapsedAfterQueuing);
-        governor.execute(targets, values, calldatas, keccak256("Test"));
+        governor.execute(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
         vm.stopPrank();
 
         bytes32 all = bytes32((2 ** (uint8(type(IGovernor.ProposalState).max) + 1)) - 1);
@@ -737,7 +763,7 @@ contract Cancel is AgoraGovernorTest {
             )
         );
         vm.prank(_adminOrTimelock(_actorSeed));
-        governor.cancel(targets, values, calldatas, keccak256("Test"));
+        governor.cancel(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
     }
 
     function test_cancel_noProposal_reverts(uint256 _actorSeed) public virtual {
@@ -747,11 +773,11 @@ contract Cancel is AgoraGovernorTest {
         bytes[] memory calldatas = new bytes[](1);
         calldatas[0] = abi.encodeWithSelector(this.executeCallback.selector);
 
-        uint256 proposalId = governor.hashProposal(targets, values, calldatas, keccak256("Test"));
+        uint256 proposalId = governor.hashProposal(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
 
         vm.prank(_adminOrTimelock(_actorSeed));
         vm.expectRevert(abi.encodeWithSelector(IGovernor.GovernorNonexistentProposal.selector, proposalId));
-        governor.cancel(targets, values, calldatas, keccak256("Test"));
+        governor.cancel(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
     }
 }
 
@@ -775,18 +801,18 @@ contract UpdateTimelock is AgoraGovernorTest {
 
         vm.stopPrank();
         vm.prank(manager);
-        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
 
         vm.roll(block.number + 1);
         governor.castVote(proposalId, 1);
         vm.roll(block.number + 14);
 
         vm.prank(manager);
-        governor.queue(targets, values, calldatas, keccak256("Test"));
+        governor.queue(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
         vm.warp(block.timestamp + _elapsedAfterQueuing);
 
         vm.prank(manager);
-        governor.execute(targets, values, calldatas, keccak256("Test"));
+        governor.execute(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
         assertEq(governor.timelock(), address(_newTimelock));
     }
 
@@ -808,7 +834,7 @@ contract Quorum is AgoraGovernorTest {
         calldatas[0] = abi.encodeWithSelector(this.executeCallback.selector);
 
         vm.prank(manager);
-        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
 
         vm.roll(block.number + governor.votingDelay() + 1);
 
@@ -830,7 +856,7 @@ contract QuorumReached is AgoraGovernorTest {
         calldatas[0] = abi.encodeWithSelector(this.executeCallback.selector);
 
         vm.prank(manager);
-        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
 
         uint256 snapshot = block.number + governor.votingDelay();
         vm.roll(snapshot + 1);
@@ -861,7 +887,7 @@ contract CastVote is AgoraGovernorTest {
         calldatas[0] = abi.encodeWithSelector(this.executeCallback.selector);
 
         vm.prank(manager);
-        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
 
         uint256 snapshot = block.number + governor.votingDelay();
         vm.roll(snapshot + 1);
@@ -874,7 +900,7 @@ contract CastVote is AgoraGovernorTest {
         assertFalse(governor.voteSucceeded(proposalId));
 
         vm.prank(manager);
-        proposalId = governor.propose(targets, values, calldatas, "Test2");
+        proposalId = governor.propose(targets, values, calldatas, "Test2#proposalTypeId=1");
 
         snapshot = block.number + governor.votingDelay();
         vm.roll(snapshot + 1);
@@ -887,14 +913,14 @@ contract CastVote is AgoraGovernorTest {
 }
 
 contract CastVoteWithReasonAndParams is AgoraGovernorTest {
-    function test_castVoteWithReasonAndParams_ucceeds(address _voter) public virtual {
+    function test_castVoteWithReasonAndParams_succeeds(address _voter) public virtual {
         _mintAndDelegate(_voter, 100e18);
-        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas) = _formatProposalData(0);
+        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas) = _formatProposalData();
         uint256 snapshot = block.number + governor.votingDelay();
         string memory reason = "a nice reason";
 
         vm.prank(manager);
-        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
 
         vm.roll(snapshot + 1);
 
@@ -912,12 +938,12 @@ contract CastVoteWithReasonAndParams is AgoraGovernorTest {
 contract VoteSucceeded is AgoraGovernorTest {
     function test_voteSucceeded_quorum_succeeds(address _voter) public virtual {
         _mintAndDelegate(_voter, 100e18);
-        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas) = _formatProposalData(0);
+        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas) = _formatProposalData();
         uint256 snapshot = block.number + governor.votingDelay();
         string memory reason = "a nice reason";
 
         vm.prank(manager);
-        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
 
         vm.roll(snapshot + 1);
 
@@ -937,12 +963,12 @@ contract VoteSucceeded is AgoraGovernorTest {
         vm.assume(_voter != _voter2);
         _mintAndDelegate(_voter, 100e18);
         _mintAndDelegate(_voter2, 200e18);
-        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas) = _formatProposalData(0);
+        (address[] memory targets, uint256[] memory values, bytes[] memory calldatas) = _formatProposalData();
         uint256 snapshot = block.number + governor.votingDelay();
         string memory reason = "a nice reason";
 
         vm.prank(manager);
-        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
 
         vm.roll(snapshot + 1);
 

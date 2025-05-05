@@ -41,6 +41,10 @@ contract AgoraGovernorMock is AgoraGovernor {
         return _voteSucceeded(proposalId);
     }
 
+    function modifiedExecutions(uint256 proposalId) public view returns (bytes memory) {
+        return _modifiedExecutions[proposalId];
+    }
+
     // Exclude from coverage report
     function test() public virtual {}
 }

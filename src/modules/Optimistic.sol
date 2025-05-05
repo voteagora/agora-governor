@@ -4,6 +4,7 @@ pragma solidity ^0.8.29;
 import {Hooks} from "src/libraries/Hooks.sol";
 import {BaseHook} from "src/hooks/BaseHook.sol";
 import {IMiddleware} from "src/interfaces/IMiddleware.sol";
+import {Middleware} from "src/Middleware.sol";
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
@@ -37,6 +38,7 @@ contract Optimistic is BaseHook {
     error InvalidParams();
     error NotGovernor();
     error InvalidMiddleware();
+    error OptimisticModuleOnlySignal();
 
     /*//////////////////////////////////////////////////////////////
                            IMMUTABLE STORAGE
@@ -49,7 +51,7 @@ contract Optimistic is BaseHook {
     //////////////////////////////////////////////////////////////*/
 
     mapping(uint256 proposalId => Proposal) public proposals;
-    IMiddleware public middleware;
+    Middleware public middleware;
 
     /*//////////////////////////////////////////////////////////////
                                CONSTRUCTOR
@@ -57,7 +59,7 @@ contract Optimistic is BaseHook {
 
     constructor(address payable _governor, address _middleware) BaseHook(_governor) {
         if (_middleware == address(0)) revert InvalidMiddleware();
-        middleware = IMiddleware(_middleware);
+        middleware = Middleware(_middleware);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -78,9 +80,9 @@ contract Optimistic is BaseHook {
             afterPropose: true,
             beforeCancel: false,
             afterCancel: false,
-            beforeQueue: false,
+            beforeQueue: true,
             afterQueue: false,
-            beforeExecute: true,
+            beforeExecute: false,
             afterExecute: false
         });
     }
@@ -107,10 +109,10 @@ contract Optimistic is BaseHook {
             revert ExistingProposal();
         }
 
-        bytes memory proposalData = abi.encode(description);
+        bytes memory proposalData = bytes(description);
         ProposalSettings memory proposalSettings = abi.decode(proposalData, (ProposalSettings));
 
-        uint8 proposalTypeId = middleware.getProposalTypeId(proposalId);
+        uint8 proposalTypeId = middleware._proposalTypeId(proposalId);
         IMiddleware.ProposalType memory proposalType = middleware.proposalTypes(proposalTypeId);
 
         if (proposalType.quorum != 0 || proposalType.approvalThreshold != 0) {
@@ -130,18 +132,18 @@ contract Optimistic is BaseHook {
     }
 
     /**
-     * Format executeParams for a governor, given `proposalId` and `proposalData`.
-     * Returns empty `targets`, `values` and `calldatas`.
+     * @dev Always reverts since this a signal only vote and nothing is to be executed
      */
-    function beforeExecute(
-        address,
+    function beforeQueue(
+        address sender,
         address[] memory targets,
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) external view override returns (bytes4, uint256, address[] memory, uint256[] memory, bytes[] memory, bytes32) {
-        uint256 proposalId = governor.hashProposal(targets, values, calldatas, descriptionHash);
-        return (this.beforeExecute.selector, proposalId, targets, values, calldatas, descriptionHash);
+    ) external virtual override returns (bytes4, address[] memory, uint256[] memory, bytes[] memory, bytes32) {
+        _onlyGovernor(sender);
+        revert OptimisticModuleOnlySignal();
+        return (this.beforeQueue.selector, targets, values, calldatas, descriptionHash);
     }
 
     /*//////////////////////////////////////////////////////////////

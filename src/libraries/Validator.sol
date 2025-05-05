@@ -16,18 +16,10 @@ library Validator {
     function compare(bytes32 paramA, bytes32 paramB, IMiddleware.Comparators comparison) internal pure {
         if (comparison == IMiddleware.Comparators.EQUAL) {
             if (paramA != paramB) revert InvalidParamNotEqual();
-        }
-
-        if (comparison == IMiddleware.Comparators.LESS_THAN) {
-            if (paramA >= paramB) {
-                revert InvalidParamRange();
-            }
-        }
-
-        if (comparison == IMiddleware.Comparators.GREATER_THAN) {
-            if (paramA <= paramB) {
-                revert InvalidParamRange();
-            }
+        } else if (comparison == IMiddleware.Comparators.LESS_THAN) {
+            if (paramA >= paramB) revert InvalidParamRange();
+        } else if (comparison == IMiddleware.Comparators.GREATER_THAN) {
+            if (paramA <= paramB) revert InvalidParamRange();
         }
     }
 

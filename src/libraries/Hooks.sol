@@ -336,7 +336,6 @@ library Hooks {
         internal
         noSelfCall(self)
         returns (
-            uint256 returnedProposalId,
             address[] memory returnedTargets,
             uint256[] memory returnedValues,
             bytes[] memory returnedCalldatas,
@@ -351,8 +350,8 @@ library Hooks {
             if (result.length < 4) revert InvalidHookResponse();
 
             // Extract the proposal ID and data from the result
-            (, returnedProposalId, returnedTargets, returnedValues, returnedCalldatas, returnedDescriptionHash) =
-                abi.decode(result, (bytes4, uint256, address[], uint256[], bytes[], bytes32));
+            (, returnedTargets, returnedValues, returnedCalldatas, returnedDescriptionHash) =
+                abi.decode(result, (bytes4, address[], uint256[], bytes[], bytes32));
         }
     }
 
@@ -418,27 +417,16 @@ library Hooks {
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    )
-        internal
-        noSelfCall(self)
-        returns (
-            uint256 returnedProposalId,
-            address[] memory returnedTargets,
-            uint256[] memory returnedValues,
-            bytes[] memory returnedCalldatas,
-            bytes32 returnedDescriptionHash
-        )
-    {
+    ) internal noSelfCall(self) returns (bool returnedSuccess) {
         if (self.hasPermission(BEFORE_EXECUTE_FLAG)) {
             bytes memory result = self.callHook(
                 abi.encodeCall(IHooks.beforeExecute, (msg.sender, targets, values, calldatas, descriptionHash))
             );
 
-            if (result.length < 4) revert InvalidHookResponse();
+            if (result.length != 64) revert InvalidHookResponse();
 
-            // Extract the proposal ID and data from the result
-            (, returnedProposalId, returnedTargets, returnedValues, returnedCalldatas, returnedDescriptionHash) =
-                abi.decode(result, (bytes4, uint256, address[], uint256[], bytes[], bytes32));
+            // Extract the boolean value
+            returnedSuccess = parseBool(result);
         }
     }
 

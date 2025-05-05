@@ -153,19 +153,15 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
 
         _validateStateBitmap(proposalId, _encodeStateBitmap(ProposalState.Succeeded));
 
-        (
-            uint256 beforeProposalId,
-            address[] memory _tempTargets,
-            uint256[] memory _tempValues,
-            bytes[] memory _tempCalldatas,
-        ) = hooks.beforeQueue(targets, values, calldatas, descriptionHash);
+        (address[] memory _tempTargets, uint256[] memory _tempValues, bytes[] memory _tempCalldatas,) =
+            hooks.beforeQueue(targets, values, calldatas, descriptionHash);
 
-        if (proposalId != beforeProposalId) {
-            // Store the modified execution and queue those values to the timelock
-            if (_tempTargets.length != 0 && _tempValues.length != 0 && _tempCalldatas.length != 0) {
-                _modifiedExecutions[proposalId] = abi.encode(_tempValues, _tempTargets, _tempCalldatas);
-                etaSeconds = _queueOperations(proposalId, _tempTargets, _tempValues, _tempCalldatas, descriptionHash);
-            }
+        // Store the modified execution and queue those values to the timelock
+        if (_tempTargets.length != 0 && _tempValues.length != 0 && _tempCalldatas.length != 0) {
+            _modifiedExecutions[proposalId] = abi.encode(_tempTargets, _tempValues, _tempCalldatas);
+            targets = _tempTargets;
+            values = _tempValues;
+            calldatas = _tempCalldatas;
         }
 
         etaSeconds = _queueOperations(proposalId, targets, values, calldatas, descriptionHash);
@@ -197,23 +193,17 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
             proposalId, _encodeStateBitmap(ProposalState.Succeeded) | _encodeStateBitmap(ProposalState.Queued)
         );
 
-        (
-            uint256 beforeExecuteProposalId,
-            address[] memory _tempTargets,
-            uint256[] memory _tempValues,
-            bytes[] memory _tempCalldatas,
-        ) = hooks.beforeExecute(targets, values, calldatas, descriptionHash);
+        hooks.beforeExecute(targets, values, calldatas, descriptionHash);
 
-        if (proposalId != beforeExecuteProposalId) {
+        if (_modifiedExecutions[proposalId].length != 0) {
             // Retrieve the stored executions: we assume the module modifies the calldata the same way as beforeQueue
             // They must be non-empty however they are unused as the values in storage actually reflect the state of the timelock
-            if (_tempTargets.length != 0 && _tempValues.length != 0 && _tempCalldatas.length != 0) {
-                if (_modifiedExecutions[proposalId].length == 0) revert InvalidModifiedExecution();
-                (_tempTargets, _tempValues, _tempCalldatas) =
-                    abi.decode(_modifiedExecutions[proposalId], (address[], uint256[], bytes[]));
+            (address[] memory _tempTargets, uint256[] memory _tempValues, bytes[] memory _tempCalldatas) =
+                abi.decode(_modifiedExecutions[proposalId], (address[], uint256[], bytes[]));
 
-                _executeOperations(proposalId, _tempTargets, _tempValues, _tempCalldatas, descriptionHash);
-            }
+            targets = _tempTargets;
+            values = _tempValues;
+            calldatas = _tempCalldatas;
         }
 
         // mark as executed before calls to avoid reentrancy
@@ -251,7 +241,7 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         bytes[] memory calldatas,
         bytes32 descriptionHash
     ) public override returns (uint256 proposalId) {
-        uint256 proposalId = getProposalId(targets, values, calldatas, descriptionHash);
+        proposalId = getProposalId(targets, values, calldatas, descriptionHash);
         address sender = _msgSender();
         // Allow the proposer, admin, or executor (timelock) to cancel.
         if (sender != proposalProposer(proposalId) && sender != admin && sender != _executor()) {
@@ -361,13 +351,13 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
     //////////////////////////////////////////////////////////////*/
 
     function _setAdmin(address _newAdmin) internal {
-        admin = _newAdmin;
         emit AdminSet(admin, _newAdmin);
+        admin = _newAdmin;
     }
 
     function _setManager(address _newManager) internal {
-        manager = _newManager;
         emit ManagerSet(manager, _newManager);
+        manager = _newManager;
     }
 
     // @notice See Governor.sol replicates the logic to handle modified calldata from hooks
@@ -498,7 +488,7 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
     {
         uint8 beforeVoteSucceeded = hooks.beforeVoteSucceeded(proposalId);
 
-        if (beforeVoteSucceeded == 0) {
+        if (beforeVoteSucceeded == 1) {
             voteSucceeded = super._voteSucceeded(proposalId);
         } else {
             voteSucceeded = beforeVoteSucceeded == 2;

@@ -57,10 +57,13 @@ library Parser {
     /// If the description does not include this pattern, this function will revert
     function _parseProposalData(string memory description) internal pure returns (string memory proposalData) {
         unchecked {
-            string memory value = _parseMarker(description, "#proposalData=");
-
+            string memory marker = "#proposalData=";
+            // Slice the description after the marker
+            string[] memory parts = description.split(marker);
+            if (parts.length != 2) revert InvalidDescription();
+            proposalData = parts[1];
             // Cast and return the proposal data
-            return value;
+            return proposalData;
         }
     }
 }
