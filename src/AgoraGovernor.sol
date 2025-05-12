@@ -244,18 +244,14 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         proposalId = getProposalId(targets, values, calldatas, descriptionHash);
         address sender = _msgSender();
         // Allow the proposer, admin, or executor (timelock) to cancel.
-        if (sender != proposalProposer(proposalId) && sender != admin && sender != _executor()) {
+        if (sender != proposalProposer(proposalId) && sender != admin && sender != _executor() && sender != manager) {
             revert GovernorUnauthorizedCancel();
         }
 
         hooks.beforeCancel(targets, values, calldatas, descriptionHash);
 
-        if (_modifiedExecutions[proposalId].length != 0) {
-            // Always check if a proposalId has had modified execution in previous hook calls
-            (targets, values, calldatas) = abi.decode(_modifiedExecutions[proposalId], (address[], uint256[], bytes[]));
-        }
-
         // Proposals can only be cancelled in any state other than Canceled, Expired, or Executed.
+        // Note: if you are trying to cancel a proposal with modified execution, you must use the original set of calldatas supplied in proposal creation
         _cancel(targets, values, calldatas, descriptionHash);
 
         hooks.afterCancel(proposalId, targets, values, calldatas, descriptionHash);

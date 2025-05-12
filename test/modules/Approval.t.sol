@@ -343,6 +343,135 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         vm.stopPrank();
     }
 
+    function testProposalCancelsBeforeQueue(address _actor, uint256 _cancellerSeed, uint256 _elapsedAfterQueuing)
+        public
+    {
+        vm.assume(_actor != proxyAdmin);
+        vm.assume(_actor != address(middleware));
+        _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
+        uint256 weight = 100;
+        vm.prank(minter);
+        token.mint(voter, weight);
+
+        vm.startPrank(voter);
+        token.delegate(voter);
+        vm.roll(block.number + 1);
+        vm.stopPrank();
+
+        address[] memory targets = new address[](2);
+        uint256[] memory values = new uint256[](2);
+        bytes[] memory calldatas = new bytes[](2);
+        targets[0] = address(this);
+        values[0] = 0;
+        calldatas[0] = abi.encodeWithSelector(this.executeCallback.selector);
+        targets[1] = address(this);
+        values[1] = 0;
+        calldatas[1] = abi.encodeWithSelector(this.executeCallback.selector);
+
+        ProposalOption[] memory options = new ProposalOption[](1);
+        options[0] = ProposalOption(100, targets, values, calldatas, "option 1");
+
+        ProposalSettings memory settings = ProposalSettings({
+            maxApprovals: 2,
+            criteria: uint8(PassingCriteria.TopChoices),
+            criteriaValue: 1,
+            budgetToken: address(token),
+            budgetAmount: 100
+        });
+
+        bytes memory proposalData = abi.encode(options, settings);
+
+        string memory descriptionWithData = string.concat(description, string(proposalData));
+
+        vm.startPrank(admin);
+        governor.setProposalThreshold(0);
+        uint256 proposalId = governor.propose(targets, values, calldatas, descriptionWithData);
+        vm.stopPrank();
+
+        assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Pending));
+
+        address canceller;
+        if (_cancellerSeed % 3 == 0) canceller = admin;
+        else if (_cancellerSeed % 3 == 1) canceller = address(timelock);
+        else canceller = manager;
+
+        vm.prank(canceller);
+        governor.cancel(targets, values, calldatas, keccak256(bytes(descriptionWithData)));
+        assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Canceled));
+        vm.stopPrank();
+    }
+
+    function testProposalCancelsAfterQueue(address _actor, uint256 _cancellerSeed, uint256 _elapsedAfterQueuing)
+        public
+    {
+        vm.assume(_actor != proxyAdmin);
+        vm.assume(_actor != address(middleware));
+        _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
+        uint256 weight = 100;
+        vm.prank(minter);
+        token.mint(voter, weight);
+
+        vm.startPrank(voter);
+        token.delegate(voter);
+        vm.roll(block.number + 1);
+        vm.stopPrank();
+
+        address[] memory targets = new address[](2);
+        uint256[] memory values = new uint256[](2);
+        bytes[] memory calldatas = new bytes[](2);
+        targets[0] = address(this);
+        values[0] = 0;
+        calldatas[0] = abi.encodeWithSelector(this.executeCallback.selector);
+        targets[1] = address(this);
+        values[1] = 0;
+        calldatas[1] = abi.encodeWithSelector(this.executeCallback.selector);
+
+        ProposalOption[] memory options = new ProposalOption[](1);
+        options[0] = ProposalOption(100, targets, values, calldatas, "option 1");
+
+        ProposalSettings memory settings = ProposalSettings({
+            maxApprovals: 2,
+            criteria: uint8(PassingCriteria.TopChoices),
+            criteriaValue: 1,
+            budgetToken: address(token),
+            budgetAmount: 100
+        });
+
+        bytes memory proposalData = abi.encode(options, settings);
+
+        string memory descriptionWithData = string.concat(description, string(proposalData));
+
+        vm.startPrank(admin);
+        governor.setProposalThreshold(0);
+        uint256 proposalId = governor.propose(targets, values, calldatas, descriptionWithData);
+        vm.stopPrank();
+        vm.roll(block.number + 2);
+
+        uint256[] memory votes = new uint256[](1);
+        votes[0] = 0;
+        bytes memory params = abi.encode(votes);
+
+        vm.startPrank(voter);
+        governor.castVoteWithReasonAndParams(proposalId, uint8(VoteType.For), "a good reason", params);
+        vm.stopPrank();
+
+        vm.roll(block.number + 14);
+
+        vm.startPrank(manager);
+        governor.queue(targets, values, calldatas, keccak256(bytes(descriptionWithData)));
+        vm.warp(block.timestamp + _elapsedAfterQueuing);
+        vm.stopPrank();
+
+        address canceller;
+        if (_cancellerSeed % 3 == 0) canceller = admin;
+        else if (_cancellerSeed % 3 == 1) canceller = address(timelock);
+        else canceller = manager;
+        assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Queued));
+        vm.prank(canceller);
+        governor.cancel(targets, values, calldatas, keccak256(bytes(descriptionWithData)));
+        assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Canceled));
+    }
+
     function testSortOptions() public view {
         (, ProposalOption[] memory options,) = _formatProposalData();
 
