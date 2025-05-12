@@ -254,6 +254,12 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         // Note: if you are trying to cancel a proposal with modified execution, you must use the original set of calldatas supplied in proposal creation
         _cancel(targets, values, calldatas, descriptionHash);
 
+        if (_modifiedExecutions[proposalId].length != 0) {
+            // Always check if a proposalId has had modified execution in previous hook calls
+            (targets, values, calldatas) = abi.decode(_modifiedExecutions[proposalId], (address[], uint256[], bytes[]));
+            delete _modifiedExecutions[proposalId];
+        }
+
         hooks.afterCancel(proposalId, targets, values, calldatas, descriptionHash);
     }
 

@@ -694,6 +694,42 @@ contract Cancel is AgoraGovernorTest {
         assertEq(uint256(governor.state(proposalId)), uint256(IGovernor.ProposalState.Canceled));
     }
 
+    function test_cancel_modifiedExecution_deletes(uint256 _elapsedAfterQueuing, uint256 _actorSeed) public {
+        _elapsedAfterQueuing = bound(_elapsedAfterQueuing, timelockDelay, type(uint208).max);
+        vm.prank(minter);
+        token.mint(address(this), 1e30);
+        token.delegate(address(this));
+        vm.deal(address(manager), 100 ether);
+
+        address[] memory targets = new address[](1);
+        targets[0] = address(this);
+        uint256[] memory values = new uint256[](1);
+        bytes[] memory calldatas = new bytes[](1);
+        calldatas[0] = abi.encodeWithSelector(this.executeCallback.selector);
+
+        vm.startPrank(admin);
+        governor.setVotingDelay(0);
+        governor.setVotingPeriod(14);
+
+        vm.stopPrank();
+        vm.prank(manager);
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
+
+        vm.roll(block.number + 1);
+        governor.castVote(proposalId, 1);
+        vm.roll(block.number + 14);
+
+        vm.prank(manager);
+        governor.queue(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
+        vm.warp(block.timestamp + _elapsedAfterQueuing);
+
+        vm.prank(_adminOrTimelock(_actorSeed));
+        governor.cancel(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
+
+        bytes memory modExecution = new bytes(0);
+        assertEq(modExecution, governor.modifiedExecutions(proposalId));
+    }
+
     function test_cancel_beforeVoteEnd_succeeds(uint256 _actorSeed) public virtual {
         vm.prank(minter);
         token.mint(address(this), 1000);
