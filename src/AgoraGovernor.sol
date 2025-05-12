@@ -37,7 +37,6 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
 
     error GovernorUnauthorizedCancel();
     error HookAddressNotValid();
-    error InvalidModifiedExecution();
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
