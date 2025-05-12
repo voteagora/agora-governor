@@ -31,8 +31,8 @@ contract Middleware is IMiddleware, BaseHook {
     //////////////////////////////////////////////////////////////*/
 
     event ScopeCreated(uint8 indexed proposalTypeId, bytes24 indexed scopeKey, bytes4 selector, string description);
-    event ScopeDisabled(uint8 indexed proposalTypeId, bytes24 indexed scopeKey);
-    event ScopeDeleted(uint8 indexed proposalTypeId, bytes24 indexed scopeKey);
+    event ScopeDisabled(uint8 indexed proposalTypeId, bytes24 indexed scopeKey, uint8 idx);
+    event ScopeDeleted(uint8 indexed proposalTypeId, bytes24 indexed scopeKey, uint8 idx);
 
     /*//////////////////////////////////////////////////////////////
                            IMMUTABLE STORAGE
@@ -572,7 +572,7 @@ contract Middleware is IMiddleware, BaseHook {
     function disableScope(uint8 proposalTypeId, bytes24 scopeKey, uint8 idx) external override onlyAdminOrTimelock {
         _assignedScopes[proposalTypeId][scopeKey][idx].exists = false;
         _scopeExists[scopeKey] = false;
-        emit ScopeDisabled(proposalTypeId, scopeKey);
+        emit ScopeDisabled(proposalTypeId, scopeKey, idx);
     }
 
     /**
@@ -587,7 +587,7 @@ contract Middleware is IMiddleware, BaseHook {
         scopeArr[idx] = scopeArr[scopeArr.length - 1];
         scopeArr.pop();
 
-        emit ScopeDeleted(proposalTypeId, scopeKey);
+        emit ScopeDeleted(proposalTypeId, scopeKey, idx);
     }
 
     /**
