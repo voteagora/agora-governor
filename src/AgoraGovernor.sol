@@ -373,9 +373,6 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
 
         proposalId = getProposalId(targets, values, calldatas, keccak256(bytes(description)));
 
-        if (targets.length != values.length || targets.length != calldatas.length || targets.length == 0) {
-            revert GovernorInvalidProposalLength(targets.length, calldatas.length, values.length);
-        }
         if (_proposals[proposalId].voteStart != 0) {
             revert GovernorUnexpectedProposalState(proposalId, state(proposalId), bytes32(0));
         }
