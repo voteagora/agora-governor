@@ -133,7 +133,7 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
 
         hooks.beforePropose(targets, values, calldatas, description);
 
-        proposalId = super.propose(targets, values, calldatas, description);
+        proposalId = _propose(targets, values, calldatas, description, msg.sender);
 
         hooks.afterPropose(proposalId, targets, values, calldatas, description);
     }
@@ -349,6 +349,59 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
     /*//////////////////////////////////////////////////////////////
                             INTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////*/
+
+    function _propose(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        string memory description,
+        address proposer
+    ) internal virtual override returns (uint256 proposalId) {
+        // check description restriction
+        if (!_isValidDescriptionForProposer(proposer, description)) {
+            revert GovernorRestrictedProposer(proposer);
+        }
+
+        // check proposal threshold
+        uint256 votesThreshold = proposalThreshold();
+        if (proposer != manager && votesThreshold > 0) {
+            uint256 proposerVotes = getVotes(proposer, clock() - 1);
+            if (proposerVotes < votesThreshold) {
+                revert GovernorInsufficientProposerVotes(proposer, proposerVotes, votesThreshold);
+            }
+        }
+
+        proposalId = getProposalId(targets, values, calldatas, keccak256(bytes(description)));
+
+        if (targets.length != values.length || targets.length != calldatas.length || targets.length == 0) {
+            revert GovernorInvalidProposalLength(targets.length, calldatas.length, values.length);
+        }
+        if (_proposals[proposalId].voteStart != 0) {
+            revert GovernorUnexpectedProposalState(proposalId, state(proposalId), bytes32(0));
+        }
+
+        uint256 snapshot = clock() + votingDelay();
+        uint256 duration = votingPeriod();
+
+        ProposalCore storage proposal = _proposals[proposalId];
+        proposal.proposer = proposer;
+        proposal.voteStart = SafeCast.toUint48(snapshot);
+        proposal.voteDuration = SafeCast.toUint32(duration);
+
+        emit ProposalCreated(
+            proposalId,
+            proposer,
+            targets,
+            values,
+            new string[](targets.length),
+            calldatas,
+            snapshot,
+            snapshot + duration,
+            description
+        );
+
+        // Using a named return variable to avoid stack too deep errors
+    }
 
     function _setAdmin(address _newAdmin) internal {
         emit AdminSet(admin, _newAdmin);
