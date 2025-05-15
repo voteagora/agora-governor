@@ -457,14 +457,14 @@ contract ApprovalVotingModule is BaseHook {
         uint256 proposalId,
         address account,
         uint128 weight,
-        uint256[] memory options,
+        uint256[] memory optionsIdx,
         uint256 totalOptions,
         uint256 maxApprovals
     ) internal {
         uint256 option;
         uint256 prevOption;
         for (uint256 i; i < totalOptions; ++i) {
-            option = options[i];
+            option = optionsIdx[i];
 
             accountVotesSet[proposalId][account].add(option);
 
