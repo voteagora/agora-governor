@@ -204,6 +204,10 @@ contract ApprovalVotingModule is BaseHook {
                     revert InvalidParams();
                 }
 
+                if (totalOptions > proposals[proposalId].optionVotes.length) {
+                    revert InvalidParams();
+                }
+
                 _recordVote(
                     proposalId, account, weight.toUint128(), options, totalOptions, proposal.settings.maxApprovals
                 );
