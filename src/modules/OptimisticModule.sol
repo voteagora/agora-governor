@@ -4,7 +4,6 @@ pragma solidity ^0.8.29;
 import {Hooks} from "src/libraries/Hooks.sol";
 import {BaseHook} from "src/hooks/BaseHook.sol";
 import {IMiddleware} from "src/interfaces/IMiddleware.sol";
-import {Middleware} from "src/Middleware.sol";
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
@@ -28,7 +27,7 @@ struct Proposal {
 }
 
 /// @custom:security-contact security@voteagora.com
-contract Optimistic is BaseHook {
+contract OptimisticModule is BaseHook {
     /*//////////////////////////////////////////////////////////////
                                  ERRORS
     //////////////////////////////////////////////////////////////*/
@@ -51,7 +50,7 @@ contract Optimistic is BaseHook {
     //////////////////////////////////////////////////////////////*/
 
     mapping(uint256 proposalId => Proposal) public proposals;
-    Middleware public middleware;
+    IMiddleware public middleware;
 
     /*//////////////////////////////////////////////////////////////
                                CONSTRUCTOR
@@ -59,7 +58,7 @@ contract Optimistic is BaseHook {
 
     constructor(address payable _governor, address _middleware) BaseHook(_governor) {
         if (_middleware == address(0)) revert InvalidMiddleware();
-        middleware = Middleware(_middleware);
+        middleware = IMiddleware(_middleware);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -112,7 +111,7 @@ contract Optimistic is BaseHook {
         bytes memory proposalData = bytes(description);
         ProposalSettings memory proposalSettings = abi.decode(proposalData, (ProposalSettings));
 
-        uint8 proposalTypeId = middleware._proposalTypeId(proposalId);
+        uint8 proposalTypeId = middleware.proposalTypeId(proposalId);
         IMiddleware.ProposalType memory proposalType = middleware.proposalTypes(proposalTypeId);
 
         if (proposalType.quorum != 0 || proposalType.approvalThreshold != 0) {
