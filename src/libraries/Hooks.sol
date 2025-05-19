@@ -116,7 +116,7 @@ library Hooks {
         assembly ("memory-safe") {
             // Load a single byte (bytes1) from position 0x20 + 0x20 (skip selector)
             // and compare it with 0x01 to get the boolean value
-            output := eq(1, mload(add(result, 0x40)))
+            output := mload(add(result, 0x40))
         }
     }
 
@@ -265,7 +265,7 @@ library Hooks {
             // and uint256 (32 bytes) weight value
             if (result.length != 96) revert InvalidHookResponse();
             assembly ("memory-safe") {
-                hasUpdated := eq(1, mload(add(result, 0x40))) // first word is a bool
+                hasUpdated := mload(add(result, 0x40)) // first word is a bool
                 returnedWeight := mload(add(result, 0x60)) // second word is a uint256
             }
         }

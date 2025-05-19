@@ -51,7 +51,9 @@ contract OptimisticModuleTest is Test, Deployers {
         deployGovernor(address(middleware));
         deployCodeTo("src/Middleware.sol:Middleware", abi.encode(address(governor)), address(middleware));
         deployCodeTo(
-            "src/modules/OptimisticModule.sol:OptimisticModule", abi.encode(address(governor), address(middleware)), address(module)
+            "src/modules/OptimisticModule.sol:OptimisticModule",
+            abi.encode(address(governor), address(middleware)),
+            address(module)
         );
 
         vm.prank(address(admin));
