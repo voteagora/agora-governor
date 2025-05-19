@@ -45,7 +45,7 @@ abstract contract BaseHook is IHooks {
     }
 
     /// @inheritdoc IHooks
-    function beforeVoteSucceeded(address, uint256) external view virtual returns (bytes4, bool) {
+    function beforeVoteSucceeded(address, uint256) external view virtual returns (bytes4, bool, bool) {
         revert HookNotImplemented();
     }
 

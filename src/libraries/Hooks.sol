@@ -200,17 +200,22 @@ library Hooks {
         internal
         view
         noSelfCall(self)
-        returns (uint8 returnedVoteSucceeded)
+        returns (bool hasUpdated, uint8 returnedVoteSucceeded)
     {
         if (self.hasPermission(BEFORE_VOTE_SUCCEEDED_FLAG)) {
             bytes memory result =
                 self.staticCallHook(abi.encodeCall(IHooks.beforeVoteSucceeded, (msg.sender, proposalId)));
 
             // The length of the result must be 64 bytes to return a bytes4 (padded to 32 bytes) and a boolean (padded to 32 bytes) value
-            if (result.length != 64) revert InvalidHookResponse();
+
+            if (result.length != 96) revert InvalidHookResponse();
+            assembly ("memory-safe") {
+                hasUpdated := mload(add(result, 0x40)) // first word is a bool
+                returnedVoteSucceeded := mload(add(result, 0x60)) // second word is a uint8
+            }
 
             // Extract the boolean from the result and convert to uint8 with 2 meaning true and 1 meaning false
-            returnedVoteSucceeded = parseBool(result) ? 2 : 1;
+            returnedVoteSucceeded = returnedVoteSucceeded != 0 ? 2 : 1;
         }
     }
 
