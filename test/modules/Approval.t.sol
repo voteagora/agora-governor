@@ -920,6 +920,52 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         governor.propose(targets, values, calldatas, descriptionWithData);
     }
 
+    function testReverts_criteriaThresholdZero() public {
+        uint256 weight = 100;
+        vm.prank(minter);
+        token.mint(voter, weight);
+
+        vm.startPrank(voter);
+        token.delegate(voter);
+        vm.roll(block.number + 1);
+        vm.stopPrank();
+
+        (, ProposalOption[] memory options, ProposalSettings memory settings) = _formatProposalData();
+        settings.criteria = uint8(PassingCriteria.Threshold);
+        settings.criteriaValue = 0;
+        bytes memory proposalData = abi.encode(options, settings);
+
+        string memory descriptionWithData = string.concat(description, string(proposalData));
+
+        // This is ignored
+        address[] memory targets = new address[](2);
+        uint256[] memory values = new uint256[](2);
+        bytes[] memory calldatas = new bytes[](2);
+        targets[0] = address(token);
+        calldatas[0] = abi.encodeCall(IERC20.transfer, (receiver1, 100));
+        targets[1] = receiver2;
+        values[1] = 0.2 ether;
+        calldatas[1] = calldatas[0];
+
+        vm.startPrank(admin);
+        governor.setProposalThreshold(0);
+        uint256 proposalId = governor.propose(targets, values, calldatas, descriptionWithData);
+        vm.stopPrank();
+
+        vm.roll(block.number + 2);
+
+        uint256[] memory votes = new uint256[](1);
+        bytes memory params = abi.encode(votes);
+
+        vm.startPrank(voter);
+        governor.castVoteWithReasonAndParams(proposalId, uint8(VoteType.For), "a good reason", params);
+
+        vm.expectRevert();
+        governor.voteSucceeded(proposalId);
+
+        vm.stopPrank();
+    }
+
     /*//////////////////////////////////////////////////////////////
                                 HELPERS
     //////////////////////////////////////////////////////////////*/
