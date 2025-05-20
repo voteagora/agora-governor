@@ -25,6 +25,7 @@ contract MultiTokenModuleTest is Test, Deployers {
     }
 
     function test_addToken() public {
+        vm.prank(governor.timelock());
         module.addToken(address(token), 100, Votes.getPastVotes.selector);
 
         assertEq(module.getTokenWeight(address(token)), 100);
@@ -35,6 +36,7 @@ contract MultiTokenModuleTest is Test, Deployers {
     function test_removeToken() public {
         test_addToken();
 
+        vm.prank(governor.timelock());
         module.removeToken(address(token));
 
         vm.expectRevert(MultiTokenModule.TokenDoesNotExist.selector);
@@ -50,6 +52,7 @@ contract MultiTokenModuleTest is Test, Deployers {
     function test_addAndRemoveMultiple() public {
         MockToken token2 = new MockToken(minter);
 
+        vm.startPrank(governor.timelock());
         module.addToken(address(token), 5_000, Votes.getPastVotes.selector);
         module.addToken(address(token2), 5_000, Votes.getPastVotes.selector);
         module.removeToken(address(token));
@@ -57,21 +60,27 @@ contract MultiTokenModuleTest is Test, Deployers {
         assertEq(module.getTokenWeight(address(token2)), 5_000);
         assertEq(module.getTokenSelector(address(token2)), Votes.getPastVotes.selector);
         assertEq(module.getTokenAddress(0), address(token2));
+        vm.stopPrank();
     }
 
     function test_addToken_reverts_alreadyExists() public {
+        vm.startPrank(governor.timelock());
         module.addToken(address(token), 100, Votes.getPastVotes.selector);
 
         vm.expectRevert(MultiTokenModule.TokenAlreadyExists.selector);
         module.addToken(address(token), 100, Votes.getPastVotes.selector);
+        vm.stopPrank();
     }
 
     function test_addToken_reverts_invalidToken() public {
+        vm.startPrank(governor.timelock());
         vm.expectRevert(MultiTokenModule.InvalidToken.selector);
         module.addToken(address(0), 100, Votes.getPastVotes.selector);
+        vm.stopPrank();
     }
 
     function test_addToken_reverts_invalidWeight() public {
+        vm.prank(governor.timelock());
         vm.expectRevert(MultiTokenModule.InvalidWeight.selector);
         module.addToken(address(token), 0, Votes.getPastVotes.selector);
 
@@ -92,6 +101,7 @@ contract MultiTokenModuleTest is Test, Deployers {
         vm.prank(address(this));
         token.delegate(address(this));
 
+        vm.prank(governor.timelock());
         module.addToken(address(token), weight, Votes.getPastVotes.selector);
 
         vm.roll(block.number + 1);
@@ -129,7 +139,9 @@ contract MultiTokenModuleTest is Test, Deployers {
         token.delegate(address(this));
         token2.delegate(address(this));
 
+        vm.prank(governor.timelock());
         module.addToken(address(token), weight1, Votes.getPastVotes.selector);
+        vm.prank(governor.timelock());
         module.addToken(address(token2), weight2, Votes.getPastVotes.selector);
 
         vm.roll(block.number + 1);
