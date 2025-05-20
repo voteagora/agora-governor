@@ -43,8 +43,8 @@ contract MultiTokenModule is BaseHook {
 
     /// @notice Reverts if the sender of the hook is not the governor
     modifier _onlyGovernance(address sender) {
-        _;
         if (sender != governor.timelock()) revert NotGovernance();
+        _;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -63,7 +63,7 @@ contract MultiTokenModule is BaseHook {
         override
         returns (bytes4, bool, uint256)
     {
-        if (msg.sender != address(governor)) revert NotGovernor();
+        if (sender != address(governor)) revert NotGovernor();
 
         // Get the proposal snapshot
         uint256 proposalSnapshot = governor.proposalSnapshot(proposalId);
