@@ -14,9 +14,11 @@ abstract contract GovernorSettingsUpgradeableV2 is Initializable, GovernorUpgrad
     uint256 private _votingDelay;
     uint256 private _votingPeriod;
     uint256 private _proposalThreshold;
+    uint256 private _votingPeriodTimestamp;
 
     event VotingDelaySet(uint256 oldVotingDelay, uint256 newVotingDelay);
     event VotingPeriodSet(uint256 oldVotingPeriod, uint256 newVotingPeriod);
+    event VotingPeriodTimestampSet(uint256 oldVotingPeriodTimestamp, uint256 newVotingPeriodTimestamp);
     event ProposalThresholdSet(uint256 oldProposalThreshold, uint256 newProposalThreshold);
 
     /**
@@ -54,6 +56,10 @@ abstract contract GovernorSettingsUpgradeableV2 is Initializable, GovernorUpgrad
         return _votingPeriod;
     }
 
+    function votingPeriodTimestamp() public view virtual returns (uint256) {
+        return _votingPeriodTimestamp;
+    }
+
     /**
      * @dev See {Governor-proposalThreshold}.
      */
@@ -77,6 +83,15 @@ abstract contract GovernorSettingsUpgradeableV2 is Initializable, GovernorUpgrad
      */
     function setVotingPeriod(uint256 newVotingPeriod) public virtual onlyGovernance {
         _setVotingPeriod(newVotingPeriod);
+    }
+
+    /**
+     * @dev Update the voting period in timestamp. This operation can only be performed through a governance proposal.
+     *
+     * Emits a {VotingPeriodTimestampSet} event.
+     */
+    function setVotingPeriodTimestamp(uint256 newVotingPeriodTimestamp) public virtual onlyGovernance {
+        _setVotingPeriodTimestamp(newVotingPeriodTimestamp);
     }
 
     /**
@@ -111,6 +126,16 @@ abstract contract GovernorSettingsUpgradeableV2 is Initializable, GovernorUpgrad
     }
 
     /**
+     * @dev Internal setter for the voting period in timestamp.
+     *
+     * Emits a {VotingPeriodTimestampSet} event.
+     */
+    function _setVotingPeriodTimestamp(uint256 newVotingPeriodTimestamp) internal virtual {
+        emit VotingPeriodTimestampSet(_votingPeriodTimestamp, newVotingPeriodTimestamp);
+        _votingPeriodTimestamp = newVotingPeriodTimestamp;
+    }
+
+    /**
      * @dev Internal setter for the proposal threshold.
      *
      * Emits a {ProposalThresholdSet} event.
@@ -125,5 +150,5 @@ abstract contract GovernorSettingsUpgradeableV2 is Initializable, GovernorUpgrad
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[47] private __gap;
+    uint256[46] private __gap;
 }

@@ -33,19 +33,21 @@ abstract contract GovernorUpgradeableV2 is
     using DoubleEndedQueueUpgradeable for DoubleEndedQueueUpgradeable.Bytes32Deque;
     using SafeCastUpgradeable for uint256;
     using TimersUpgradeable for TimersUpgradeable.BlockNumber;
+    using TimersUpgradeable for TimersUpgradeable.Timestamp;
 
     bytes32 public constant BALLOT_TYPEHASH = keccak256("Ballot(uint256 proposalId,uint8 support)");
     bytes32 public constant EXTENDED_BALLOT_TYPEHASH =
         keccak256("ExtendedBallot(uint256 proposalId,uint8 support,string reason,bytes params)");
 
     struct ProposalCore {
-        TimersUpgradeable.BlockNumber voteStart;
-        TimersUpgradeable.BlockNumber voteEnd;
+        TimersUpgradeable.BlockNumber voteStartBlock;
+        TimersUpgradeable.BlockNumber voteEndBlock;
         bool executed;
         bool canceled;
         address votingModule;
         uint8 proposalType;
         address proposer;
+        TimersUpgradeable.Timestamp voteEndTimestamp;
     }
 
     string private _name;
@@ -178,9 +180,17 @@ abstract contract GovernorUpgradeableV2 is
         }
 
         uint256 deadline = proposalDeadline(proposalId);
+        uint256 deadlineTimestamp = proposalDeadlineTimestamp(proposalId);
 
-        if (deadline >= block.number) {
-            return ProposalState.Active;
+        if (deadlineTimestamp == 0) {
+            // legacy proposal, no timestamp set, use block
+            if (deadline >= block.number) {
+                return ProposalState.Active;
+            }
+        } else {
+            if (deadline >= block.number && deadlineTimestamp >= block.timestamp) {
+                return ProposalState.Active;
+            }
         }
 
         if (_quorumReached(proposalId) && _voteSucceeded(proposalId)) {
@@ -194,14 +204,18 @@ abstract contract GovernorUpgradeableV2 is
      * @dev See {IGovernor-proposalSnapshot}.
      */
     function proposalSnapshot(uint256 proposalId) public view virtual override returns (uint256) {
-        return _proposals[proposalId].voteStart.getDeadline();
+        return _proposals[proposalId].voteStartBlock.getDeadline();
     }
 
     /**
      * @dev See {IGovernor-proposalDeadline}.
      */
     function proposalDeadline(uint256 proposalId) public view virtual override returns (uint256) {
-        return _proposals[proposalId].voteEnd.getDeadline();
+        return _proposals[proposalId].voteEndBlock.getDeadline();
+    }
+
+    function proposalDeadlineTimestamp(uint256 proposalId) public view virtual returns (uint256) {
+        return _proposals[proposalId].voteEndTimestamp.getDeadline();
     }
 
     /**
@@ -251,6 +265,8 @@ abstract contract GovernorUpgradeableV2 is
 
     /**
      * @dev See {IGovernor-propose}.
+     *
+     * This function is overridden in {AgoraGovernor} and the codes will not be used.
      */
     function propose(
         address[] memory targets,
@@ -270,13 +286,13 @@ abstract contract GovernorUpgradeableV2 is
         require(targets.length > 0, "Governor: empty proposal");
 
         ProposalCore storage proposal = _proposals[proposalId];
-        require(proposal.voteStart.isUnset(), "Governor: proposal already exists");
+        require(proposal.voteStartBlock.isUnset(), "Governor: proposal already exists");
 
         uint64 snapshot = block.number.toUint64() + votingDelay().toUint64();
         uint64 deadline = snapshot + votingPeriod().toUint64();
 
-        proposal.voteStart.setDeadline(snapshot);
-        proposal.voteEnd.setDeadline(deadline);
+        proposal.voteStartBlock.setDeadline(snapshot);
+        proposal.voteEndBlock.setDeadline(deadline);
 
         emit ProposalCreated(
             proposalId,
@@ -523,7 +539,7 @@ abstract contract GovernorUpgradeableV2 is
         ProposalCore storage proposal = _proposals[proposalId];
         require(state(proposalId) == ProposalState.Active, "Governor: vote not currently active");
 
-        uint256 weight = _getVotes(account, proposal.voteStart.getDeadline(), params);
+        uint256 weight = _getVotes(account, proposal.voteStartBlock.getDeadline(), params);
         _countVote(proposalId, account, support, weight, params);
 
         if (params.length == 0) {
