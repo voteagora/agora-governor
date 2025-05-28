@@ -47,6 +47,7 @@ abstract contract GovernorUpgradeableV2 is
         address votingModule;
         uint8 proposalType;
         address proposer;
+        TimersUpgradeable.Timestamp voteStartTimestamp;
         TimersUpgradeable.Timestamp voteEndTimestamp;
     }
 
@@ -175,20 +176,25 @@ abstract contract GovernorUpgradeableV2 is
             revert("Governor: unknown proposal id");
         }
 
-        if (snapshot >= block.number) {
+        // @note In the setting of dynamic block time, the `voteStartTimestamp` is the actual start time for the voting. And we want the
+        // `snapshot` block be determined before `voteStartTimestamp`. We should choose the proper `votingDelay` to make this happen.
+        // But in case the `snapshot` block is generated after `voteStartTimestamp`, we add this check to make sure voting only happen
+        // after the `snapshot` block is generated. That is `block.number > snapshot and block.timestamp > voteStartTimestamp`.
+        uint256 voteStartTimestamp = proposalStartTimestamp(proposalId);
+        if (snapshot >= block.number || voteStartTimestamp >= block.timestamp) {
             return ProposalState.Pending;
         }
 
         uint256 deadline = proposalDeadline(proposalId);
-        uint256 deadlineTimestamp = proposalDeadlineTimestamp(proposalId);
+        uint256 voteEndTimestamp = proposalDeadlineTimestamp(proposalId);
 
-        if (deadlineTimestamp == 0) {
+        if (voteEndTimestamp == 0) {
             // legacy proposal, no timestamp set, use block
             if (deadline >= block.number) {
                 return ProposalState.Active;
             }
         } else {
-            if (deadline >= block.number && deadlineTimestamp >= block.timestamp) {
+            if (deadline >= block.number && voteEndTimestamp >= block.timestamp) {
                 return ProposalState.Active;
             }
         }
@@ -212,6 +218,10 @@ abstract contract GovernorUpgradeableV2 is
      */
     function proposalDeadline(uint256 proposalId) public view virtual override returns (uint256) {
         return _proposals[proposalId].voteEndBlock.getDeadline();
+    }
+
+    function proposalStartTimestamp(uint256 proposalId) public view virtual returns (uint256) {
+        return _proposals[proposalId].voteStartTimestamp.getDeadline();
     }
 
     function proposalDeadlineTimestamp(uint256 proposalId) public view virtual returns (uint256) {

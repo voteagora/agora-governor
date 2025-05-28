@@ -39,7 +39,8 @@ contract AgoraGovernor is
         bytes[] calldatas,
         uint256 startBlock,
         uint256 endBlock,
-        uint256 endTImestamp,
+        uint256 startTimestamp,
+        uint256 endTimestamp,
         string description,
         uint8 proposalTypeId
     );
@@ -50,6 +51,7 @@ contract AgoraGovernor is
         bytes proposalData,
         uint256 startBlock,
         uint256 endBlock,
+        uint256 startTimestamp,
         uint256 endTImestamp,
         string description,
         uint8 proposalTypeId
@@ -483,13 +485,15 @@ contract AgoraGovernor is
 
         uint64 snapshot = block.number.toUint64() + votingDelay().toUint64();
         uint64 deadline = snapshot + votingPeriod().toUint64();
-        uint64 deadlineTimestamp = block.timestamp.toUint64() + votingPeriodTimestamp().toUint64();
+        uint64 voteStartTimestamp = block.timestamp.toUint64() + votingDelayInSeconds().toUint64();
+        uint64 voteEndTimestamp = block.timestamp.toUint64() + votingPeriodInSeconds().toUint64();
 
         proposal.voteStartBlock.setDeadline(snapshot);
         proposal.voteEndBlock.setDeadline(deadline);
         proposal.proposalType = proposalTypeId;
         proposal.proposer = proposer;
-        proposal.voteEndTimestamp.setDeadline(deadlineTimestamp);
+        proposal.voteStartTimestamp.setDeadline(voteStartTimestamp);
+        proposal.voteEndTimestamp.setDeadline(voteEndTimestamp);
 
         emit ProposalCreated(
             proposalId,
@@ -500,7 +504,8 @@ contract AgoraGovernor is
             calldatas,
             snapshot,
             deadline,
-            deadlineTimestamp,
+            voteStartTimestamp,
+            voteEndTimestamp,
             description,
             proposalTypeId
         );
@@ -562,14 +567,16 @@ contract AgoraGovernor is
 
         uint64 snapshot = block.number.toUint64() + votingDelay().toUint64();
         uint64 deadline = snapshot + votingPeriod().toUint64();
-        uint64 deadlineTimestamp = block.timestamp.toUint64() + votingPeriodTimestamp().toUint64();
+        uint64 voteStartTimestamp = block.timestamp.toUint64() + votingDelayInSeconds().toUint64();
+        uint64 voteEndTimestamp = block.timestamp.toUint64() + votingPeriodInSeconds().toUint64();
 
         proposal.voteStartBlock.setDeadline(snapshot);
         proposal.voteEndBlock.setDeadline(deadline);
         proposal.votingModule = address(module);
         proposal.proposalType = proposalTypeId;
         proposal.proposer = proposer;
-        proposal.voteEndTimestamp.setDeadline(deadlineTimestamp);
+        proposal.voteStartTimestamp.setDeadline(voteStartTimestamp);
+        proposal.voteEndTimestamp.setDeadline(voteEndTimestamp);
 
         module.propose(proposalId, proposalData, descriptionHash);
 
@@ -580,7 +587,8 @@ contract AgoraGovernor is
             proposalData,
             snapshot,
             deadline,
-            deadlineTimestamp,
+            voteStartTimestamp,
+            voteEndTimestamp,
             description,
             proposalTypeId
         );
