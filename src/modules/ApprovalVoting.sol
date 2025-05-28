@@ -480,7 +480,11 @@ contract ApprovalVotingModule is BaseHook {
             prevOption = option;
 
             /// @dev Revert if `option` is out of bounds
-            proposals[proposalId].optionVotes[option] += weight;
+            if (option < proposals[proposalId].optionVotes.length) {
+                proposals[proposalId].optionVotes[option] += weight;
+            } else {
+                revert InvalidParams();
+            }
         }
 
         if (accountVotesSet[proposalId][account].length() > maxApprovals) {
