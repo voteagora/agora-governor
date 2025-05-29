@@ -6,10 +6,9 @@ import {BaseHook} from "src/hooks/BaseHook.sol";
 
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {Packing} from "@openzeppelin/contracts/utils/Packing.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @custom:security-contact security@voteagora.com
-contract MultiTokenModule is BaseHook, Ownable {
+contract MultiTokenModule is BaseHook {
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
     /*//////////////////////////////////////////////////////////////
@@ -17,11 +16,13 @@ contract MultiTokenModule is BaseHook, Ownable {
     //////////////////////////////////////////////////////////////*/
 
     error InvalidWeight();
+    error InvalidResponse();
     error InvalidSelector();
     error InvalidToken();
     error TokenAlreadyExists();
     error TokenDoesNotExist();
     error NotGovernor();
+    error NotGovernance();
 
     /*//////////////////////////////////////////////////////////////
                                 EVENTS
@@ -40,23 +41,29 @@ contract MultiTokenModule is BaseHook, Ownable {
     /// @notice The divisor for the weights
     uint16 public constant PERCENT_DIVISOR = 10_000;
 
+    /// @notice Reverts if the sender of the hook is not the governor
+    modifier _onlyGovernance(address sender) {
+        if (sender != governor.timelock()) revert NotGovernance();
+        _;
+    }
+
     /*//////////////////////////////////////////////////////////////
                                CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
-    constructor(address payable _governor) BaseHook(_governor) Ownable(msg.sender) {}
+    constructor(address payable _governor) BaseHook(_governor) {}
 
     /*//////////////////////////////////////////////////////////////
                             EXTERNAL FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
     /// @notice The hook called before a vote is cast
-    function beforeVote(address, uint256 proposalId, address account, uint8, string memory, bytes memory)
+    function beforeVote(address sender, uint256 proposalId, address account, uint8, string memory, bytes memory)
         external
         override
         returns (bytes4, bool, uint256)
     {
-        if (msg.sender != address(governor)) revert NotGovernor();
+        if (sender != address(governor)) revert NotGovernor();
 
         // Get the proposal snapshot
         uint256 proposalSnapshot = governor.proposalSnapshot(proposalId);
@@ -75,7 +82,9 @@ contract MultiTokenModule is BaseHook, Ownable {
             bytes4 selector = bytes4(Packing.extract_32_4(value, 20));
 
             // Call the token's selector with the account and proposalId as arguments
-            (, bytes memory result) = token.call(abi.encodeWithSelector(selector, account, proposalSnapshot));
+            (bool success, bytes memory result) =
+                token.staticcall(abi.encodeWithSelector(selector, account, proposalSnapshot));
+            if (!success) revert InvalidResponse();
 
             // Apply weight to voting power and add to total
             uint256 weight = abi.decode(result, (uint256)) * uint64(Packing.extract_32_8(value, 24)) / PERCENT_DIVISOR;
@@ -89,16 +98,15 @@ contract MultiTokenModule is BaseHook, Ownable {
     /// @param token The address of the token to add
     /// @param weight The weight of the token
     /// @param selector The selector of the function to call, which must take (address,uint256) as arguments and return a uint256
-    function addToken(address token, uint64 weight, bytes4 selector) external onlyOwner {
+    function addToken(address token, uint64 weight, bytes4 selector) external _onlyGovernance(msg.sender) {
         if (token == address(0)) revert InvalidToken();
         if (weight == 0 || weight > PERCENT_DIVISOR) revert InvalidWeight();
         if (selector == bytes4(0)) revert InvalidSelector();
         if (_tokenExists(token)) revert TokenAlreadyExists();
 
         // Check that selector can be called on token
-        (bool success, bytes memory result) = token.call(abi.encodeWithSelector(selector, address(0), 0));
+        (bool success, bytes memory result) = token.staticcall(abi.encodeWithSelector(selector, address(0), 0));
         if (!success || result.length != 32) revert InvalidSelector();
-        abi.decode(result, (uint256));
 
         bytes12 subpack = Packing.pack_4_8(selector, bytes8(weight));
         bytes32 pack = Packing.pack_20_12(bytes20(token), subpack);
@@ -110,7 +118,7 @@ contract MultiTokenModule is BaseHook, Ownable {
 
     /// @notice Remove a token from the module
     /// @param token The address of the token to remove
-    function removeToken(address token) external onlyOwner {
+    function removeToken(address token) external _onlyGovernance(msg.sender) {
         uint256 index = _findIndex(token);
         tokens.remove(tokens.at(index));
 
