@@ -31,8 +31,8 @@ contract BaseHookMock is BaseHook {
         return this.afterInitialize.selector;
     }
 
-    function beforeVoteSucceeded(address, uint256) external view virtual override returns (bytes4, bool) {
-        return (this.beforeVoteSucceeded.selector, true);
+    function beforeVoteSucceeded(address, uint256) external view virtual override returns (bytes4, bool, bool) {
+        return (this.beforeVoteSucceeded.selector, true, true);
     }
 
     function afterVoteSucceeded(address, uint256, bool) external view virtual override returns (bytes4) {

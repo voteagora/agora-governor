@@ -387,7 +387,7 @@ contract ApprovalVotingModule is BaseHook {
         view
         override
         onlyGovernor(sender)
-        returns (bytes4, bool)
+        returns (bytes4, bool, bool)
     {
         Proposal memory proposal = proposals[proposalId];
 
@@ -397,19 +397,19 @@ contract ApprovalVotingModule is BaseHook {
             if (proposal.settings.criteria == uint8(PassingCriteria.Threshold)) {
                 for (uint256 i; i < n; ++i) {
                     if (proposal.optionVotes[i] >= proposal.settings.criteriaValue) {
-                        return (this.beforeVoteSucceeded.selector, true);
+                        return (this.beforeVoteSucceeded.selector, true, true);
                     }
                 }
             } else if (proposal.settings.criteria == uint8(PassingCriteria.TopChoices)) {
                 for (uint256 i; i < n; ++i) {
                     if (proposal.optionVotes[i] != 0) {
-                        return (this.beforeVoteSucceeded.selector, true);
+                        return (this.beforeVoteSucceeded.selector, true, true);
                     }
                 }
             }
         }
 
-        return (this.beforeVoteSucceeded.selector, false);
+        return (this.beforeVoteSucceeded.selector, true, false);
     }
 
     /**

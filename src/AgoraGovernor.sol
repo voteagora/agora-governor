@@ -485,9 +485,9 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         override(Governor, GovernorCountingSimple)
         returns (bool voteSucceeded)
     {
-        uint8 beforeVoteSucceeded = hooks.beforeVoteSucceeded(proposalId);
+        (bool hasUpdated, uint8 beforeVoteSucceeded) = hooks.beforeVoteSucceeded(proposalId);
 
-        if (beforeVoteSucceeded == 1) {
+        if (!hasUpdated) {
             voteSucceeded = super._voteSucceeded(proposalId);
         } else {
             voteSucceeded = beforeVoteSucceeded == 2;

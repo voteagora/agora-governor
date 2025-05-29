@@ -101,8 +101,9 @@ contract Middleware is IMiddleware, BaseHook {
         external
         view
         override
-        returns (bytes4, bool voteSucceeded)
+        returns (bytes4, bool hasUpdated, bool voteSucceeded)
     {
+        hasUpdated = false;
         voteSucceeded = false;
         uint8 proposalTypeId = _proposalTypeId[proposalId];
         _proposalTypeExists(proposalTypeId);
@@ -113,11 +114,11 @@ contract Middleware is IMiddleware, BaseHook {
         if (module != address(0)) {
             Hooks.Permissions memory hooks = BaseHook(module).getHookPermissions();
             if (hooks.beforeVoteSucceeded) {
-                (, voteSucceeded) = BaseHook(module).beforeVoteSucceeded(msg.sender, proposalId);
+                (, hasUpdated, voteSucceeded) = BaseHook(module).beforeVoteSucceeded(msg.sender, proposalId);
             }
         }
 
-        return (this.beforeVoteSucceeded.selector, voteSucceeded);
+        return (this.beforeVoteSucceeded.selector, hasUpdated, voteSucceeded);
     }
 
     /// @inheritdoc IHooks
