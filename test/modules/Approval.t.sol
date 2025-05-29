@@ -982,6 +982,33 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         vm.stopPrank();
     }
 
+    function testRevert_countVote_optionsExceeded() public {
+        uint256 weight = 100;
+        vm.prank(minter);
+        token.mint(voter, weight);
+
+        vm.startPrank(voter);
+        token.delegate(voter);
+        vm.roll(block.number + 1);
+        vm.stopPrank();
+
+        uint256 proposalId = createProposal();
+        vm.roll(block.number + 2);
+
+        uint256[] memory votes = new uint256[](4);
+        votes[0] = 0;
+        votes[1] = 1;
+        votes[2] = 2;
+        votes[3] = 4;
+        bytes memory params = abi.encode(votes);
+
+        vm.startPrank(voter);
+        //ApprovalVotingModule.InvalidParams.selector
+        vm.expectRevert();
+        governor.castVoteWithReasonAndParams(proposalId, uint8(VoteType.For), "a good reason", params);
+        vm.stopPrank();
+    }
+
     function testRevert_countVote_outOfBounds() public {
         uint256 weight = 100;
         vm.prank(minter);
