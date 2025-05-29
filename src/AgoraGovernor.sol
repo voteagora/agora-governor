@@ -49,7 +49,7 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
     address public manager;
 
     /// @notice The hooks of the governor
-    IHooks public hooks;
+    IHooks public immutable hooks;
 
     /// @notice The timelock of the governor
     TimelockController internal _timelock;
