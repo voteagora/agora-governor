@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 
 import {Hooks} from "src/libraries/Hooks.sol";
 import {ApprovalVotingModuleMock} from "test/mocks/ApprovalVotingModuleMock.sol";
-import {Optimistic, ProposalSettings, Proposal} from "src/modules/Optimistic.sol";
+import {OptimisticModule, ProposalSettings, Proposal} from "src/modules/OptimisticModule.sol";
 import {Middleware} from "src/Middleware.sol";
 
 import {MockToken} from "test/mocks/MockToken.sol";
@@ -20,7 +20,7 @@ enum VoteType {
 }
 
 contract OptimisticModuleTest is Test, Deployers {
-    Optimistic module;
+    OptimisticModule module;
     Middleware middleware;
     string description = "my description is this one#proposalTypeId=1#proposalData=";
     address internal voter = makeAddr("voter");
@@ -31,7 +31,7 @@ contract OptimisticModuleTest is Test, Deployers {
     //////////////////////////////////////////////////////////////*/
 
     function setUp() public virtual {
-        module = Optimistic(
+        module = OptimisticModule(
             address(uint160(Hooks.BEFORE_VOTE_SUCCEEDED_FLAG | Hooks.AFTER_PROPOSE_FLAG | Hooks.BEFORE_QUEUE_FLAG))
         );
 
@@ -51,7 +51,9 @@ contract OptimisticModuleTest is Test, Deployers {
         deployGovernor(address(middleware));
         deployCodeTo("src/Middleware.sol:Middleware", abi.encode(address(governor)), address(middleware));
         deployCodeTo(
-            "src/modules/Optimistic.sol:Optimistic", abi.encode(address(governor), address(middleware)), address(module)
+            "src/modules/OptimisticModule.sol:OptimisticModule",
+            abi.encode(address(governor), address(middleware)),
+            address(module)
         );
 
         vm.prank(address(admin));
@@ -80,7 +82,7 @@ contract OptimisticModuleTest is Test, Deployers {
         uint256 proposalId = governor.propose(targets, values, calldatas, descriptionWithData);
         vm.stopPrank();
 
-        (, ProposalSettings memory moduleSettings) = Optimistic(module).proposals(proposalId);
+        (, ProposalSettings memory moduleSettings) = OptimisticModule(module).proposals(proposalId);
 
         assertEq(moduleSettings.againstThreshold, settings.againstThreshold);
         assertEq(moduleSettings.isRelativeToVotableSupply, settings.isRelativeToVotableSupply);

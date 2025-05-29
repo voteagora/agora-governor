@@ -13,7 +13,8 @@ additional_compiler_profiles = [ { name = "via-ir", via_ir = true } ]
 compilation_restrictions = [
     { paths = "src/Middleware.sol", via_ir = true },
     { paths = "src/modules/MultiToken.sol", via_ir = true },
-    { paths = "src/modules/ApprovalVoting.sol", via_ir = true }
+    { paths = "src/modules/ApprovalVoting.sol", via_ir = true },
+    { paths = "src/modules/OptimisticModule.sol", via_ir = true }
 ]
 
 [fuzz]

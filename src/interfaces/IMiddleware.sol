@@ -78,6 +78,7 @@ interface IMiddleware {
     //////////////////////////////////////////////////////////////*/
 
     function proposalTypes(uint8 proposalTypeId) external view returns (ProposalType memory);
+    function proposalTypeId(uint256 proposalId) external view returns (uint8 proposalTypeId);
 
     function setProposalType(
         uint8 proposalTypeId,
