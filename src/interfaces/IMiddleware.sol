@@ -11,11 +11,7 @@ interface IMiddleware {
     error InvalidParameterConditions();
     error InvalidScope();
     error NotAdminOrTimelock();
-    error NotAdmin();
-    error AlreadyInit();
     error Invalid4ByteSelector();
-    error InvalidParamNotEqual();
-    error InvalidParamRange();
     error InvalidProposedTxForType();
     error InvalidProposalType();
     error MaxScopeLengthReached();

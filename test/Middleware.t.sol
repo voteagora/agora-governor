@@ -4,6 +4,7 @@ pragma solidity ^0.8.29;
 import "forge-std/Test.sol";
 
 import {Hooks} from "src/libraries/Hooks.sol";
+import {Validator} from "src/libraries/Validator.sol";
 import {BaseHook} from "src/hooks/BaseHook.sol";
 import {ApprovalVotingModuleMock} from "test/mocks/ApprovalVotingModuleMock.sol";
 
@@ -367,7 +368,7 @@ contract ValidateProposedTx is MiddlewareTest {
         address _to = makeAddr("to");
 
         bytes memory proposedTx = abi.encodeWithSignature("transfer(address,address,uint256)", _to, _from, uint256(15));
-        vm.expectRevert(IMiddleware.InvalidParamNotEqual.selector);
+        vm.expectRevert(Validator.InvalidParamNotEqual.selector);
         middleware.validateProposedTx(proposedTx, 0, scopeKey);
     }
 
@@ -379,7 +380,7 @@ contract ValidateProposedTx is MiddlewareTest {
         address _to = makeAddr("to");
 
         bytes memory proposedTx = abi.encodeWithSignature("transfer(address,address,uint256)", _from, _to, uint256(5));
-        vm.expectRevert(IMiddleware.InvalidParamRange.selector);
+        vm.expectRevert(Validator.InvalidParamRange.selector);
         middleware.validateProposedTx(proposedTx, 0, scopeKey);
     }
 }
