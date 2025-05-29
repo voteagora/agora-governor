@@ -61,6 +61,7 @@ contract ApprovalVotingModule is BaseHook {
     error OptionsNotStrictlyAscending();
     error ExistingProposal();
     error InvalidParams();
+    error InvalidCriteria();
     error NotGovernor();
 
     /*//////////////////////////////////////////////////////////////
@@ -395,6 +396,8 @@ contract ApprovalVotingModule is BaseHook {
         uint256 n = options.length;
         unchecked {
             if (proposal.settings.criteria == uint8(PassingCriteria.Threshold)) {
+                if (proposal.settings.criteriaValue == 0) revert InvalidCriteria();
+
                 for (uint256 i; i < n; ++i) {
                     if (proposal.optionVotes[i] >= proposal.settings.criteriaValue) {
                         return (this.beforeVoteSucceeded.selector, true, true);
