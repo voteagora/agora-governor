@@ -29,8 +29,8 @@ contract MiddlewareTest is Test, Deployers {
     );
 
     event ScopeCreated(uint8 indexed proposalTypeId, bytes24 indexed scopeKey, bytes4 selector, string description);
-    event ScopeDisabled(uint8 indexed proposalTypeId, bytes24 indexed scopeKey);
-    event ScopeDeleted(uint8 indexed proposalTypeId, bytes24 indexed scopeKey);
+    event ScopeDisabled(uint8 indexed proposalTypeId, bytes24 indexed scopeKey, uint8 idx);
+    event ScopeDeleted(uint8 indexed proposalTypeId, bytes24 indexed scopeKey, uint8 idx);
 
     /*//////////////////////////////////////////////////////////////
                                  SETUP
@@ -410,7 +410,7 @@ contract DisableScope is MiddlewareTest {
         bytes24 scopeKey = _pack(contractAddress, bytes4(txTypeHash));
 
         vm.expectEmit();
-        emit ScopeDisabled(0, scopeKey);
+        emit ScopeDisabled(0, scopeKey, 0);
         middleware.disableScope(0, scopeKey, 0);
     }
 }
@@ -424,7 +424,7 @@ contract DeleteScope is MiddlewareTest {
 
         assertEq(middleware.assignedScopes(0, scopeKey).length, 1);
         vm.expectEmit();
-        emit ScopeDeleted(0, scopeKey);
+        emit ScopeDeleted(0, scopeKey, 0);
         middleware.deleteScope(0, scopeKey, 0);
         assertEq(middleware.assignedScopes(0, scopeKey).length, 0);
 
