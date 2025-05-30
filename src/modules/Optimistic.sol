@@ -156,7 +156,12 @@ contract Optimistic is BaseHook {
      *
      * @param proposalId The id of the proposal.
      */
-    function beforeVoteSucceeded(address sender, uint256 proposalId) external view override returns (bytes4, bool) {
+    function beforeVoteSucceeded(address sender, uint256 proposalId)
+        external
+        view
+        override
+        returns (bytes4, bool, bool)
+    {
         _onlyGovernor(sender);
         Proposal memory proposal = proposals[proposalId];
         (uint256 againstVotes,,) = governor.proposalVotes(proposalId);
@@ -168,7 +173,7 @@ contract Optimistic is BaseHook {
             againstThreshold = (token.getPastTotalSupply(snapshotBlock) * againstThreshold) / PERCENT_DIVISOR;
         }
 
-        return (this.beforeVoteSucceeded.selector, againstVotes < againstThreshold);
+        return (this.beforeVoteSucceeded.selector, true, againstVotes < againstThreshold);
     }
 
     /**
