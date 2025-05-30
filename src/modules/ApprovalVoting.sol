@@ -47,6 +47,8 @@ struct Proposal {
     uint128[] optionVotes;
     ProposalOption[] options;
     ProposalSettings settings;
+    uint256 forVotes;
+    uint256 againstVotes;
 }
 
 /// @custom:security-contact security@voteagora.com
@@ -390,19 +392,24 @@ contract ApprovalVotingModule is BaseHook {
 
         ProposalOption[] memory options = proposal.options;
         uint256 n = options.length;
-        unchecked {
-            if (proposal.settings.criteria == uint8(PassingCriteria.Threshold)) {
-                if (proposal.settings.criteriaValue == 0) revert InvalidCriteria();
 
-                for (uint256 i; i < n; ++i) {
-                    if (proposal.optionVotes[i] >= proposal.settings.criteriaValue) {
-                        return (this.beforeVoteSucceeded.selector, true, true);
+        (uint256 againstVotes, uint256 forVotes,) = governor.proposalVotes(proposalId);
+
+        if (governor.quorum(proposalId) <= againstVotes + forVotes) {
+            unchecked {
+                if (proposal.settings.criteria == uint8(PassingCriteria.Threshold)) {
+                    if (proposal.settings.criteriaValue == 0) revert InvalidCriteria();
+
+                    for (uint256 i; i < n; ++i) {
+                        if (proposal.optionVotes[i] >= proposal.settings.criteriaValue) {
+                            return (this.beforeVoteSucceeded.selector, true, true);
+                        }
                     }
-                }
-            } else if (proposal.settings.criteria == uint8(PassingCriteria.TopChoices)) {
-                for (uint256 i; i < n; ++i) {
-                    if (proposal.optionVotes[i] != 0) {
-                        return (this.beforeVoteSucceeded.selector, true, true);
+                } else if (proposal.settings.criteria == uint8(PassingCriteria.TopChoices)) {
+                    for (uint256 i; i < n; ++i) {
+                        if (proposal.optionVotes[i] != 0) {
+                            return (this.beforeVoteSucceeded.selector, true, true);
+                        }
                     }
                 }
             }
@@ -485,6 +492,8 @@ contract ApprovalVotingModule is BaseHook {
         if (accountVotesSet[proposalId][account].length() > maxApprovals) {
             revert MaxApprovalsExceeded();
         }
+
+        proposals[proposalId].forVotes += weight;
     }
 
     // Sort `options` by `optionVotes` in descending order
