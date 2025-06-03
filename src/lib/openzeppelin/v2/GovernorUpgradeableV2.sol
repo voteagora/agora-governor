@@ -181,8 +181,15 @@ abstract contract GovernorUpgradeableV2 is
         // But in case the `snapshot` block is generated after `voteStartTimestamp`, we add this check to make sure voting only happen
         // after the `snapshot` block is generated. That is `block.number > snapshot and block.timestamp > voteStartTimestamp`.
         uint256 voteStartTimestamp = proposalStartTimestamp(proposalId);
-        if (snapshot >= block.number || voteStartTimestamp >= block.timestamp) {
-            return ProposalState.Pending;
+        if (voteStartTimestamp == 0) {
+            // legacy proposal, no timestamp set, use block
+            if (snapshot >= block.number) {
+                return ProposalState.Pending;
+            }
+        } else {
+            if (snapshot >= block.number || voteStartTimestamp >= block.timestamp) {
+                return ProposalState.Pending;
+            }
         }
 
         uint256 deadline = proposalDeadline(proposalId);

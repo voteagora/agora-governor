@@ -368,6 +368,20 @@ contract AgoraGovernor is
     /**
      * @inheritdoc GovernorSettingsUpgradeableV2
      */
+    function setVotingDelayInSeconds(uint256 newVotingDelay) public override onlyAdminOrTimelock {
+        _setVotingDelayInSeconds(newVotingDelay);
+    }
+
+    /**
+     * @inheritdoc GovernorSettingsUpgradeableV2
+     */
+    function setVotingPeriodInSeconds(uint256 newVotingPeriod) public override onlyAdminOrTimelock {
+        _setVotingPeriodInSeconds(newVotingPeriod);
+    }
+
+    /**
+     * @inheritdoc GovernorSettingsUpgradeableV2
+     */
     function setProposalThreshold(uint256 newProposalThreshold) public override onlyAdminOrTimelock {
         _setProposalThreshold(newProposalThreshold);
     }
@@ -485,8 +499,13 @@ contract AgoraGovernor is
 
         uint64 snapshot = block.number.toUint64() + votingDelay().toUint64();
         uint64 deadline = snapshot + votingPeriod().toUint64();
-        uint64 voteStartTimestamp = block.timestamp.toUint64() + votingDelayInSeconds().toUint64();
-        uint64 voteEndTimestamp = block.timestamp.toUint64() + votingPeriodInSeconds().toUint64();
+        uint64 voteStartTimestamp;
+        uint64 voteEndTimestamp;
+        // if `votingPeriodInSeconds` is set, we also use timestamp to check
+        if (votingPeriodInSeconds() != 0) {
+            voteStartTimestamp = block.timestamp.toUint64() + votingDelayInSeconds().toUint64();
+            voteEndTimestamp = block.timestamp.toUint64() + votingPeriodInSeconds().toUint64();
+        }
 
         proposal.voteStartBlock.setDeadline(snapshot);
         proposal.voteEndBlock.setDeadline(deadline);
@@ -567,8 +586,13 @@ contract AgoraGovernor is
 
         uint64 snapshot = block.number.toUint64() + votingDelay().toUint64();
         uint64 deadline = snapshot + votingPeriod().toUint64();
-        uint64 voteStartTimestamp = block.timestamp.toUint64() + votingDelayInSeconds().toUint64();
-        uint64 voteEndTimestamp = block.timestamp.toUint64() + votingPeriodInSeconds().toUint64();
+        uint64 voteStartTimestamp;
+        uint64 voteEndTimestamp;
+        // if `votingPeriodInSeconds` is set, we also use timestamp to check
+        if (votingPeriodInSeconds() != 0) {
+            voteStartTimestamp = block.timestamp.toUint64() + votingDelayInSeconds().toUint64();
+            voteEndTimestamp = block.timestamp.toUint64() + votingPeriodInSeconds().toUint64();
+        }
 
         proposal.voteStartBlock.setDeadline(snapshot);
         proposal.voteEndBlock.setDeadline(deadline);
