@@ -325,6 +325,72 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         vm.stopPrank();
     }
 
+    function testVoteDefeatedQuorumMet() public {
+        uint256 weight = 100;
+        vm.startPrank(minter);
+        token.mint(voter, weight);
+        token.mint(altVoter, 500);
+        vm.stopPrank();
+
+        vm.startPrank(voter);
+        token.delegate(voter);
+        vm.roll(block.number + 1);
+        vm.stopPrank();
+
+        vm.startPrank(altVoter);
+        token.delegate(altVoter);
+        vm.roll(block.number + 1);
+        vm.stopPrank();
+
+        uint256 proposalId = createProposal();
+        vm.roll(block.number + 2);
+
+        uint256[] memory votes = new uint256[](1);
+        bytes memory params = abi.encode(votes);
+
+        vm.prank(voter);
+        governor.castVoteWithReasonAndParams(proposalId, uint8(VoteType.For), "a good reason", params);
+
+        vm.prank(altVoter);
+        governor.castVoteWithReasonAndParams(proposalId, uint8(VoteType.Against), "a good reason", params);
+
+        assertFalse(governor.voteSucceeded(proposalId));
+        vm.stopPrank();
+    }
+
+    function testVoteSuccessQuorumMet() public {
+        uint256 weight = 100;
+        vm.startPrank(minter);
+        token.mint(voter, weight);
+        token.mint(altVoter, 500);
+        vm.stopPrank();
+
+        vm.startPrank(voter);
+        token.delegate(voter);
+        vm.roll(block.number + 1);
+        vm.stopPrank();
+
+        vm.startPrank(altVoter);
+        token.delegate(altVoter);
+        vm.roll(block.number + 1);
+        vm.stopPrank();
+
+        uint256 proposalId = createProposal();
+        vm.roll(block.number + 2);
+
+        uint256[] memory votes = new uint256[](1);
+        bytes memory params = abi.encode(votes);
+
+        vm.prank(voter);
+        governor.castVoteWithReasonAndParams(proposalId, uint8(VoteType.Against), "a good reason", params);
+
+        vm.prank(altVoter);
+        governor.castVoteWithReasonAndParams(proposalId, uint8(VoteType.For), "a good reason", params);
+
+        assertTrue(governor.voteSucceeded(proposalId));
+        vm.stopPrank();
+    }
+
     function testProposalExecutes(address _actor, uint256 _elapsedAfterQueuing) public {
         vm.assume(_actor != proxyAdmin);
         vm.assume(_actor != address(middleware));

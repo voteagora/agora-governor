@@ -395,7 +395,7 @@ contract ApprovalVotingModule is BaseHook {
 
         (uint256 againstVotes, uint256 forVotes,) = governor.proposalVotes(proposalId);
 
-        if (governor.quorum(proposalId) <= againstVotes + forVotes) {
+        if (forVotes > againstVotes && governor.quorum(proposalId) <= againstVotes + forVotes) {
             unchecked {
                 if (proposal.settings.criteria == uint8(PassingCriteria.Threshold)) {
                     if (proposal.settings.criteriaValue == 0) revert InvalidCriteria();
