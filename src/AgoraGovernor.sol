@@ -39,6 +39,8 @@ contract AgoraGovernor is
         bytes[] calldatas,
         uint256 startBlock,
         uint256 endBlock,
+        uint256 startTimestamp,
+        uint256 endTimestamp,
         string description,
         uint8 proposalTypeId
     );
@@ -49,11 +51,14 @@ contract AgoraGovernor is
         bytes proposalData,
         uint256 startBlock,
         uint256 endBlock,
+        uint256 startTimestamp,
+        uint256 endTImestamp,
         string description,
         uint8 proposalTypeId
     );
     event ProposalTypeUpdated(uint256 indexed proposalId, uint8 proposalTypeId);
     event ProposalDeadlineUpdated(uint256 proposalId, uint64 deadline);
+    event ProposalDeadlineTimestampUpdated(uint256 proposalId, uint64 deadlineTimestamp);
     event AdminSet(address indexed oldAdmin, address indexed newAdmin);
     event ManagerSet(address indexed oldManager, address indexed newManager);
 
@@ -81,6 +86,7 @@ contract AgoraGovernor is
 
     using SafeCastUpgradeable for uint256;
     using TimersUpgradeable for TimersUpgradeable.BlockNumber;
+    using TimersUpgradeable for TimersUpgradeable.Timestamp;
 
     /*//////////////////////////////////////////////////////////////
                            IMMUTABLE STORAGE
@@ -331,8 +337,18 @@ contract AgoraGovernor is
      * @param deadline The new deadline for the proposal.
      */
     function setProposalDeadline(uint256 proposalId, uint64 deadline) external onlyAdminOrTimelock {
-        _proposals[proposalId].voteEnd.setDeadline(deadline);
+        _proposals[proposalId].voteEndBlock.setDeadline(deadline);
         emit ProposalDeadlineUpdated(proposalId, deadline);
+    }
+
+    /**
+     * @notice Set the deadline for a proposal. Only the admin or timelock can call this function.
+     * @param proposalId The id of the proposal.
+     * @param deadlineTimestamp The new deadline in seconds for the proposal.
+     */
+    function setProposalDeadlineTimestamp(uint256 proposalId, uint64 deadlineTimestamp) external onlyAdminOrTimelock {
+        _proposals[proposalId].voteEndTimestamp.setDeadline(deadlineTimestamp);
+        emit ProposalDeadlineTimestampUpdated(proposalId, deadlineTimestamp);
     }
 
     /**
@@ -347,6 +363,20 @@ contract AgoraGovernor is
      */
     function setVotingPeriod(uint256 newVotingPeriod) public override onlyAdminOrTimelock {
         _setVotingPeriod(newVotingPeriod);
+    }
+
+    /**
+     * @inheritdoc GovernorSettingsUpgradeableV2
+     */
+    function setVotingDelayInSeconds(uint256 newVotingDelay) public override onlyAdminOrTimelock {
+        _setVotingDelayInSeconds(newVotingDelay);
+    }
+
+    /**
+     * @inheritdoc GovernorSettingsUpgradeableV2
+     */
+    function setVotingPeriodInSeconds(uint256 newVotingPeriod) public override onlyAdminOrTimelock {
+        _setVotingPeriodInSeconds(newVotingPeriod);
     }
 
     /**
@@ -386,7 +416,7 @@ contract AgoraGovernor is
     {
         require(state(proposalId) == ProposalState.Active, "Governor: vote not currently active");
 
-        weight = _getVotes(account, _proposals[proposalId].voteStart.getDeadline(), "");
+        weight = _getVotes(account, _proposals[proposalId].voteStartBlock.getDeadline(), "");
 
         _countVote(proposalId, account, support, weight, params);
 
@@ -465,25 +495,36 @@ contract AgoraGovernor is
         proposalId = hashProposal(targets, values, calldatas, keccak256(bytes(description)));
 
         ProposalCore storage proposal = _proposals[proposalId];
-        if (!proposal.voteStart.isUnset()) revert InvalidProposalExists();
+        if (!proposal.voteStartBlock.isUnset()) revert InvalidProposalExists();
 
         uint64 snapshot = block.number.toUint64() + votingDelay().toUint64();
         uint64 deadline = snapshot + votingPeriod().toUint64();
+        uint64 voteStartTimestamp;
+        uint64 voteEndTimestamp;
+        // if `votingPeriodInSeconds` is set, we also use timestamp to check
+        if (votingPeriodInSeconds() != 0) {
+            voteStartTimestamp = block.timestamp.toUint64() + votingDelayInSeconds().toUint64();
+            voteEndTimestamp = voteStartTimestamp + votingPeriodInSeconds().toUint64();
+        }
 
-        proposal.voteStart.setDeadline(snapshot);
-        proposal.voteEnd.setDeadline(deadline);
+        proposal.voteStartBlock.setDeadline(snapshot);
+        proposal.voteEndBlock.setDeadline(deadline);
         proposal.proposalType = proposalTypeId;
         proposal.proposer = proposer;
+        proposal.voteStartTimestamp.setDeadline(voteStartTimestamp);
+        proposal.voteEndTimestamp.setDeadline(voteEndTimestamp);
 
         emit ProposalCreated(
             proposalId,
-            _msgSender(),
+            proposer,
             targets,
             values,
             new string[](targets.length),
             calldatas,
             snapshot,
             deadline,
+            voteStartTimestamp,
+            voteEndTimestamp,
             description,
             proposalTypeId
         );
@@ -541,21 +582,39 @@ contract AgoraGovernor is
         proposalId = hashProposalWithModule(address(module), proposalData, descriptionHash);
 
         ProposalCore storage proposal = _proposals[proposalId];
-        if (!proposal.voteStart.isUnset()) revert InvalidProposalExists();
+        if (!proposal.voteStartBlock.isUnset()) revert InvalidProposalExists();
 
         uint64 snapshot = block.number.toUint64() + votingDelay().toUint64();
         uint64 deadline = snapshot + votingPeriod().toUint64();
+        uint64 voteStartTimestamp;
+        uint64 voteEndTimestamp;
+        // if `votingPeriodInSeconds` is set, we also use timestamp to check
+        if (votingPeriodInSeconds() != 0) {
+            voteStartTimestamp = block.timestamp.toUint64() + votingDelayInSeconds().toUint64();
+            voteEndTimestamp = voteStartTimestamp + votingPeriodInSeconds().toUint64();
+        }
 
-        proposal.voteStart.setDeadline(snapshot);
-        proposal.voteEnd.setDeadline(deadline);
+        proposal.voteStartBlock.setDeadline(snapshot);
+        proposal.voteEndBlock.setDeadline(deadline);
         proposal.votingModule = address(module);
         proposal.proposalType = proposalTypeId;
         proposal.proposer = proposer;
+        proposal.voteStartTimestamp.setDeadline(voteStartTimestamp);
+        proposal.voteEndTimestamp.setDeadline(voteEndTimestamp);
 
         module.propose(proposalId, proposalData, descriptionHash);
 
         emit ProposalCreated(
-            proposalId, proposer, address(module), proposalData, snapshot, deadline, description, proposalTypeId
+            proposalId,
+            proposer,
+            address(module),
+            proposalData,
+            snapshot,
+            deadline,
+            voteStartTimestamp,
+            voteEndTimestamp,
+            description,
+            proposalTypeId
         );
     }
 

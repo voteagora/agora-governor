@@ -14,9 +14,13 @@ abstract contract GovernorSettingsUpgradeableV2 is Initializable, GovernorUpgrad
     uint256 private _votingDelay;
     uint256 private _votingPeriod;
     uint256 private _proposalThreshold;
+    uint256 private _votingDelayInSeconds;
+    uint256 private _votingPeriodInSeconds;
 
     event VotingDelaySet(uint256 oldVotingDelay, uint256 newVotingDelay);
     event VotingPeriodSet(uint256 oldVotingPeriod, uint256 newVotingPeriod);
+    event VotingDelayInSecondsSet(uint256 oldVotingDelay, uint256 newVotingDelay);
+    event VotingPeriodInSecondsSet(uint256 oldVotingPeriod, uint256 newVotingPeriod);
     event ProposalThresholdSet(uint256 oldProposalThreshold, uint256 newProposalThreshold);
 
     /**
@@ -54,6 +58,14 @@ abstract contract GovernorSettingsUpgradeableV2 is Initializable, GovernorUpgrad
         return _votingPeriod;
     }
 
+    function votingDelayInSeconds() public view virtual returns (uint256) {
+        return _votingDelayInSeconds;
+    }
+
+    function votingPeriodInSeconds() public view virtual returns (uint256) {
+        return _votingPeriodInSeconds;
+    }
+
     /**
      * @dev See {Governor-proposalThreshold}.
      */
@@ -77,6 +89,24 @@ abstract contract GovernorSettingsUpgradeableV2 is Initializable, GovernorUpgrad
      */
     function setVotingPeriod(uint256 newVotingPeriod) public virtual onlyGovernance {
         _setVotingPeriod(newVotingPeriod);
+    }
+
+    /**
+     * @dev Update the voting delay in seconds. This operation can only be performed through a governance proposal.
+     *
+     * Emits a {VotingDelayInSecondsSet} event.
+     */
+    function setVotingDelayInSeconds(uint256 newVotingDelay) public virtual onlyGovernance {
+        _setVotingDelayInSeconds(newVotingDelay);
+    }
+
+    /**
+     * @dev Update the voting period in seconds. This operation can only be performed through a governance proposal.
+     *
+     * Emits a {VotingPeriodInSecondsSet} event.
+     */
+    function setVotingPeriodInSeconds(uint256 newVotingPeriod) public virtual onlyGovernance {
+        _setVotingPeriodInSeconds(newVotingPeriod);
     }
 
     /**
@@ -111,6 +141,29 @@ abstract contract GovernorSettingsUpgradeableV2 is Initializable, GovernorUpgrad
     }
 
     /**
+     * @dev Internal setter for the voting delay in seconds.
+     *
+     * Emits a {VotingDelayInSecondsSet} event.
+     */
+    function _setVotingDelayInSeconds(uint256 newVotingDelayInSeconds) internal virtual {
+        emit VotingDelayInSecondsSet(_votingDelayInSeconds, newVotingDelayInSeconds);
+        _votingDelayInSeconds = newVotingDelayInSeconds;
+    }
+
+    /**
+     * @dev Internal setter for the voting period in seconds.
+     *
+     * Emits a {VotingPeriodTimestampSet} event.
+     */
+    function _setVotingPeriodInSeconds(uint256 newVotingPeriodInSeconds) internal virtual {
+        // voting period must be at least one second long
+        require(newVotingPeriodInSeconds > 0, "GovernorSettings: voting period too low");
+
+        emit VotingPeriodInSecondsSet(_votingPeriodInSeconds, newVotingPeriodInSeconds);
+        _votingPeriodInSeconds = newVotingPeriodInSeconds;
+    }
+
+    /**
      * @dev Internal setter for the proposal threshold.
      *
      * Emits a {ProposalThresholdSet} event.
@@ -125,5 +178,5 @@ abstract contract GovernorSettingsUpgradeableV2 is Initializable, GovernorUpgrad
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[47] private __gap;
+    uint256[45] private __gap;
 }
