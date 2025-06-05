@@ -504,7 +504,7 @@ contract AgoraGovernor is
         // if `votingPeriodInSeconds` is set, we also use timestamp to check
         if (votingPeriodInSeconds() != 0) {
             voteStartTimestamp = block.timestamp.toUint64() + votingDelayInSeconds().toUint64();
-            voteEndTimestamp = block.timestamp.toUint64() + votingPeriodInSeconds().toUint64();
+            voteEndTimestamp = voteStartTimestamp + votingPeriodInSeconds().toUint64();
         }
 
         proposal.voteStartBlock.setDeadline(snapshot);
@@ -591,7 +591,7 @@ contract AgoraGovernor is
         // if `votingPeriodInSeconds` is set, we also use timestamp to check
         if (votingPeriodInSeconds() != 0) {
             voteStartTimestamp = block.timestamp.toUint64() + votingDelayInSeconds().toUint64();
-            voteEndTimestamp = block.timestamp.toUint64() + votingPeriodInSeconds().toUint64();
+            voteEndTimestamp = voteStartTimestamp + votingPeriodInSeconds().toUint64();
         }
 
         proposal.voteStartBlock.setDeadline(snapshot);
