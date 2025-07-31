@@ -60,10 +60,44 @@ contract MACIModule is BaseHook {
             afterExecute: false
         });
     }
+    function beforePropose(
+        address sender,
+        uint256 proposalId,
+        address[] memory, /*targets*/
+        uint256[] memory, /*values*/
+        bytes[] memory, /*calldatas*/
+        string memory description
+    ) external virtual override onlyGovernor(sender) returns (bytes4) {
+        
+    }
+
+
+    function afterPropose(
+        address sender,
+        uint256 proposalId,
+        address[] memory, /*targets*/
+        uint256[] memory, /*values*/
+        bytes[] memory, /*calldatas*/
+        string memory description
+    ) external virtual override onlyGovernor(sender) returns (bytes4) {
+
+        if (proposals[proposalId].governor != address(0)) {
+            // revert ExistingProposal();
+        }
+
+        bytes memory proposalData = bytes(description);
+
+        (ProposalOption[] memory proposalOptions, ProposalSettings memory proposalSettings) =
+            abi.decode(proposalData, (ProposalOption[], ProposalSettings));
+        return (this.afterPropose.selector);
+    }
+
 
     /// @notice Reverts if the sender of the hook is not the governor
     function _onlyGovernor(address sender) internal view {
         if (sender != address(governor)) revert NotGovernor();
     }
+
+
 }
 

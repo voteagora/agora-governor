@@ -8,7 +8,7 @@
 [submodule "lib/openzeppelin-contracts"]
 	path = lib/openzeppelin-contracts
 	url = https://github.com/voteagora/openzeppelin-contracts
-	branch = ag2
+    branch = ag2
 [submodule "lib/maci"]
 	path = lib/maci
 	url = https://github.com/privacy-scaling-explorations/maci
