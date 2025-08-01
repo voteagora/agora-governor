@@ -10,6 +10,8 @@ import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet
 
 // MACI Objects
 import {MACI} from "maci/MACI.sol";
+import {Poll} from "maci/Poll.sol";
+import {Tally} from "maci/Tally.sol";
 import {IPollFactory} from "maci/interfaces/IPollFactory.sol";
 import {Params} from "maci/utilities/Params.sol";
 import {DomainObjs} from "maci/utilities/DomainObjs.sol";
@@ -22,7 +24,7 @@ enum VoteType {
 
 struct ProposalSettings {
     DomainObjs.Mode mode; // Quadratic Voting = 0, Non-Quadratic Voting = 1
-    // treeDepths(?)
+        // treeDepths(?)
 }
 
 struct Proposal {
@@ -51,6 +53,8 @@ contract MACIModule is BaseHook, Params, DomainObjs {
     error InvalidMiddleware();
     error VoteOptionsExceeded();
     error PollCreationFailed();
+    error NotTallied();
+    error InvalidCastVote();
 
     /*//////////////////////////////////////////////////////////////
                                 STORAGE
@@ -110,11 +114,11 @@ contract MACIModule is BaseHook, Params, DomainObjs {
             beforeInitialize: false,
             afterInitialize: false,
             beforeVoteSucceeded: true,
-            afterVoteSucceeded: true,
+            afterVoteSucceeded: false,
             beforeQuorumCalculation: true,
             afterQuorumCalculation: true,
             beforeVote: true,
-            afterVote: true,
+            afterVote: false,
             beforePropose: true,
             afterPropose: false,
             beforeCancel: false,
@@ -134,14 +138,12 @@ contract MACIModule is BaseHook, Params, DomainObjs {
         bytes[] memory, /*calldatas*/
         string memory description
     ) external virtual override onlyGovernor(sender) returns (bytes4) {
-
         if (proposals[proposalId].governor != address(0)) {
             revert ExistingProposal();
         }
 
         bytes memory proposalData = bytes(description);
-        (ProposalSettings memory proposalSettings) =
-            abi.decode(proposalData, (ProposalSettings));
+        (ProposalSettings memory proposalSettings) = abi.decode(proposalData, (ProposalSettings));
 
         // Take the governor block number duration and covert it to a timestamp format for MACI Polls
         // Note: this is so that the startTime of the Poll and the Proposal will be different so here we ensure that
@@ -150,20 +152,13 @@ contract MACIModule is BaseHook, Params, DomainObjs {
         uint256 duration = (timepoint + governor.votingPeriod()) * avgBlockTime;
 
         // Deploy Poll
-        maci.deployPoll(
-            duration,
-            treeDepths,
-            coordinatorPubKey,
-            verifier,
-            vkRegistry,
-            proposalSettings.mode
-        );
+        maci.deployPoll(duration, treeDepths, coordinatorPubKey, verifier, vkRegistry, proposalSettings.mode);
 
         // Match the pollId in the MACI instance
         uint256 pollId = currentPollId;
 
         unchecked {
-          currentPollId++; // increment for the next proposal to be created
+            currentPollId++; // increment for the next proposal to be created
         }
 
         (address poll, address messageProcessor, address tally) = maci.polls(pollId);
@@ -182,9 +177,41 @@ contract MACIModule is BaseHook, Params, DomainObjs {
     }
 
     // quorum ERC20VotesInitialVoiceCreditProxy.sol
-    // beforeVote Revert
     // castVoteWithParams - The user calls THIS module and does not reveal their preference by interfacing with the Governor, calls register at a given timepoint
-    // beforeVoteSucceeded - check the MACI Poll contract state
-    // beforeAfterVoteSucceeded - clean up the proposal state of the governor
-}
 
+    // Always reverts, do not cast your votes using the governor interface
+    function beforeVote(
+        address, /* sender */
+        uint256, /* proposalId */
+        address, /* account */
+        uint8, /* support */
+        string memory, /* reason */
+        bytes memory /* params */
+    ) external override returns (bytes4, bool, uint256) {
+        revert InvalidCastVote();
+        return (this.afterVote.selector, false, 0);
+    }
+
+    /**
+     * @dev Return true if at least one option satisfies the passing criteria.
+     * Used by governor in `_voteSucceeded`. See {Governor-_voteSucceeded}.
+     *
+     * @param proposalId The id of the proposal.
+     */
+    function beforeVoteSucceeded(address sender, uint256 proposalId)
+        external
+        view
+        override
+        onlyGovernor(sender)
+        returns (bytes4, bool, bool)
+    {
+        Proposal memory proposal = proposals[proposalId];
+        // check the MACI Poll/Tally contract state
+        // proposal.poll;
+        if (!Tally(proposal.tally).isTallied()) revert NotTallied();
+
+        // TODO: Some contract after publishMessages that reads the results
+
+        return (this.beforeVoteSucceeded.selector, true, false);
+    }
+}
