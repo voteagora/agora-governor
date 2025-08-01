@@ -32,6 +32,7 @@ struct Proposal {
     address messageProcessor;
     address tally;
     uint256 pollId;
+    uint256 timepoint;
 }
 
 /// @custom:security-contact security@voteagora.com
@@ -145,7 +146,8 @@ contract MACIModule is BaseHook, Params, DomainObjs {
         // Take the governor block number duration and covert it to a timestamp format for MACI Polls
         // Note: this is so that the startTime of the Poll and the Proposal will be different so here we ensure that
         // until the duration of the Poll incorporates the voting delay so it has the expected snapshot value for voice credits
-        uint256 duration = (block.number + governor.votingDelay() + governor.votingPeriod()) * avgBlockTime;
+        uint256 timepoint = block.number + governor.votingDelay();
+        uint256 duration = (timepoint + governor.votingPeriod()) * avgBlockTime;
 
         // Deploy Poll
         maci.deployPoll(
@@ -174,13 +176,14 @@ contract MACIModule is BaseHook, Params, DomainObjs {
         proposals[proposalId].messageProcessor = messageProcessor;
         proposals[proposalId].tally = tally;
         proposals[proposalId].pollId = pollId;
+        proposals[proposalId].timepoint = timepoint;
 
         return (this.afterPropose.selector);
     }
 
     // quorum ERC20VotesInitialVoiceCreditProxy.sol
     // beforeVote Revert
-    // castVoteWithParams - The user calls THIS module and does not reveal their preference by interfacing with the Governor
+    // castVoteWithParams - The user calls THIS module and does not reveal their preference by interfacing with the Governor, calls register at a given timepoint
     // beforeVoteSucceeded - check the MACI Poll contract state
     // beforeAfterVoteSucceeded - clean up the proposal state of the governor
 }

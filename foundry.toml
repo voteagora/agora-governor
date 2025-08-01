@@ -15,7 +15,7 @@ compilation_restrictions = [
     { paths = "src/modules/MultiToken.sol", via_ir = true },
     { paths = "src/modules/ApprovalVoting.sol", via_ir = true },
     { paths = "src/modules/OptimisticModule.sol", via_ir = true },
-    { paths = "src/modules/MACIModule.sol", via_ir = true }
+    { paths = "src/modules/maci/MACIModule.sol", via_ir = true }
 ]
 
 [fuzz]
