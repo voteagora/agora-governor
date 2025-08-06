@@ -7,6 +7,7 @@ import {BaseHook} from "src/hooks/BaseHook.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 
 enum VoteType {
     Against,
@@ -63,6 +64,8 @@ contract ApprovalVotingModule is BaseHook {
     error InvalidParams();
     error InvalidCriteria();
     error NotGovernor();
+
+    event ProposalCreated(uint256 indexed proposalID, ProposalOption[] options, ProposalSettings settings);
 
     /*//////////////////////////////////////////////////////////////
                                LIBRARIES
@@ -173,6 +176,8 @@ contract ApprovalVotingModule is BaseHook {
         proposals[proposalId].governor = sender;
         proposals[proposalId].settings = proposalSettings;
         proposals[proposalId].optionVotes = new uint128[](optionsLength);
+
+        emit ProposalCreated(proposalId, proposalOptions, proposalSettings);
 
         return (this.afterPropose.selector);
     }
@@ -562,6 +567,22 @@ contract ApprovalVotingModule is BaseHook {
             }
             succeededOptionsLength = i;
         }
+    }
+
+    /**
+     * @dev Creates the calldata for clients to interact with the governor
+     * @param description The description string provided by the user.
+     * @param proposalData The abi.encode bytes of the data to be appened at the end of the `description` i.e. `foo#proposalData=`.
+     */
+    function generateProposeCalldata(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        string memory description,
+        bytes memory proposalData
+    ) external pure virtual returns (bytes memory) {
+        string memory descriptionWithData = string.concat(description, string(proposalData));
+        return abi.encodeWithSelector(IGovernor.propose.selector, targets, values, calldatas, descriptionWithData);
     }
 
     // Virtual method used to decode _countVote params.
