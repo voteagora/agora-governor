@@ -282,13 +282,10 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
             if (calldatas[i].length < 4) revert InvalidCalldata();
 
             bytes24 scopeKey = _pack(targets[i], bytes4(calldatas[i]));
-            if (_assignedScopes[proposalTypeId][scopeKey].length != 0) {
-                validateProposedTx(calldatas[i], proposalTypeId, scopeKey);
-            } else {
-                if (_scopeExists[scopeKey]) {
-                    revert InvalidProposedTxForType();
-                }
+            if (_assignedScopes[proposalTypeId][scopeKey].length == 0) {
+                revert InvalidProposedTxForType();
             }
+            validateProposedTx(calldatas[i], proposalTypeId, scopeKey);
         }
     }
 
