@@ -7,7 +7,6 @@ import {BaseHook} from "src/hooks/BaseHook.sol";
 // import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-// import {Merkle} from "@murky/Merkle.sol";
 
 struct Proposal {
     address governor;
@@ -22,6 +21,7 @@ contract VPAdapter is BaseHook {
     //////////////////////////////////////////////////////////////*/
 
     error NotGovernor();
+    error NotAdmin();
     error ExistingProposal();
     error InvalidProof();
 
@@ -40,10 +40,10 @@ contract VPAdapter is BaseHook {
     mapping(uint256 proposalId => uint256) public quorums;
     mapping(uint256 proposalId => bytes32) public merkleRoots;
 
-    bytes32 lastestRoot;
-    uint256 latestQuorum;
+    bytes32 public lastestRoot;
+    uint256 public latestQuorum;
 
-    uint256 lastUpdatedBlock;
+    uint256 public lastUpdatedBlock;
     uint256 merkleRootDuration;
 
     // mapping(uint256 proposalId => mapping(address account => EnumerableSet.UintSet votes)) private accountVotesSet;
@@ -55,6 +55,11 @@ contract VPAdapter is BaseHook {
     /// @notice Reverts if the sender of the hook is not the governor
     modifier onlyGovernor(address sender) {
         if (sender != address(governor)) revert NotGovernor();
+        _;
+    }
+
+    modifier onlyAdmin(address sender) {
+        if (sender != address(admin)) revert NotAdmin();
         _;
     }
 
@@ -76,19 +81,28 @@ contract VPAdapter is BaseHook {
             afterInitialize: false,
             beforeVoteSucceeded: true,
             afterVoteSucceeded: false,
-            beforeQuorumCalculation: true,
+            beforeQuorumCalculation: false,
             afterQuorumCalculation: false,
             beforeVote: true,
             afterVote: false,
-            beforePropose: true,
+            beforePropose: false,
             afterPropose: true,
             beforeCancel: false,
             afterCancel: false,
-            beforeQueue: true,
+            beforeQueue: false,
             afterQueue: false,
             beforeExecute: false,
             afterExecute: false
         });
+    }
+
+    function setMerkleRoot(bytes32 newRoot) public onlyAdmin(msg.sender) {
+        lastestRoot = newRoot;
+        lastUpdatedBlock = block.number;
+    }
+
+    function setQuorum(uint256 newQuorum) public onlyAdmin(msg.sender) {
+        latestQuorum = newQuorum;
     }
 
     /*//////////////////////////////////////////////////////////////
