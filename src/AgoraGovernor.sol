@@ -177,6 +177,10 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
                 string memory data = description._parseProposalData();
                 bytes memory proposalData = bytes(data);
 
+                // TODO: needs an additional check here in case someone tries to use the merkle module but doesn't supply the correct proposalData format
+                // this is because this check just allows other modules to continue to use IVotes if proposaldata is unneeded for other modules
+                //
+                // maybe make the static call to the merkle module that returns a special value (? risky) 
                 if (proposalData.length > 0) {
                     (uint256 _weight, bytes32[] memory _merkleProof) = abi.decode(proposalData, (uint256, bytes32[]));
 
