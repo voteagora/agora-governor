@@ -130,10 +130,45 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
 
         hooks.beforePropose(targets, values, calldatas, description);
 
-        proposalId = super.propose(targets, values, calldatas, description);
+        proposalId = this._propose(targets, values, calldatas, description);
 
         hooks.afterPropose(proposalId, targets, values, calldatas, description);
     }
+
+    /**
+     * @dev See {IGovernor-propose}. This function has opt-in frontrunning protection, described in {_isValidDescriptionForProposer}.
+     */
+    function _propose(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        string memory description
+    ) public virtual returns (uint256) {
+        address proposer = _msgSender();
+
+        // check description restriction
+        if (!_isValidDescriptionForProposer(proposer, description)) {
+            revert GovernorRestrictedProposer(proposer);
+        }
+
+        // check proposal threshold
+        // take the weight field in the description and retreive the proposal id. Then expose in the module a verifyThreshold function that takes these values
+        // and compares them to some merkle root. If that amount is greater than the threshold continue. If this weight field is not present nor the module field then
+        // just use get votes
+    
+        // Problem: the governor should have no direct awareness of a module's interface, can the middleware take this over?
+        // what if the middleware calls the propose function and relays the sender? 
+        uint256 votesThreshold = proposalThreshold();
+        if (votesThreshold > 0) {
+            uint256 proposerVotes = getVotes(proposer, clock() - 1);
+            if (proposerVotes < votesThreshold) {
+                revert GovernorInsufficientProposerVotes(proposer, proposerVotes, votesThreshold);
+            }
+        }
+
+        return _propose(targets, values, calldatas, description, proposer);
+    }
+
 
     /**
      * @inheritdoc Governor
