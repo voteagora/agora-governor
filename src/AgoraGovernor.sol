@@ -15,6 +15,8 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import {IHooks} from "src/interfaces/IHooks.sol";
 import {Hooks} from "src/libraries/Hooks.sol";
+import {Parser} from "src/libraries/Parser.sol";
+import {Middleware} from "src/Middleware.sol";
 
 /// @title AgoraGovernor
 /// @notice Agora Governor contract
@@ -22,6 +24,7 @@ import {Hooks} from "src/libraries/Hooks.sol";
 contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumFraction, GovernorSettings {
     using DoubleEndedQueue for DoubleEndedQueue.Bytes32Deque;
     using Hooks for IHooks;
+    using Parser for string;
 
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
@@ -130,7 +133,7 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
 
         hooks.beforePropose(targets, values, calldatas, description);
 
-        proposalId = this._propose(targets, values, calldatas, description);
+        proposalId = proposeInternal(targets, values, calldatas, description);
 
         hooks.afterPropose(proposalId, targets, values, calldatas, description);
     }
@@ -138,12 +141,12 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
     /**
      * @dev See {IGovernor-propose}. This function has opt-in frontrunning protection, described in {_isValidDescriptionForProposer}.
      */
-    function _propose(
+    function proposeInternal(
         address[] memory targets,
         uint256[] memory values,
         bytes[] memory calldatas,
         string memory description
-    ) public virtual returns (uint256) {
+    ) internal virtual returns (uint256) {
         address proposer = _msgSender();
 
         // check description restriction
@@ -160,7 +163,31 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         // what if the middleware calls the propose function and relays the sender? 
         uint256 votesThreshold = proposalThreshold();
         if (votesThreshold > 0) {
-            uint256 proposerVotes = getVotes(proposer, clock() - 1);
+            uint256 proposerVotes;
+            uint8 proposalTypeId = description._parseProposalTypeId();
+            string memory data = description._parseProposalData();
+            bytes memory proposalData = bytes(data);
+
+            (uint256 _weight, bytes32[] memory _merkleProof) = abi.decode(proposalData, (uint256, bytes32[]));
+
+            Middleware middleware = Middleware(address(hooks));
+
+            ( , , , ,address module, ) = middleware._proposalTypes(proposalTypeId);
+
+            if (module != address(0) && _weight != 0 && _merkleProof.length > 0) {
+                (bool success, bytes memory returndata) =
+                    module.staticcall(abi.encodeWithSignature("verifyThreshold(address,uint256,bytes32[])",
+                                                                     proposer, _weight, _merkleProof));
+                require(success, "call to module failed");
+                require(Hooks.parseBool(returndata), "invalid proof");
+
+                proposerVotes = _weight;
+            }
+
+            else {
+                proposerVotes = getVotes(proposer, clock() - 1);
+            }
+
             if (proposerVotes < votesThreshold) {
                 revert GovernorInsufficientProposerVotes(proposer, proposerVotes, votesThreshold);
             }
