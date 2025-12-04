@@ -6,6 +6,7 @@ import "forge-std/Test.sol";
 import {Hooks} from "src/libraries/Hooks.sol";
 import {VPAdapter, Proposal} from "src/modules/VPAdapter.sol";
 import {Middleware} from "src/Middleware.sol";
+import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 
 import {MockToken} from "test/mocks/MockToken.sol";
 import {Deployers} from "test/utils/Deployers.sol";
@@ -150,5 +151,93 @@ contract VPAdapterTest is Test, Deployers {
 
         vm.roll(block.number + votingPeriod);
         assertFalse(governor.voteSucceeded(proposalId));
+    }
+
+    function testUseMerkleThreshold() public {
+        address[] memory targets = new address[](2);
+        uint256[] memory values = new uint256[](2);
+        bytes[] memory calldatas = new bytes[](2);
+        targets[0] = address(token);
+        calldatas[0] = abi.encodeCall(IERC20.transfer, (test, 100));
+        targets[1] = test;
+        values[1] = 0.2 ether;
+        calldatas[1] = calldatas[0];
+
+        vm.startPrank(admin);
+        //voter 1 balance
+        governor.setProposalThreshold(1000);
+        vm.stopPrank();
+
+        bytes memory proposalData;
+
+        bytes32[] memory proof = merkle.getProof(data, 0);
+        uint256 voter1Weight = 1000;
+        proposalData = abi.encode(voter1Weight, proof);
+
+        string memory descriptionWithData = string.concat(description, string(proposalData));
+
+        vm.prank(voter1);
+        governor.propose(targets, values, calldatas, descriptionWithData);
+    }
+
+    function testUseMerkleThresholdRevertInvalidProof() public {
+        address[] memory targets = new address[](2);
+        uint256[] memory values = new uint256[](2);
+        bytes[] memory calldatas = new bytes[](2);
+        targets[0] = address(token);
+        calldatas[0] = abi.encodeCall(IERC20.transfer, (test, 100));
+        targets[1] = test;
+        values[1] = 0.2 ether;
+        calldatas[1] = calldatas[0];
+
+        vm.startPrank(admin);
+        //voter 1 balance
+        governor.setProposalThreshold(1000);
+        vm.stopPrank();
+
+        bytes memory proposalData;
+
+        bytes32[] memory proof = merkle.getProof(data, 1); //use voter2 proof data
+        uint256 voter1Weight = 1000;
+        proposalData = abi.encode(voter1Weight, proof);
+
+        string memory descriptionWithData = string.concat(description, string(proposalData));
+
+        vm.prank(voter1);
+        vm.expectRevert("invalid proof");
+        governor.propose(targets, values, calldatas, descriptionWithData);
+    }
+
+    function testUseMerkleThresholdNotMetRevert() public {
+        address[] memory targets = new address[](2);
+        uint256[] memory values = new uint256[](2);
+        bytes[] memory calldatas = new bytes[](2);
+        targets[0] = address(token);
+        calldatas[0] = abi.encodeCall(IERC20.transfer, (test, 100));
+        targets[1] = test;
+        values[1] = 0.2 ether;
+        calldatas[1] = calldatas[0];
+
+        vm.startPrank(admin);
+        //voter 1 balance
+        governor.setProposalThreshold(2000);
+        uint256 _proposalThreshold = governor.proposalThreshold();
+        vm.stopPrank();
+
+        bytes memory proposalData;
+
+        bytes32[] memory proof = merkle.getProof(data, 0);
+        uint256 voter1Weight = 1000;
+        proposalData = abi.encode(voter1Weight, proof);
+
+        string memory descriptionWithData = string.concat(description, string(proposalData));
+
+        vm.prank(voter1);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IGovernor.GovernorInsufficientProposerVotes.selector, voter1, voter1Weight, _proposalThreshold
+            )
+        );
+        governor.propose(targets, values, calldatas, descriptionWithData);
     }
 }

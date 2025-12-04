@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {BaseHook} from "src/hooks/BaseHook.sol";
 import {Hooks} from "src/libraries/Hooks.sol";
 import {AgoraGovernor} from "src/AgoraGovernor.sol";
+import {IMiddleware} from "src/interfaces/IMiddleware.sol";
 
 contract BaseHookMock is BaseHook {
     event BeforeInitialize();
@@ -18,6 +19,8 @@ contract BaseHookMock is BaseHook {
     event AfterQueue();
     event BeforeExecute();
     event AfterExecute();
+
+    mapping(uint8 proposalTypeId => IMiddleware.ProposalType) public _proposalTypes;
 
     constructor(address payable _governor) BaseHook(_governor) {}
 

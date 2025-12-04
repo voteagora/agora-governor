@@ -191,7 +191,11 @@ contract VPAdapter is BaseHook {
         return 1;
     }
 
-    function verifyThreshold(address proposer, uint256 weight, bytes32[] memory merkleProof) returns(bool) {
+    function verifyThreshold(address proposer, uint256 weight, bytes32[] memory merkleProof)
+        public
+        view
+        returns (bool)
+    {
         bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(proposer, weight))));
         return MerkleProof.verify(merkleProof, lastestRoot, leaf);
     }

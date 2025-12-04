@@ -18,6 +18,8 @@ import {Hooks} from "src/libraries/Hooks.sol";
 import {Parser} from "src/libraries/Parser.sol";
 import {Middleware} from "src/Middleware.sol";
 
+import {console} from "forge-std/console.sol";
+
 /// @title AgoraGovernor
 /// @notice Agora Governor contract
 /// @custom:security-contact security@voteagora.com
@@ -158,34 +160,43 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
         // take the weight field in the description and retreive the proposal id. Then expose in the module a verifyThreshold function that takes these values
         // and compares them to some merkle root. If that amount is greater than the threshold continue. If this weight field is not present nor the module field then
         // just use get votes
-    
         // Problem: the governor should have no direct awareness of a module's interface, can the middleware take this over?
-        // what if the middleware calls the propose function and relays the sender? 
+        // what if the middleware calls the propose function and relays the sender?
         uint256 votesThreshold = proposalThreshold();
         if (votesThreshold > 0) {
             uint256 proposerVotes;
             uint8 proposalTypeId = description._parseProposalTypeId();
-            string memory data = description._parseProposalData();
-            bytes memory proposalData = bytes(data);
-
-            (uint256 _weight, bytes32[] memory _merkleProof) = abi.decode(proposalData, (uint256, bytes32[]));
 
             Middleware middleware = Middleware(address(hooks));
 
-            ( , , , ,address module, ) = middleware._proposalTypes(proposalTypeId);
+            (,,,, address module,) = middleware._proposalTypes(proposalTypeId);
 
-            if (module != address(0) && _weight != 0 && _merkleProof.length > 0) {
-                (bool success, bytes memory returndata) =
-                    module.staticcall(abi.encodeWithSignature("verifyThreshold(address,uint256,bytes32[])",
-                                                                     proposer, _weight, _merkleProof));
-                require(success, "call to module failed");
-                require(Hooks.parseBool(returndata), "invalid proof");
+            proposerVotes = getVotes(proposer, clock() - 1);
 
-                proposerVotes = _weight;
-            }
+            if (module != address(0)) {
+                string memory data = description._parseProposalData();
+                bytes memory proposalData = bytes(data);
 
-            else {
-                proposerVotes = getVotes(proposer, clock() - 1);
+                if (proposalData.length > 0) {
+                    (uint256 _weight, bytes32[] memory _merkleProof) = abi.decode(proposalData, (uint256, bytes32[]));
+
+                    (bool success, bytes memory returndata) = module.staticcall(
+                        abi.encodeWithSignature(
+                            "verifyThreshold(address,uint256,bytes32[])", proposer, _weight, _merkleProof
+                        )
+                    );
+                    if (success) {
+                        require(returndata.length > 0, "Empty bytes array");
+                        // retrieve the first byte if it's not zero then it's true
+                        bool valid;
+                        assembly ("memory-safe") {
+                            valid := mload(add(returndata, 0x20))
+                        }
+
+                        require(valid, "invalid proof");
+                        proposerVotes = _weight;
+                    }
+                }
             }
 
             if (proposerVotes < votesThreshold) {
@@ -195,7 +206,6 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
 
         return _propose(targets, values, calldatas, description, proposer);
     }
-
 
     /**
      * @inheritdoc Governor
