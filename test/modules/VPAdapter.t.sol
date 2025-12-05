@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 
 import {Hooks} from "src/libraries/Hooks.sol";
 import {VPAdapter, Proposal} from "src/modules/VPAdapter.sol";
+import {OptimisticModule} from "src/modules/OptimisticModule.sol";
 import {Middleware} from "src/Middleware.sol";
 import {IGovernor} from "@openzeppelin/contracts/governance/IGovernor.sol";
 
@@ -22,6 +23,7 @@ enum VoteType {
 
 contract VPAdapterTest is Test, Deployers {
     VPAdapter module;
+    OptimisticModule optimistic;
     Middleware middleware;
     string description = "my description is this one#proposalTypeId=1#proposalData=";
     address voter1 = makeAddr("voter1");
@@ -37,6 +39,10 @@ contract VPAdapterTest is Test, Deployers {
     function setUp() public virtual {
         module = VPAdapter(
             address(uint160(Hooks.BEFORE_VOTE_SUCCEEDED_FLAG | Hooks.AFTER_PROPOSE_FLAG | Hooks.BEFORE_VOTE_FLAG))
+        );
+
+        optimistic = OptimisticModule(
+            address(uint160(Hooks.BEFORE_VOTE_SUCCEEDED_FLAG | Hooks.AFTER_PROPOSE_FLAG | Hooks.BEFORE_QUEUE_FLAG))
         );
 
         middleware = Middleware(
@@ -58,8 +64,15 @@ contract VPAdapterTest is Test, Deployers {
             "src/modules/VPAdapter.sol:VPAdapter", abi.encode(address(governor), address(admin)), address(module)
         );
 
+        deployCodeTo(
+            "src/modules/OptimisticModule.sol:OptimisticModule",
+            abi.encode(address(governor), address(middleware)),
+            address(optimistic)
+        );
+
         vm.startPrank(admin);
         middleware.setProposalType(1, 0, 0, "Alt", "Lorem Ipsum", address(module));
+        middleware.setProposalType(2, 0, 0, "Alt", "Lorem Ipsum", address(optimistic));
 
         merkle = new Merkle();
 
@@ -237,6 +250,40 @@ contract VPAdapterTest is Test, Deployers {
             abi.encodeWithSelector(
                 IGovernor.GovernorInsufficientProposerVotes.selector, voter1, voter1Weight, _proposalThreshold
             )
+        );
+        governor.propose(targets, values, calldatas, descriptionWithData);
+    }
+
+    function testUseMerkleThresholdWrongModule() public {
+        address[] memory targets = new address[](2);
+        uint256[] memory values = new uint256[](2);
+        bytes[] memory calldatas = new bytes[](2);
+        targets[0] = address(token);
+        calldatas[0] = abi.encodeCall(IERC20.transfer, (test, 100));
+        targets[1] = test;
+        values[1] = 0.2 ether;
+        calldatas[1] = calldatas[0];
+
+        vm.startPrank(admin);
+        //voter 1 balance
+        governor.setProposalThreshold(2000);
+        uint256 _proposalThreshold = governor.proposalThreshold();
+        vm.stopPrank();
+
+        bytes memory proposalData;
+
+        bytes32[] memory proof = merkle.getProof(data, 0);
+        uint256 voter1Weight = 1000;
+        proposalData = abi.encode(voter1Weight, proof);
+
+        // Use a module that does not support merkle voting
+        string memory description2 = "my description for optimistic#proposalTypeId=2#proposalData=";
+
+        string memory descriptionWithData = string.concat(description2, string(proposalData));
+
+        vm.prank(voter1);
+        vm.expectRevert(
+            abi.encodeWithSelector(IGovernor.GovernorInsufficientProposerVotes.selector, voter1, 0, _proposalThreshold)
         );
         governor.propose(targets, values, calldatas, descriptionWithData);
     }
