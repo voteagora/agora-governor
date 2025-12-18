@@ -79,9 +79,6 @@ contract VPAdapterTest is Test, Deployers {
         data[0] = keccak256(bytes.concat(keccak256(abi.encode(address(voter1), 1000))));
         data[1] = keccak256(bytes.concat(keccak256(abi.encode(address(voter2), 2000))));
 
-        bytes32 root = merkle.getRoot(data);
-
-        VPAdapter(module).setMerkleRoot(root);
         VPAdapter(module).setQuorum(3000);
 
         vm.stopPrank();
@@ -100,22 +97,33 @@ contract VPAdapterTest is Test, Deployers {
         vm.startPrank(admin);
         governor.setProposalThreshold(0);
         proposalId = governor.propose(targets, values, calldatas, description);
+        bytes32 root = merkle.getRoot(data);
+
+        VPAdapter(module).setMerkleRoot(root);
         vm.stopPrank();
     }
 
     function test_createProposal() public {
         uint256 proposalId = createProposal();
 
-        (address _governor, uint256 _quorum, bytes32 _root) = VPAdapter(module).proposals(proposalId);
+        (address _governor, uint256 _quorum, bytes32 _root, uint256 _expectedBlock, uint256 _startBlock) = VPAdapter(module).proposals(proposalId);
 
         assertEq(_quorum, 3000);
-        assertEq(_root, 0xf839fff5a67feec1134e1a33c77bd366f1b500b7224e642ddca8befbdbc9cf9a);
+        assertEq(_root, bytes32(0));
         assertEq(_governor, address(governor));
     }
 
     function test_CastVoteWithMerkleProof() public {
         uint256 proposalId = createProposal();
-        vm.roll(block.number + votingDelay + 1);
+
+        uint256 challengePeriod = (block.number + (votingDelay / 2));
+        vm.roll(challengePeriod);
+
+        bytes32 root = merkle.getRoot(data);
+        vm.prank(admin);
+        VPAdapter(module).setMerkleRoot(root);
+
+        vm.roll(challengePeriod + (votingDelay / 2) + 1);
 
         bytes32[] memory proof = merkle.getProof(data, 0);
         bytes memory params = abi.encode(1000, proof);
@@ -133,7 +141,14 @@ contract VPAdapterTest is Test, Deployers {
 
     function testVoteSucceeded() public {
         uint256 proposalId = createProposal();
-        vm.roll(block.number + votingDelay + 1);
+        uint256 challengePeriod = (block.number + (votingDelay / 2));
+        vm.roll(challengePeriod);
+
+        bytes32 root = merkle.getRoot(data);
+        vm.prank(admin);
+        VPAdapter(module).setMerkleRoot(root);
+
+        vm.roll(challengePeriod + (votingDelay / 2) + 1);
 
         bytes32[] memory proof1 = merkle.getProof(data, 0);
         bytes memory params1 = abi.encode(1000, proof1);
@@ -153,7 +168,14 @@ contract VPAdapterTest is Test, Deployers {
 
     function testVoteFailsQuorum() public {
         uint256 proposalId = createProposal();
-        vm.roll(block.number + votingDelay + 1);
+        uint256 challengePeriod = (block.number + (votingDelay / 2));
+        vm.roll(challengePeriod);
+
+        bytes32 root = merkle.getRoot(data);
+        vm.prank(admin);
+        VPAdapter(module).setMerkleRoot(root);
+
+        vm.roll(challengePeriod + (votingDelay / 2) + 1);
 
         bytes32[] memory proof = merkle.getProof(data, 0);
         bytes memory params = abi.encode(1000, proof);
@@ -189,6 +211,10 @@ contract VPAdapterTest is Test, Deployers {
 
         string memory descriptionWithData = string.concat(description, string(proposalData));
 
+        bytes32 root = merkle.getRoot(data);
+        vm.prank(admin);
+        VPAdapter(module).setMerkleRoot(root);
+
         vm.prank(voter1);
         governor.propose(targets, values, calldatas, descriptionWithData);
     }
@@ -215,6 +241,10 @@ contract VPAdapterTest is Test, Deployers {
         proposalData = abi.encode(voter1Weight, proof);
 
         string memory descriptionWithData = string.concat(description, string(proposalData));
+
+        bytes32 root = merkle.getRoot(data);
+        vm.prank(admin);
+        VPAdapter(module).setMerkleRoot(root);
 
         vm.prank(voter1);
         vm.expectRevert("invalid proof");
@@ -244,6 +274,10 @@ contract VPAdapterTest is Test, Deployers {
         proposalData = abi.encode(voter1Weight, proof);
 
         string memory descriptionWithData = string.concat(description, string(proposalData));
+
+        bytes32 root = merkle.getRoot(data);
+        vm.prank(admin);
+        VPAdapter(module).setMerkleRoot(root);
 
         vm.prank(voter1);
         vm.expectRevert(
@@ -280,6 +314,10 @@ contract VPAdapterTest is Test, Deployers {
         string memory description2 = "my description for optimistic#proposalTypeId=2#proposalData=";
 
         string memory descriptionWithData = string.concat(description2, string(proposalData));
+
+        bytes32 root = merkle.getRoot(data);
+        vm.prank(admin);
+        VPAdapter(module).setMerkleRoot(root);
 
         vm.prank(voter1);
         vm.expectRevert(

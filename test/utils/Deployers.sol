@@ -26,7 +26,7 @@ contract Deployers is Test {
 
     // Variables
     uint256 timelockDelay = 2 days;
-    uint48 votingDelay = 1;
+    uint48 votingDelay = 2;
     uint32 votingPeriod = 14;
     uint256 proposalThreshold = 1;
     uint256 quorumNumerator = 3000;

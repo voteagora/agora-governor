@@ -12,6 +12,8 @@ struct Proposal {
     address governor;
     uint256 quorum;
     bytes32 vpRoot;
+    uint256 expectedBlock;
+    uint256 startBlock;
 }
 
 /// @custom:security-contact security@voteagora.com
@@ -38,9 +40,11 @@ contract VPAdapter is BaseHook {
     address public admin;
     mapping(uint256 proposalId => Proposal) public proposals;
     mapping(uint256 proposalId => uint256) public quorums;
-    mapping(uint256 proposalId => bytes32) public merkleRoots;
+    mapping(uint256 proposalId => uint256) public merkleRoots;
 
-    bytes32 public lastestRoot;
+    mapping(uint256 => bytes32) public thresholdRoots;
+
+    bytes32 public latestRoot;
     uint256 public latestQuorum;
 
     uint256 public lastUpdatedBlock;
@@ -97,8 +101,10 @@ contract VPAdapter is BaseHook {
     }
 
     function setMerkleRoot(bytes32 newRoot) public onlyAdmin(msg.sender) {
-        lastestRoot = newRoot;
+        latestRoot = newRoot;
         lastUpdatedBlock = block.number;
+
+        thresholdRoots[lastUpdatedBlock] = latestRoot;
     }
 
     function setQuorum(uint256 newQuorum) public onlyAdmin(msg.sender) {
@@ -123,9 +129,8 @@ contract VPAdapter is BaseHook {
 
         proposals[proposalId].governor = sender;
         proposals[proposalId].quorum = latestQuorum;
-        proposals[proposalId].vpRoot = lastestRoot;
-
-        // emit ProposalCreated(proposalId);
+        proposals[proposalId].expectedBlock = block.number + (IGovernor(sender).votingDelay() / 2);
+        proposals[proposalId].startBlock = block.number;
 
         return BaseHook.afterPropose.selector;
     }
@@ -138,12 +143,15 @@ contract VPAdapter is BaseHook {
         string memory reason,
         bytes memory params
     ) external override onlyGovernor(sender) returns (bytes4, bool, uint256 weight) {
+        require(proposals[proposalId].startBlock < lastUpdatedBlock);
+        require(lastUpdatedBlock <= proposals[proposalId].expectedBlock);
+
         (uint256 _weight, bytes32[] memory _merkleProof) = abi.decode(params, (uint256, bytes32[]));
 
         bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(account, _weight))));
 
         // Verify the merkle proof
-        if (!MerkleProof.verify(_merkleProof, lastestRoot, leaf)) revert InvalidProof();
+        if (!MerkleProof.verify(_merkleProof, latestRoot, leaf)) revert InvalidProof();
 
         return (this.beforeVote.selector, true, _weight);
     }
@@ -197,7 +205,7 @@ contract VPAdapter is BaseHook {
         returns (bool)
     {
         bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(proposer, weight))));
-        return MerkleProof.verify(merkleProof, lastestRoot, leaf);
+        return MerkleProof.verify(merkleProof, latestRoot, leaf);
     }
 
     /*//////////////////////////////////////////////////////////////
