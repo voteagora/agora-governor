@@ -138,7 +138,7 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         vm.stopPrank();
 
         uint256 proposalId = createProposal();
-        vm.roll(block.number + 2);
+        vm.roll(block.number + votingDelay + 1);
 
         uint256[] memory votes = new uint256[](1);
         votes[0] = 0;
@@ -169,7 +169,7 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         vm.stopPrank();
 
         uint256 proposalId = createProposal();
-        vm.roll(block.number + 2);
+        vm.roll(block.number + votingDelay + 1);
 
         uint256[] memory votes = new uint256[](2);
         votes[0] = 0;
@@ -201,7 +201,7 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         vm.stopPrank();
 
         uint256 proposalId = createProposal();
-        vm.roll(block.number + 2);
+        vm.roll(block.number + votingDelay + 1);
 
         uint256[] memory votes = new uint256[](1);
         votes[0] = 0;
@@ -232,7 +232,7 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         vm.stopPrank();
 
         uint256 proposalId = createProposal();
-        vm.roll(block.number + 2);
+        vm.roll(block.number + votingDelay + 1);
 
         uint256[] memory votes = new uint256[](1);
         votes[0] = 0;
@@ -263,7 +263,7 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         vm.stopPrank();
 
         uint256 proposalId = createProposal();
-        vm.roll(block.number + 2);
+        vm.roll(block.number + votingDelay + 1);
 
         uint256[] memory votes = new uint256[](1);
         bytes memory params = abi.encode(votes);
@@ -318,7 +318,7 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         governor.setProposalThreshold(0);
         uint256 proposalId = governor.propose(targets, values, calldatas, descriptionWithData);
         vm.stopPrank();
-        vm.roll(block.number + 2);
+        vm.roll(block.number + votingDelay + 1);
 
         uint256[] memory votes = new uint256[](1);
         votes[0] = 0;
@@ -445,7 +445,7 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         governor.setProposalThreshold(0);
         uint256 proposalId = governor.propose(targets, values, calldatas, descriptionWithData);
         vm.stopPrank();
-        vm.roll(block.number + 2);
+        vm.roll(block.number + votingDelay + 1);
 
         uint256[] memory votes = new uint256[](1);
         votes[0] = 0;
@@ -562,7 +562,7 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         (, ProposalOption[] memory options,) = _formatProposalData();
 
         uint256 proposalId = createProposal();
-        vm.roll(block.number + 2);
+        vm.roll(block.number + votingDelay + 1);
 
         uint256[] memory votes = new uint256[](2);
         votes[0] = 1;
@@ -645,7 +645,7 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         vm.startPrank(admin);
         governor.setProposalThreshold(0);
         uint256 proposalId = governor.propose(targetsI, valuesI, calldatasI, descriptionWithData);
-        vm.roll(block.number + 2);
+        vm.roll(block.number + votingDelay + 1);
 
         uint256[] memory votes = new uint256[](1);
         votes[0] = 0;
@@ -692,7 +692,7 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         vm.startPrank(admin);
         governor.setProposalThreshold(0);
         uint256 proposalId = governor.propose(targetsI, valuesI, calldatasI, descriptionWithData);
-        vm.roll(block.number + 2);
+        vm.roll(block.number + votingDelay + 1);
 
         uint256[] memory votes = new uint256[](1);
         votes[0] = 1;
@@ -737,7 +737,7 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         vm.stopPrank();
 
         uint256 proposalId = createProposal();
-        vm.roll(block.number + 2);
+        vm.roll(block.number + votingDelay + 1);
 
         uint256[] memory votes = new uint256[](2);
         votes[0] = 0;
@@ -901,7 +901,7 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         vm.stopPrank();
 
         uint256 proposalId = createProposal();
-        vm.roll(block.number + 2);
+        vm.roll(block.number + votingDelay + 1);
 
         bytes memory params = abi.encode(0x12345678);
 
@@ -922,7 +922,7 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         vm.stopPrank();
 
         uint256 proposalId = createProposal();
-        vm.roll(block.number + 2);
+        vm.roll(block.number + votingDelay + 1);
 
         uint256[] memory votes = new uint256[](0);
         bytes memory params = abi.encode(votes);
@@ -944,7 +944,7 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         vm.stopPrank();
 
         uint256 proposalId = createProposal();
-        vm.roll(block.number + 2);
+        vm.roll(block.number + votingDelay + 1);
 
         uint256[] memory votes = new uint256[](3);
         votes[0] = 0;
@@ -969,7 +969,7 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         vm.stopPrank();
 
         uint256 proposalId = createProposal();
-        vm.roll(block.number + 2);
+        vm.roll(block.number + votingDelay + 1);
 
         uint256[] memory votes = new uint256[](2);
         votes[0] = 1;
@@ -993,7 +993,7 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         vm.stopPrank();
 
         uint256 proposalId = createProposal();
-        vm.roll(block.number + 2);
+        vm.roll(block.number + votingDelay + 1);
 
         uint256[] memory votes = new uint256[](4);
         votes[0] = 0;
@@ -1020,7 +1020,7 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         vm.stopPrank();
 
         uint256 proposalId = createProposal();
-        vm.roll(block.number + 2);
+        vm.roll(block.number + votingDelay + 1);
 
         uint256[] memory votes = new uint256[](2);
         votes[0] = 2;
@@ -1108,7 +1108,7 @@ contract ApprovalVotingModuleTest is Test, Deployers {
         uint256 proposalId = governor.propose(targets, values, calldatas, descriptionWithData);
         vm.stopPrank();
 
-        vm.roll(block.number + 2);
+        vm.roll(block.number + votingDelay + 1);
 
         uint256[] memory votes = new uint256[](1);
         bytes memory params = abi.encode(votes);

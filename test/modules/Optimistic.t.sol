@@ -118,7 +118,7 @@ contract OptimisticModuleTest is Test, Deployers {
         governor.setProposalThreshold(0);
         uint256 proposalId = governor.propose(targets, values, calldatas, descriptionWithData);
         vm.stopPrank();
-        vm.roll(block.number + 2);
+        vm.roll(block.number + votingDelay + 1);
 
         vm.startPrank(voter);
         governor.castVote(proposalId, uint8(VoteType.For));
@@ -158,7 +158,7 @@ contract OptimisticModuleTest is Test, Deployers {
         governor.setProposalThreshold(0);
         uint256 proposalId = governor.propose(targets, values, calldatas, descriptionWithData);
         vm.stopPrank();
-        vm.roll(block.number + 2);
+        vm.roll(block.number + votingDelay + 1);
 
         vm.startPrank(voter);
         governor.castVote(proposalId, uint8(VoteType.Against));
@@ -198,7 +198,7 @@ contract OptimisticModuleTest is Test, Deployers {
         governor.setProposalThreshold(0);
         uint256 proposalId = governor.propose(targets, values, calldatas, descriptionWithData);
         vm.stopPrank();
-        vm.roll(block.number + 2);
+        vm.roll(block.number + votingDelay + 1);
 
         vm.startPrank(voter);
         governor.castVote(proposalId, uint8(VoteType.Abstain));
@@ -238,7 +238,7 @@ contract OptimisticModuleTest is Test, Deployers {
         governor.setProposalThreshold(0);
         uint256 proposalId = governor.propose(targets, values, calldatas, descriptionWithData);
         vm.stopPrank();
-        vm.roll(block.number + 2);
+        vm.roll(block.number + votingDelay + 1);
 
         vm.startPrank(voter);
         governor.castVote(proposalId, uint8(VoteType.For));
@@ -281,7 +281,7 @@ contract OptimisticModuleTest is Test, Deployers {
         governor.setProposalThreshold(0);
         uint256 proposalId = governor.propose(targets, values, calldatas, descriptionWithData);
         vm.stopPrank();
-        vm.roll(block.number + 2);
+        vm.roll(block.number + votingDelay + 1);
 
         vm.startPrank(voter);
         governor.castVote(proposalId, uint8(VoteType.Against));
@@ -319,7 +319,7 @@ contract OptimisticModuleTest is Test, Deployers {
         governor.setProposalThreshold(0);
         governor.propose(targets, values, calldatas, descriptionWithData);
         vm.stopPrank();
-        vm.roll(block.number + 2);
+        vm.roll(block.number + votingDelay + 1);
 
         vm.expectRevert();
         governor.propose(targets, values, calldatas, descriptionWithData);

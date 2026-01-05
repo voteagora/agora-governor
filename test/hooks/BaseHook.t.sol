@@ -97,7 +97,7 @@ contract BaseHookTest is Test, Deployers {
         vm.startPrank(_actor);
         uint256 proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
 
-        vm.roll(block.number + 2);
+        vm.roll(block.number + votingDelay + 1);
 
         vm.expectEmit(address(hook));
         emit BaseHookMock.BeforeVote();
@@ -105,7 +105,7 @@ contract BaseHookTest is Test, Deployers {
         emit BaseHookMock.AfterVote();
         governor.castVote(proposalId, uint8(GovernorCountingSimple.VoteType.For));
 
-        vm.roll(block.number + 14);
+        vm.roll(block.number + votingPeriod);
         vm.stopPrank();
     }
 
@@ -159,11 +159,11 @@ contract BaseHookTest is Test, Deployers {
         vm.startPrank(_actor);
         uint256 proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
 
-        vm.roll(block.number + 2);
+        vm.roll(block.number + votingDelay + 1);
 
         governor.castVote(proposalId, uint8(GovernorCountingSimple.VoteType.For));
 
-        vm.roll(block.number + 14);
+        vm.roll(block.number + votingPeriod);
 
         vm.expectEmit(address(hook));
         emit BaseHookMock.BeforeQueue();
@@ -194,11 +194,11 @@ contract BaseHookTest is Test, Deployers {
         vm.startPrank(_actor);
         uint256 proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
 
-        vm.roll(block.number + 2);
+        vm.roll(block.number + votingDelay + 1);
 
         governor.castVote(proposalId, uint8(GovernorCountingSimple.VoteType.For));
 
-        vm.roll(block.number + 14);
+        vm.roll(block.number + votingPeriod);
 
         governor.queue(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
         vm.warp(block.timestamp + _elapsedAfterQueuing);
