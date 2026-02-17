@@ -1,0 +1,23 @@
+{
+  "lib/ERC20VotesPartialDelegationUpgradeable": {
+    "tag": {
+      "name": "v1.1.0",
+      "rev": "2571bddca68eac92e67b57692f8477f83c196f19"
+    }
+  },
+  "lib/forge-std": {
+    "rev": "07263d193d621c4b2b0ce8b4d54af58f6957d97d"
+  },
+  "lib/openzeppelin-contracts-upgradeable-v4": {
+    "rev": "f6c4c9c4ec601665ca74d2c9dddf547fc425658c"
+  },
+  "lib/openzeppelin-contracts-v4": {
+    "rev": "d00acef4059807535af0bd0dd0ddf619747a044b"
+  },
+  "lib/openzeppelin-contracts-v5": {
+    "rev": "dbb6104ce834628e473d2173bbc9d47f81a9eec3"
+  },
+  "lib/solady": {
+    "rev": "a1f9be988d3c12655692cb8cdfc6864cc393cff6"
+  }
+}

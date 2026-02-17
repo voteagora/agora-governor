@@ -4,8 +4,9 @@ pragma solidity ^0.8.19;
 import {TimersUpgradeable} from "@openzeppelin/contracts-upgradeable-v4/utils/TimersUpgradeable.sol";
 import {SafeCastUpgradeable} from "@openzeppelin/contracts-upgradeable-v4/utils/math/SafeCastUpgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable-v4/proxy/utils/Initializable.sol";
-import {TimelockControllerUpgradeable} from
-    "@openzeppelin/contracts-upgradeable-v4/governance/TimelockControllerUpgradeable.sol";
+import {
+    TimelockControllerUpgradeable
+} from "@openzeppelin/contracts-upgradeable-v4/governance/TimelockControllerUpgradeable.sol";
 import {AddressUpgradeable} from "@openzeppelin/contracts-upgradeable-v4/utils/AddressUpgradeable.sol";
 import {GovernorCountingSimpleUpgradeableV2} from "src/lib/openzeppelin/v2/GovernorCountingSimpleUpgradeableV2.sol";
 import {IGovernorUpgradeable} from "src/lib/openzeppelin/v2/GovernorUpgradeableV2.sol";
@@ -570,7 +571,8 @@ contract AgoraGovernor is
         // Revert if `proposalTypeId` is unset or the proposal has a different voting module
         if (
             bytes(PROPOSAL_TYPES_CONFIGURATOR.proposalTypes(proposalTypeId).name).length == 0
-                || PROPOSAL_TYPES_CONFIGURATOR.proposalTypes(proposalTypeId).module != _proposals[proposalId].votingModule
+                || PROPOSAL_TYPES_CONFIGURATOR.proposalTypes(proposalTypeId).module
+                    != _proposals[proposalId].votingModule
         ) {
             revert InvalidProposalType(proposalTypeId);
         }

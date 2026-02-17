@@ -1,0 +1,190 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+import {IGovernorUpgradeable} from "@openzeppelin/contracts-upgradeable-v4/governance/IGovernorUpgradeable.sol";
+import {IVotesUpgradeable} from "@openzeppelin/contracts-upgradeable-v4/governance/utils/IVotesUpgradeable.sol";
+import {IProposalTypesConfigurator} from "src/interfaces/IProposalTypesConfigurator.sol";
+import {IAgoraGovernor} from "src/interfaces/IAgoraGovernor.sol";
+import {VotingModule} from "src/modules/VotingModule.sol";
+
+enum VoteType {
+    Against,
+    For,
+    Abstain
+}
+
+struct ProposalSettings {
+    uint248 againstThreshold;
+    bool isRelativeToVotableSupply;
+}
+
+struct Proposal {
+    ProposalSettings settings;
+    address[] targets;
+    uint256[] values;
+    bytes[] calldatas;
+}
+
+/// @custom:security-contact security@voteagora.com
+contract OptimisticExecution is VotingModule {
+    /*//////////////////////////////////////////////////////////////
+                                 ERRORS
+    //////////////////////////////////////////////////////////////*/
+
+    error WrongProposalId();
+    error NotOptimisticProposalType();
+
+    /*//////////////////////////////////////////////////////////////
+                           IMMUTABLE STORAGE
+    //////////////////////////////////////////////////////////////*/
+
+    uint16 public constant PERCENT_DIVISOR = 10_000;
+
+    /*//////////////////////////////////////////////////////////////
+                                STORAGE
+    //////////////////////////////////////////////////////////////*/
+
+    mapping(uint256 proposalId => Proposal) public proposals;
+
+    /*//////////////////////////////////////////////////////////////
+                               CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
+
+    constructor(address _governor) VotingModule(_governor) {}
+
+    /*//////////////////////////////////////////////////////////////
+                            WRITE FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * Validate proposal is optimistic and save settings for a new proposal.
+     *
+     * @param proposalId The id of the proposal.
+     * @param proposalData The proposal data encoded as `PROPOSAL_DATA_ENCODING`.
+     */
+    function propose(uint256 proposalId, bytes memory proposalData, bytes32 descriptionHash)
+        external
+        override
+        onlyGovernor
+    {
+        if (proposalId != uint256(keccak256(abi.encode(governor, address(this), proposalData, descriptionHash)))) {
+            revert WrongProposalId();
+        }
+
+        if (proposals[proposalId].settings.againstThreshold != 0) {
+            revert ExistingProposal();
+        }
+
+        (
+            address[] memory targets,
+            uint256[] memory values,
+            bytes[] memory calldatas,
+            ProposalSettings memory proposalSettings
+        ) = abi.decode(proposalData, (address[], uint256[], bytes[], ProposalSettings));
+
+        uint8 proposalTypeId = IAgoraGovernor(governor).getProposalType(proposalId);
+        IProposalTypesConfigurator proposalConfigurator =
+            IProposalTypesConfigurator(IAgoraGovernor(governor).PROPOSAL_TYPES_CONFIGURATOR());
+        IProposalTypesConfigurator.ProposalType memory proposalType = proposalConfigurator.proposalTypes(proposalTypeId);
+
+        if (proposalType.quorum != 0 || proposalType.approvalThreshold != 0) {
+            revert NotOptimisticProposalType();
+        }
+        if (
+            proposalSettings.againstThreshold == 0
+                || (proposalSettings.isRelativeToVotableSupply && proposalSettings.againstThreshold > PERCENT_DIVISOR)
+        ) {
+            revert InvalidParams();
+        }
+
+        proposals[proposalId].settings = proposalSettings;
+        proposals[proposalId].targets = targets;
+        proposals[proposalId].values = values;
+        proposals[proposalId].calldatas = calldatas;
+    }
+
+    /**
+     * Counting logic is skipped.
+     */
+    function _countVote(uint256, address, uint8, uint256, bytes memory) external virtual override {}
+
+    /**
+     * Format executeParams for a governor, given `proposalId` and `proposalData`.
+     * Returns the `targets`, `values` and `calldatas` encoded in the `proposalData`
+     *
+     * @return targets The targets of the proposal.
+     * @return values The values of the proposal.
+     * @return calldatas The calldatas of the proposal.
+     */
+    function _formatExecuteParams(uint256 proposalId, bytes memory proposalData)
+        public
+        pure
+        override
+        returns (address[] memory targets, uint256[] memory values, bytes[] memory calldatas)
+    {
+        (targets, values, calldatas,) = abi.decode(proposalData, (address[], uint256[], bytes[], ProposalSettings));
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                             VIEW FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
+
+    /**
+     * @dev Return true if `againstVotes` is lower than `againstThreshold`.
+     * Used by governor in `_voteSucceeded`. See {Governor-_voteSucceeded}.
+     *
+     * @param proposalId The id of the proposal.
+     */
+    function _voteSucceeded(uint256 proposalId) external view override returns (bool) {
+        Proposal memory proposal = proposals[proposalId];
+        (uint256 againstVotes,,) = IAgoraGovernor(governor).proposalVotes(proposalId);
+
+        uint256 againstThreshold = proposal.settings.againstThreshold;
+        if (proposal.settings.isRelativeToVotableSupply) {
+            uint256 snapshotBlock = IGovernorUpgradeable(governor).proposalSnapshot(proposalId);
+            IVotesUpgradeable token = IAgoraGovernor(governor).token();
+            againstThreshold = (token.getPastTotalSupply(snapshotBlock) * againstThreshold) / PERCENT_DIVISOR;
+        }
+
+        return againstVotes < againstThreshold;
+    }
+
+    /**
+     * Defines the encoding for the expected `proposalData` in `propose`.
+     * Encoding: `(ProposalSettings)`
+     *
+     * @dev Can be used by clients to interact with modules programmatically without prior knowledge
+     * on expected types.
+     */
+    function PROPOSAL_DATA_ENCODING() external pure virtual override returns (string memory) {
+        return
+            "(address[], uint256[], bytes[], (uint248 againstThreshold,bool isRelativeToVotableSupply) proposalSettings)";
+    }
+
+    /**
+     * Defines the encoding for the expected `params` in `_countVote`.
+     *
+     * @dev Can be used by clients to interact with modules programmatically without prior knowledge
+     * on expected types.
+     */
+    function VOTE_PARAMS_ENCODING() external pure virtual override returns (string memory) {
+        return "";
+    }
+
+    /**
+     * @dev See {IGovernor-COUNTING_MODE}.
+     *
+     * - `support=bravo`: Supports vote options 0 = Against, 1 = For, 2 = Abstain, as in `GovernorBravo`.
+     * - `quorum=for,abstain`: Against, For and Abstain votes are counted towards quorum.
+     */
+    function COUNTING_MODE() public pure virtual override returns (string memory) {
+        return "support=bravo&quorum=against,for,abstain";
+    }
+
+    /**
+     * Module version.
+     */
+    function version() public pure returns (uint256) {
+        return 1;
+    }
+}

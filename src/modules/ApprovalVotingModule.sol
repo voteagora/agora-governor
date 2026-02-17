@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {EnumerableSetUpgradeable} from
-    "@openzeppelin/contracts-upgradeable-v4/utils/structs/EnumerableSetUpgradeable.sol";
+import {
+    EnumerableSetUpgradeable
+} from "@openzeppelin/contracts-upgradeable-v4/utils/structs/EnumerableSetUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import {SafeCastLib} from "@solady/utils/SafeCastLib.sol";
 import {VotingModule} from "src/modules/VotingModule.sol";
@@ -361,8 +362,7 @@ contract ApprovalVotingModule is VotingModule {
      * on expected types.
      */
     function PROPOSAL_DATA_ENCODING() external pure virtual override returns (string memory) {
-        return
-        "((uint256 budgetTokensSpent,address[] targets,uint256[] values,bytes[] calldatas,string description)[] proposalOptions,(uint8 maxApprovals,uint8 criteria,address budgetToken,uint128 criteriaValue,uint128 budgetAmount) proposalSettings)";
+        return "((uint256 budgetTokensSpent,address[] targets,uint256[] values,bytes[] calldatas,string description)[] proposalOptions,(uint8 maxApprovals,uint8 criteria,address budgetToken,uint128 criteriaValue,uint128 budgetAmount) proposalSettings)";
     }
 
     /**

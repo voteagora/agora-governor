@@ -175,11 +175,7 @@ contract ProposalTypesConfigurator is IProposalTypesConfigurator {
      * @param proposalTypeId Id of the proposal type
      * @param scope An object that contains the scope for a transaction type hash
      */
-    function addScopeForProposalType(uint8 proposalTypeId, Scope calldata scope)
-        external
-        override
-        onlyAdminOrTimelock
-    {
+    function addScopeForProposalType(uint8 proposalTypeId, Scope calldata scope) external override onlyAdminOrTimelock {
         if (!_proposalTypes[proposalTypeId].exists) revert InvalidProposalType();
         if (scope.parameters.length != scope.comparators.length) revert InvalidParameterConditions();
         if (_assignedScopes[proposalTypeId][scope.key].length == MAX_SCOPE_LENGTH) revert MaxScopeLengthReached();
