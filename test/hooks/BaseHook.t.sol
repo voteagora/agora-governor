@@ -73,7 +73,7 @@ contract BaseHookTest is Test, Deployers {
         emit BaseHookMock.BeforePropose();
         vm.expectEmit(address(hook));
         emit BaseHookMock.AfterPropose();
-        proposalId = governor.propose(targets, values, calldatas, "Test");
+        proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
         vm.stopPrank();
     }
 
@@ -95,9 +95,9 @@ contract BaseHookTest is Test, Deployers {
         calldatas[0] = abi.encodeWithSelector(this.test_initialize_succeeds.selector);
 
         vm.startPrank(_actor);
-        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
 
-        vm.roll(block.number + 2);
+        vm.roll(block.number + votingDelay + 1);
 
         vm.expectEmit(address(hook));
         emit BaseHookMock.BeforeVote();
@@ -105,7 +105,7 @@ contract BaseHookTest is Test, Deployers {
         emit BaseHookMock.AfterVote();
         governor.castVote(proposalId, uint8(GovernorCountingSimple.VoteType.For));
 
-        vm.roll(block.number + 14);
+        vm.roll(block.number + votingPeriod);
         vm.stopPrank();
     }
 
@@ -126,7 +126,7 @@ contract BaseHookTest is Test, Deployers {
         vm.stopPrank();
 
         vm.startPrank(admin);
-        governor.propose(targets, values, calldatas, "Test");
+        governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
 
         vm.roll(block.number + 2);
 
@@ -134,7 +134,7 @@ contract BaseHookTest is Test, Deployers {
         emit BaseHookMock.BeforeCancel();
         vm.expectEmit(address(hook));
         emit BaseHookMock.AfterCancel();
-        governor.cancel(targets, values, calldatas, keccak256("Test"));
+        governor.cancel(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
 
         vm.stopPrank();
     }
@@ -157,19 +157,19 @@ contract BaseHookTest is Test, Deployers {
         calldatas[0] = abi.encodeWithSelector(this.test_initialize_succeeds.selector);
 
         vm.startPrank(_actor);
-        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
 
-        vm.roll(block.number + 2);
+        vm.roll(block.number + votingDelay + 1);
 
         governor.castVote(proposalId, uint8(GovernorCountingSimple.VoteType.For));
 
-        vm.roll(block.number + 14);
+        vm.roll(block.number + votingPeriod);
 
         vm.expectEmit(address(hook));
         emit BaseHookMock.BeforeQueue();
         vm.expectEmit(address(hook));
         emit BaseHookMock.AfterQueue();
-        governor.queue(targets, values, calldatas, keccak256("Test"));
+        governor.queue(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
     }
 
     function test_execute_succeeds(address _actor, uint256 _elapsedAfterQueuing) public {
@@ -192,25 +192,27 @@ contract BaseHookTest is Test, Deployers {
         calldatas[0] = abi.encodeWithSelector(this.test_initialize_succeeds.selector);
 
         vm.startPrank(_actor);
-        uint256 proposalId = governor.propose(targets, values, calldatas, "Test");
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test#proposalTypeId=1");
 
-        vm.roll(block.number + 2);
+        vm.roll(block.number + votingDelay + 1);
 
         governor.castVote(proposalId, uint8(GovernorCountingSimple.VoteType.For));
 
-        vm.roll(block.number + 14);
+        vm.roll(block.number + votingPeriod);
 
-        governor.queue(targets, values, calldatas, keccak256("Test"));
+        governor.queue(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
         vm.warp(block.timestamp + _elapsedAfterQueuing);
 
         vm.expectEmit(address(hook));
         emit BaseHookMock.BeforeExecute();
         vm.expectCall(
             address(hook),
-            abi.encodeCall(hook.afterExecute, (_actor, proposalId, targets, values, calldatas, keccak256("Test")))
+            abi.encodeCall(
+                hook.afterExecute, (_actor, proposalId, targets, values, calldatas, keccak256("Test#proposalTypeId=1"))
+            )
         );
 
-        governor.execute(targets, values, calldatas, keccak256("Test"));
+        governor.execute(targets, values, calldatas, keccak256("Test#proposalTypeId=1"));
     }
 
     function test_hookRevertsNotImplemented() public {

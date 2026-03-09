@@ -51,6 +51,15 @@ library Parser {
         }
     }
 
+    function _parseWeight(string memory description) internal pure returns (uint256 votingWeight) {
+        unchecked {
+            string memory value = _parseMarker(description, "#weight=");
+
+            // Cast and return the proposed voting weight
+            return value.parseUint();
+        }
+    }
+
     /// @dev Returns the proposal data specified in the description, which must be in the format `#proposalData=???`
     /// at the end of the description or before the next parameter/marker if it exists.
     ///

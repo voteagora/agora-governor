@@ -15,6 +15,10 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import {IHooks} from "src/interfaces/IHooks.sol";
 import {Hooks} from "src/libraries/Hooks.sol";
+import {Parser} from "src/libraries/Parser.sol";
+import {Middleware} from "src/Middleware.sol";
+
+import {console} from "forge-std/console.sol";
 
 /// @title AgoraGovernor
 /// @notice Agora Governor contract
@@ -22,6 +26,7 @@ import {Hooks} from "src/libraries/Hooks.sol";
 contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumFraction, GovernorSettings {
     using DoubleEndedQueue for DoubleEndedQueue.Bytes32Deque;
     using Hooks for IHooks;
+    using Parser for string;
 
     /*//////////////////////////////////////////////////////////////
                                  EVENTS
@@ -130,9 +135,80 @@ contract AgoraGovernor is Governor, GovernorCountingSimple, GovernorVotesQuorumF
 
         hooks.beforePropose(targets, values, calldatas, description);
 
-        proposalId = super.propose(targets, values, calldatas, description);
+        proposalId = proposeInternal(targets, values, calldatas, description);
 
         hooks.afterPropose(proposalId, targets, values, calldatas, description);
+    }
+
+    /**
+     * @dev See {IGovernor-propose}. This function has opt-in frontrunning protection, described in {_isValidDescriptionForProposer}.
+     */
+    function proposeInternal(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        string memory description
+    ) internal virtual returns (uint256) {
+        address proposer = _msgSender();
+
+        // check description restriction
+        if (!_isValidDescriptionForProposer(proposer, description)) {
+            revert GovernorRestrictedProposer(proposer);
+        }
+
+        // check proposal threshold
+        // take the weight field in the description and retreive the proposal id. Then expose in the module a verifyThreshold function that takes these values
+        // and compares them to some merkle root. If that amount is greater than the threshold continue. If this weight field is not present nor the module field then
+        // just use get votes
+        // Problem: the governor should have no direct awareness of a module's interface, can the middleware take this over?
+        // what if the middleware calls the propose function and relays the sender?
+        uint256 votesThreshold = proposalThreshold();
+        if (votesThreshold > 0) {
+            uint256 proposerVotes;
+            uint8 proposalTypeId = description._parseProposalTypeId();
+
+            Middleware middleware = Middleware(address(hooks));
+
+            (,,,, address module,) = middleware._proposalTypes(proposalTypeId);
+
+            proposerVotes = getVotes(proposer, clock() - 1);
+
+            if (module != address(0)) {
+                string memory data = description._parseProposalData();
+                bytes memory proposalData = bytes(data);
+
+                // TODO: needs an additional check here in case someone tries to use the merkle module but doesn't supply the correct proposalData format
+                // this is because this check just allows other modules to continue to use IVotes if proposaldata is unneeded for other modules
+                //
+                // maybe make the static call to the merkle module that returns a special value (? risky)
+                if (proposalData.length > 0) {
+                    (uint256 _weight, bytes32[] memory _merkleProof) = abi.decode(proposalData, (uint256, bytes32[]));
+
+                    (bool success, bytes memory returndata) = module.staticcall(
+                        abi.encodeWithSignature(
+                            "verifyThreshold(address,uint256,bytes32[])", proposer, _weight, _merkleProof
+                        )
+                    );
+                    if (success) {
+                        require(returndata.length > 0, "Empty bytes array");
+                        // retrieve the first byte if it's not zero then it's true
+                        bool valid;
+                        assembly ("memory-safe") {
+                            valid := mload(add(returndata, 0x20))
+                        }
+
+                        require(valid, "invalid proof");
+                        proposerVotes = _weight;
+                    }
+                }
+            }
+
+            if (proposerVotes < votesThreshold) {
+                revert GovernorInsufficientProposerVotes(proposer, proposerVotes, votesThreshold);
+            }
+        }
+
+        return _propose(targets, values, calldatas, description, proposer);
     }
 
     /**
