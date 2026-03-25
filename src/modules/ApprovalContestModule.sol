@@ -174,12 +174,7 @@ contract ApprovalContestModule is VotingModule {
                 if (totalOptions == 0) revert InvalidParams();
 
                 _recordVote(
-                    proposalId,
-                    account,
-                    weight.toUint128(),
-                    options,
-                    totalOptions,
-                    proposal.settings.maxApprovals
+                    proposalId, account, weight.toUint128(), options, totalOptions, proposal.settings.maxApprovals
                 );
             }
         }
@@ -425,7 +420,8 @@ contract ApprovalContestModule is VotingModule {
             option = options[i];
 
             require(
-                proposals[proposalId].options[option].contestant != account, "Voter cannot vote for their own submission"
+                proposals[proposalId].options[option].contestant != account,
+                "Voter cannot vote for their own submission"
             );
             accountVotesSet[proposalId][account].add(option);
 
