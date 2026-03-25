@@ -2,7 +2,9 @@
 pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
-import {TransparentUpgradeableProxy} from "@openzeppelin/contracts-v4/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {
+    TransparentUpgradeableProxy
+} from "@openzeppelin/contracts-v4/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IVotesUpgradeable} from "@openzeppelin/contracts-upgradeable-v4/governance/utils/IVotesUpgradeable.sol";
 import {IGovernorUpgradeable} from "@openzeppelin/contracts-upgradeable-v4/governance/IGovernorUpgradeable.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts-v4/proxy/ERC1967/ERC1967Proxy.sol";
@@ -295,8 +297,7 @@ contract Initialize is AgoraGovernorTest {
             vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 1), _proposalTypes
         );
         AgoraGovernor _governor = AgoraGovernor(
-            payable(
-                new TransparentUpgradeableProxy(
+            payable(new TransparentUpgradeableProxy(
                     implementation,
                     proxyAdmin,
                     abi.encodeCall(
@@ -310,8 +311,7 @@ contract Initialize is AgoraGovernorTest {
                             IProposalTypesConfigurator(_proposalTypesConfigurator)
                         )
                     )
-                )
-            )
+                ))
         );
         assertEq(address(_governor.token()), _token);
         assertEq(_governor.admin(), _admin);

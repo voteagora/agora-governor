@@ -40,6 +40,7 @@ struct ProposalOption {
     uint256[] values;
     bytes[] calldatas;
     string description;
+    address contestant;
 }
 
 struct Proposal {
@@ -50,7 +51,7 @@ struct Proposal {
 }
 
 /// @custom:security-contact security@voteagora.com
-contract ApprovalVotingModule is VotingModule {
+contract ApprovalContestModule is VotingModule {
     /*//////////////////////////////////////////////////////////////
                                  ERRORS
     //////////////////////////////////////////////////////////////*/
@@ -76,11 +77,17 @@ contract ApprovalVotingModule is VotingModule {
     mapping(uint256 proposalId => mapping(address account => EnumerableSetUpgradeable.UintSet votes)) private
         accountVotesSet;
 
+    mapping(address contestant => bool) public contestants;
+
     /*//////////////////////////////////////////////////////////////
                                CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
-    constructor(address _governor) VotingModule(_governor) {}
+    constructor(address _governor, address[] memory _contestants) VotingModule(_governor) {
+        for (uint256 i = 0; i < _contestants.length; i++) {
+            contestants[_contestants[i]] = true;
+        }
+    }
 
     /*//////////////////////////////////////////////////////////////
                             WRITE FUNCTIONS
@@ -157,6 +164,7 @@ contract ApprovalVotingModule is VotingModule {
         override
         onlyGovernor
     {
+        require(contestants[account], "Not a registered voter");
         Proposal memory proposal = proposals[proposalId];
 
         if (support == uint8(VoteType.For)) {
@@ -166,7 +174,12 @@ contract ApprovalVotingModule is VotingModule {
                 if (totalOptions == 0) revert InvalidParams();
 
                 _recordVote(
-                    proposalId, account, weight.toUint128(), options, totalOptions, proposal.settings.maxApprovals
+                    proposalId,
+                    account,
+                    weight.toUint128(),
+                    options,
+                    totalOptions,
+                    proposal.settings.maxApprovals
                 );
             }
         }
@@ -362,7 +375,7 @@ contract ApprovalVotingModule is VotingModule {
      * on expected types.
      */
     function PROPOSAL_DATA_ENCODING() external pure virtual override returns (string memory) {
-        return "((uint256 budgetTokensSpent,address[] targets,uint256[] values,bytes[] calldatas,string description)[] proposalOptions,(uint8 maxApprovals,uint8 criteria,address budgetToken,uint128 criteriaValue,uint128 budgetAmount) proposalSettings)";
+        return "((uint256 budgetTokensSpent,address[] targets,uint256[] values,bytes[] calldatas,string description,address contestant)[] proposalOptions,(uint8 maxApprovals,uint8 criteria,address budgetToken,uint128 criteriaValue,uint128 budgetAmount) proposalSettings)";
     }
 
     /**
@@ -411,6 +424,9 @@ contract ApprovalVotingModule is VotingModule {
         for (uint256 i; i < totalOptions;) {
             option = options[i];
 
+            require(
+                proposals[proposalId].options[option].contestant != account, "Voter cannot vote for their own submission"
+            );
             accountVotesSet[proposalId][account].add(option);
 
             // Revert if `option` is not strictly ascending
